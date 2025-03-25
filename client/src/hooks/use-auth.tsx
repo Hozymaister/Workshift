@@ -51,10 +51,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
-      const res = await apiRequest("POST", "/api/login", credentials);
-      return await res.json();
+      console.log("Login mutation called with:", { email: credentials.email });
+      try {
+        const res = await apiRequest("POST", "/api/login", credentials);
+        const data = await res.json();
+        console.log("Login successful, received data:", data);
+        return data;
+      } catch (error) {
+        console.error("Login error:", error);
+        throw error;
+      }
     },
     onSuccess: (user: SafeUser) => {
+      console.log("Login onSuccess called, setting user data:", user);
       queryClient.setQueryData(["/api/user"], user);
       toast({
         title: "Přihlášení úspěšné",
@@ -62,6 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     },
     onError: (error: Error) => {
+      console.error("Login onError called:", error.message);
       toast({
         title: "Přihlášení selhalo",
         description: error.message,

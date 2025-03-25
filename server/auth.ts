@@ -98,13 +98,25 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/login", (req, res, next) => {
+    console.log("Login attempt:", { email: req.body.email });
     passport.authenticate("local", (err, user, info) => {
-      if (err) return next(err);
-      if (!user) return res.status(401).send("Invalid email or password");
+      console.log("Passport authenticate result:", { err, user: user ? user.id : null, info });
+      if (err) {
+        console.log("Passport authenticate error:", err);
+        return next(err);
+      }
+      if (!user) {
+        console.log("User not found or invalid password");
+        return res.status(401).send("Invalid email or password");
+      }
       
       req.login(user, (err) => {
-        if (err) return next(err);
+        if (err) {
+          console.log("Login error:", err);
+          return next(err);
+        }
         
+        console.log("Login success for user:", user.id);
         // Don't expose password hash to client
         const { password, ...safeUser } = user;
         res.status(200).json(safeUser);
