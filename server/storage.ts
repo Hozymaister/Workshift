@@ -81,6 +81,33 @@ export class MemStorage implements IStorage {
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000, // 24 hours
     });
+    
+    // Initialize some demo data
+    this.initDemoData();
+  }
+  
+  // Inicializace ukázkových dat
+  private async initDemoData() {
+    try {
+      // Importujeme funkci pro hashování hesla
+      const { hashPassword } = await import('./auth');
+      
+      // Inicializace správce
+      if (!(await this.getUserByEmail("hozak.tomas@email.cz"))) {
+        const hashedPassword = await hashPassword("123456");
+        await this.createUser({
+          firstName: "Hozak",
+          lastName: "T",
+          username: "hozak.t",
+          email: "hozak.tomas@email.cz",
+          password: hashedPassword,
+          role: "admin"
+        });
+        console.log("Demo správce vytvořen: hozak.tomas@email.cz / 123456");
+      }
+    } catch (error) {
+      console.error("Chyba při vytváření demo dat:", error);
+    }
   }
 
   // User methods
