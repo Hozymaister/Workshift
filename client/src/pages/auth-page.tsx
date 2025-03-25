@@ -150,8 +150,8 @@ export default function AuthPage() {
     },
     onSuccess: () => {
       toast({
-        title: "Email byl odeslán",
-        description: "Na váš email jsme odeslali instrukce pro obnovení hesla.",
+        title: "Kód byl vygenerován",
+        description: "DEMO VERZE: Kód najdete v konzoli serveru (např. [Reset code for email@example.com]: 123456)",
       });
       setResetEmail(resetPasswordForm.getValues().email);
       setIsResetDialogOpen(false);
@@ -432,7 +432,8 @@ export default function AuthPage() {
           <DialogHeader>
             <DialogTitle>Zapomenuté heslo</DialogTitle>
             <DialogDescription>
-              Zadejte svůj e-mail pro obnovení hesla. Pošleme vám odkaz k resetování.
+              Zadejte svůj e-mail pro obnovení hesla. V demo verzi bude kód pro reset zobrazen v konzoli serveru. 
+              V produkční verzi by byl odeslán na zadaný email.
             </DialogDescription>
           </DialogHeader>
           
@@ -472,7 +473,7 @@ export default function AuthPage() {
           <DialogHeader>
             <DialogTitle>Změna hesla</DialogTitle>
             <DialogDescription>
-              Zadejte kód, který jsme vám poslali emailem a vaše nové heslo.
+              Zadejte kód, který najdete v konzoli serveru (např. [Reset code for {resetEmail}]: 123456) a vaše nové heslo.
             </DialogDescription>
           </DialogHeader>
           
