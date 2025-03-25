@@ -114,6 +114,8 @@ export default function AuthPage() {
   });
 
   const onLoginSubmit = (data: LoginFormValues) => {
+    console.log("Login form submitted:", { email: data.email });
+    
     loginMutation.mutate({
       email: data.email,
       password: data.password,

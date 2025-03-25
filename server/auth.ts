@@ -97,19 +97,26 @@ export function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/login", (req, res, next) => {
-    console.log("Login attempt:", { email: req.body.email });
-    passport.authenticate("local", (err, user, info) => {
-      console.log("Passport authenticate result:", { err, user: user ? user.id : null, info });
-      if (err) {
-        console.log("Passport authenticate error:", err);
-        return next(err);
-      }
+  app.post("/api/login", async (req, res, next) => {
+    try {
+      console.log("Login attempt:", { email: req.body.email });
+      
+      // Manuální ověření uživatele (přeskakujeme Passport)
+      const user = await storage.getUserByEmail(req.body.email);
+      
       if (!user) {
-        console.log("User not found or invalid password");
-        return res.status(401).send("Invalid email or password");
+        console.log("User not found");
+        return res.status(401).send("Neplatný email nebo heslo");
       }
       
+      const passwordMatch = await comparePasswords(req.body.password, user.password);
+      
+      if (!passwordMatch) {
+        console.log("Password doesn't match");
+        return res.status(401).send("Neplatný email nebo heslo");
+      }
+      
+      // Použití Passport, ale s již ověřeným uživatelem
       req.login(user, (err) => {
         if (err) {
           console.log("Login error:", err);
@@ -117,11 +124,14 @@ export function setupAuth(app: Express) {
         }
         
         console.log("Login success for user:", user.id);
-        // Don't expose password hash to client
+        // Neposílejme hashované heslo klientovi
         const { password, ...safeUser } = user;
         res.status(200).json(safeUser);
       });
-    })(req, res, next);
+    } catch (error) {
+      console.error("Login error:", error);
+      next(error);
+    }
   });
 
   app.post("/api/logout", (req, res, next) => {
