@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth } from "./auth";
+import { setupAuth, hashPassword } from "./auth";
 import { format, parseISO, addHours, differenceInHours } from "date-fns";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -344,6 +344,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
       upcomingShifts,
       exchangeRequests: pendingRequests,
     });
+  });
+  
+  // Reset password routes - In production, these would send actual emails
+  // For demo purposes, we'll store reset codes in memory
+  const resetCodes = new Map<string, { code: string, expires: Date }>();
+  
+  app.post("/api/reset-password", async (req, res) => {
+    const { email } = req.body;
+    
+    // Check if user exists
+    const user = await storage.getUserByEmail(email);
+    if (!user) {
+      // Don't reveal whether the email is registered for security reasons
+      return res.status(200).json({ message: "If your email is registered, you will receive instructions shortly." });
+    }
+    
+    // Generate a random 6-digit code
+    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // Store the code with expiration time (30 minutes)
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 30);
+    resetCodes.set(email, { code: resetCode, expires: expiresAt });
+    
+    // In a real app, send an email with the code
+    console.log(`[Reset code for ${email}]: ${resetCode}`);
+    
+    res.status(200).json({ message: "If your email is registered, you will receive instructions shortly." });
+  });
+  
+  app.post("/api/reset-password/confirm", async (req, res) => {
+    const { email, code, password } = req.body;
+    
+    // Check if reset code exists and is valid
+    const resetData = resetCodes.get(email);
+    if (!resetData) {
+      return res.status(400).json({ message: "Invalid or expired reset code." });
+    }
+    
+    // Check if code matches and is not expired
+    if (resetData.code !== code || resetData.expires < new Date()) {
+      return res.status(400).json({ message: "Invalid or expired reset code." });
+    }
+    
+    // Find the user
+    const user = await storage.getUserByEmail(email);
+    if (!user) {
+      return res.status(400).json({ message: "User not found." });
+    }
+    
+    // Hash the new password
+    const hashedPassword = await hashPassword(password);
+    
+    // Update user's password
+    const updatedUser = await storage.updateUser(user.id, { password: hashedPassword });
+    
+    // Remove the reset code
+    resetCodes.delete(email);
+    
+    res.status(200).json({ message: "Password has been successfully reset." });
   });
 
   const httpServer = createServer(app);

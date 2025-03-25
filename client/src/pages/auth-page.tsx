@@ -4,6 +4,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
 import { Redirect } from "wouter";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import {
   Card,
   CardContent,
@@ -26,12 +29,37 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose
+} from "@/components/ui/dialog";
 
 // Login schema
 const loginSchema = z.object({
   email: z.string().email("Zadejte platný email"),
   password: z.string().min(1, "Heslo je povinné"),
   rememberMe: z.boolean().optional(),
+});
+
+// Reset password schema
+const resetPasswordSchema = z.object({
+  email: z.string().email("Zadejte platný email"),
+});
+
+// New password schema
+const newPasswordSchema = z.object({
+  code: z.string().min(6, "Kód musí mít alespoň 6 znaků"),
+  password: z.string().min(6, "Heslo musí mít alespoň 6 znaků"),
+  passwordConfirm: z.string().min(6, "Potvrzení hesla je povinné"),
+}).refine((data) => data.password === data.passwordConfirm, {
+  message: "Hesla se neshodují",
+  path: ["passwordConfirm"],
 });
 
 // Registration schema
@@ -50,10 +78,16 @@ const registerSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 type RegisterFormValues = z.infer<typeof registerSchema>;
+type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
+type NewPasswordFormValues = z.infer<typeof newPasswordSchema>;
 
 export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("login");
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
+  const [isNewPasswordDialogOpen, setIsNewPasswordDialogOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
 
   // Login form
   const loginForm = useForm<LoginFormValues>({
@@ -88,6 +122,83 @@ export default function AuthPage() {
 
   const onRegisterSubmit = (data: RegisterFormValues) => {
     registerMutation.mutate(data);
+  };
+  
+  // Reset password form
+  const resetPasswordForm = useForm<ResetPasswordFormValues>({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: {
+      email: "",
+    },
+  });
+  
+  // New password form
+  const newPasswordForm = useForm<NewPasswordFormValues>({
+    resolver: zodResolver(newPasswordSchema),
+    defaultValues: {
+      code: "",
+      password: "",
+      passwordConfirm: "",
+    },
+  });
+  
+  // Reset password mutation
+  const resetPasswordMutation = useMutation({
+    mutationFn: async (data: ResetPasswordFormValues) => {
+      const res = await apiRequest("POST", "/api/reset-password", data);
+      return await res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Email byl odeslán",
+        description: "Na váš email jsme odeslali instrukce pro obnovení hesla.",
+      });
+      setResetEmail(resetPasswordForm.getValues().email);
+      setIsResetDialogOpen(false);
+      setIsNewPasswordDialogOpen(true);
+      resetPasswordForm.reset();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Chyba při odesílání emailu",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // New password mutation
+  const newPasswordMutation = useMutation({
+    mutationFn: async (data: NewPasswordFormValues) => {
+      const res = await apiRequest("POST", "/api/reset-password/confirm", {
+        ...data,
+        email: resetEmail,
+      });
+      return await res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Heslo změněno",
+        description: "Vaše heslo bylo úspěšně změněno. Nyní se můžete přihlásit.",
+      });
+      setIsNewPasswordDialogOpen(false);
+      newPasswordForm.reset();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Chyba při změně hesla",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+  
+  const onResetPasswordSubmit = (data: ResetPasswordFormValues) => {
+    resetPasswordMutation.mutate(data);
+  };
+  
+  const onNewPasswordSubmit = (data: NewPasswordFormValues) => {
+    newPasswordMutation.mutate(data);
   };
 
   // If already logged in, redirect to dashboard
@@ -160,9 +271,7 @@ export default function AuthPage() {
                     <Button 
                       variant="link" 
                       className="text-sm p-0 h-auto" 
-                      onClick={() => {
-                        alert("Funkce obnovení hesla bude brzy dostupná. Kontaktujte prosím správce systému.");
-                      }}
+                      onClick={() => setIsResetDialogOpen(true)}
                     >
                       Zapomenuté heslo?
                     </Button>
@@ -316,6 +425,114 @@ export default function AuthPage() {
           </Tabs>
         </CardContent>
       </Card>
+      
+      {/* Reset Password Dialog */}
+      <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Zapomenuté heslo</DialogTitle>
+            <DialogDescription>
+              Zadejte svůj e-mail pro obnovení hesla. Pošleme vám odkaz k resetování.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Form {...resetPasswordForm}>
+            <form onSubmit={resetPasswordForm.handleSubmit(onResetPasswordSubmit)} className="space-y-4">
+              <FormField
+                control={resetPasswordForm.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input placeholder="email@example.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <DialogFooter>
+                <Button 
+                  type="submit" 
+                  className="w-full"
+                  disabled={resetPasswordMutation.isPending}
+                >
+                  {resetPasswordMutation.isPending ? "Odesílání..." : "Odeslat instrukce"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+      
+      {/* New Password Dialog */}
+      <Dialog open={isNewPasswordDialogOpen} onOpenChange={setIsNewPasswordDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Změna hesla</DialogTitle>
+            <DialogDescription>
+              Zadejte kód, který jsme vám poslali emailem a vaše nové heslo.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Form {...newPasswordForm}>
+            <form onSubmit={newPasswordForm.handleSubmit(onNewPasswordSubmit)} className="space-y-4">
+              <FormField
+                control={newPasswordForm.control}
+                name="code"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Kód pro obnovení</FormLabel>
+                    <FormControl>
+                      <Input placeholder="123456" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={newPasswordForm.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nové heslo</FormLabel>
+                    <FormControl>
+                      <Input type="password" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={newPasswordForm.control}
+                name="passwordConfirm"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Potvrzení hesla</FormLabel>
+                    <FormControl>
+                      <Input type="password" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <DialogFooter>
+                <Button 
+                  type="submit" 
+                  className="w-full"
+                  disabled={newPasswordMutation.isPending}
+                >
+                  {newPasswordMutation.isPending ? "Odesílání..." : "Změnit heslo"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
