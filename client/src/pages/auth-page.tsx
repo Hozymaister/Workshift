@@ -157,7 +157,13 @@ export default function AuthPage() {
                         </FormItem>
                       )}
                     />
-                    <Button variant="link" className="text-sm p-0 h-auto">
+                    <Button 
+                      variant="link" 
+                      className="text-sm p-0 h-auto" 
+                      onClick={() => {
+                        alert("Funkce obnovení hesla bude brzy dostupná. Kontaktujte prosím správce systému.");
+                      }}
+                    >
                       Zapomenuté heslo?
                     </Button>
                   </div>
