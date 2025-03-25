@@ -1,0 +1,26 @@
+{
+  "name": "ShiftManager",
+  "short_name": "ShiftManager",
+  "description": "Aplikace pro správu pracovníků, jejich směn a pracovních objektů",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f1f5f9",
+  "theme_color": "#1d4ed8",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "orientation": "portrait",
+  "categories": ["productivity", "business"],
+  "screenshots": []
+}
