@@ -6,7 +6,8 @@ import { ShiftForm } from "@/components/shifts/shift-form";
 import { Button } from "@/components/ui/button";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Shift } from "@shared/schema";
-import { Plus, Pencil, Trash2, RefreshCw, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, RefreshCw, Loader2, Table as TableIcon } from "lucide-react";
+import { useLocation } from "wouter";
 import { format } from "date-fns";
 import { cs } from "date-fns/locale";
 import {
@@ -104,6 +105,8 @@ export default function ShiftsPage() {
     return new Date(a.date).getTime() - new Date(b.date).getTime();
   });
 
+  const [_, navigate] = useLocation();
+  
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-slate-100">
       <Sidebar />
@@ -117,8 +120,17 @@ export default function ShiftsPage() {
               <h2 className="text-2xl font-bold text-slate-900">Moje směny</h2>
               <p className="mt-1 text-sm text-slate-500">Přehled a správa vašich směn</p>
             </div>
-            {user?.role === "admin" && (
-              <div className="mt-4 md:mt-0">
+            <div className="mt-4 md:mt-0 flex flex-wrap gap-2">
+              <Button 
+                variant="outline"
+                onClick={() => navigate("/shift-table")} 
+                className="inline-flex items-center"
+              >
+                <TableIcon className="mr-2 h-4 w-4" />
+                Tabulkový přehled
+              </Button>
+              
+              {user?.role === "admin" && (
                 <Button onClick={() => {
                   setShiftToEdit(undefined);
                   setIsShiftFormOpen(true);
@@ -126,8 +138,8 @@ export default function ShiftsPage() {
                   <Plus className="mr-2 h-4 w-4" />
                   Nová směna
                 </Button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
           
           <Card>
