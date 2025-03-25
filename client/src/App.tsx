@@ -5,6 +5,7 @@ import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
 import DashboardPage from "@/pages/dashboard-page";
 import ShiftsPage from "@/pages/shifts-page";
+import ShiftTablePage from "@/pages/shift-table-page"; // Nová stránka
 import ExchangesPage from "@/pages/exchanges-page";
 import WorkplacesPage from "@/pages/workplaces-page";
 import WorkersPage from "@/pages/workers-page";
@@ -17,6 +18,7 @@ function Router() {
       <Route path="/auth" component={AuthPage} />
       <ProtectedRoute path="/" component={DashboardPage} />
       <ProtectedRoute path="/shifts" component={ShiftsPage} />
+      <ProtectedRoute path="/shift-table" component={ShiftTablePage} /> {/* Nová trasa pro tabulku směn */}
       <ProtectedRoute path="/exchanges" component={ExchangesPage} />
       <ProtectedRoute path="/workplaces" component={WorkplacesPage} />
       <ProtectedRoute path="/workers" component={WorkersPage} />
