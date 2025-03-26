@@ -8,7 +8,6 @@ import { Redirect } from "wouter";
 import { format, subMonths } from "date-fns";
 import { cs } from "date-fns/locale";
 import jsPDF from "jspdf";
-import { PdfDownloadDialog } from "@/components/invoice/pdf-download-dialog";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { MobileNavigation } from "@/components/layout/mobile-navigation";
@@ -541,19 +540,13 @@ export default function InvoicePage() {
         const fileName = `faktura_${formData.invoiceNumber.replace(/[\/\\:*?"<>|]/g, "-")}.pdf`;
         console.log(`Ukládám PDF jako: ${fileName}`);
         
-        // Vytvoření URL pro náhled a stažení
-        const pdfBlob = doc.output('blob');
-        console.log("PDF blob vytvořen:", pdfBlob);
-        
-        const pdfUrl = URL.createObjectURL(pdfBlob);
-        console.log("PDF URL vytvořena:", pdfUrl);
-        
-        // Uložení do state
-        console.log("Nastavuji PDF URL do state:", pdfUrl);
-        setGeneratedPdfUrl(pdfUrl);
-        setPdfFileName(fileName);
-        setPdfDialogOpen(true);
-        console.log("Dialog otevřen, PDF URL:", pdfUrl);
+        // Přímý download PDF bez použití dialogu
+        try {
+          doc.save(fileName);
+          console.log("PDF bylo uloženo pomocí doc.save()");
+        } catch(error) {
+          console.error("Chyba při ukládání PDF pomocí doc.save():", error);
+        }
         
         toast({
           title: "PDF úspěšně vytvořeno",
@@ -2007,20 +2000,7 @@ export default function InvoicePage() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog pro stažení PDF faktury */}
-      <PdfDownloadDialog 
-        open={pdfDialogOpen} 
-        onOpenChange={(open) => {
-          setPdfDialogOpen(open);
-          // Když se dialog zavře, uvolníme URL objekt
-          if (!open && generatedPdfUrl) {
-            URL.revokeObjectURL(generatedPdfUrl);
-            setGeneratedPdfUrl(null);
-          }
-        }}
-        pdfUrl={generatedPdfUrl}
-        fileName={pdfFileName}
-      />
+
     </div>
   );
 }
