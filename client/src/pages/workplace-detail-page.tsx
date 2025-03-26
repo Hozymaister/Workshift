@@ -67,6 +67,8 @@ import {
   Save,
   Loader2,
   BarChart2,
+  Warehouse,
+  Music,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -328,6 +330,43 @@ export default function WorkplaceDetailPage() {
   // Handler pro aktualizaci pracoviště
   const handleUpdateWorkplace = () => {
     updateWorkplaceMutation.mutate(editForm);
+  };
+  
+  // Helper pro získání ikony podle typu pracoviště
+  const getTypeIcon = (type: string) => {
+    switch(type.toLowerCase()) {
+      case 'office':
+      case 'kancelář':
+        return <Building className="h-3 w-3 text-blue-500" />;
+      case 'warehouse':
+      case 'sklad':
+        return <Warehouse className="h-3 w-3 text-orange-500" />;
+      case 'culture':
+      case 'kultura':
+        return <Music className="h-3 w-3 text-purple-500" />;
+      default:
+        return <Building className="h-3 w-3 text-gray-500" />;
+    }
+  };
+  
+  // Helper pro získání přeloženého názvu typu
+  const getTypeName = (type: string) => {
+    switch(type.toLowerCase()) {
+      case 'office':
+        return 'Kancelář';
+      case 'kancelář':
+        return 'Kancelář';
+      case 'warehouse':
+        return 'Sklad';
+      case 'sklad':
+        return 'Sklad';
+      case 'culture':
+        return 'Kultura';
+      case 'kultura':
+        return 'Kultura';
+      default:
+        return type;
+    }
   };
   
   // Helper pro zjištění, zda je uživatel manažerem
@@ -1006,6 +1045,74 @@ export default function WorkplaceDetailPage() {
                     Uložit změny
                   </>
                 )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        
+        {/* Dialog pro výpočet mzdy */}
+        <Dialog open={wageDialogOpen} onOpenChange={setWageDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Výpočet mzdy</DialogTitle>
+              <DialogDescription>
+                Nastavte hodinovou sazbu a zobrazte si celkovou mzdu za odpracované hodiny.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              {selectedUserId && (
+                <>
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="hourlyWage" className="text-right">
+                        Hodinová sazba: {hourlyWage} Kč/h
+                      </Label>
+                      <span className="text-sm text-primary font-medium">
+                        {formatCurrency(hourlyWage)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span className="text-sm">130 Kč</span>
+                      <Slider
+                        id="hourlyWage"
+                        min={130}
+                        max={200}
+                        step={5}
+                        value={[hourlyWage]}
+                        onValueChange={(values) => setHourlyWage(values[0])}
+                        className="flex-1"
+                      />
+                      <span className="text-sm">200 Kč</span>
+                    </div>
+                  </div>
+                
+                  <div className="border rounded-lg p-4 bg-slate-50">
+                    <h4 className="text-sm font-medium mb-2">Mzdové výpočty:</h4>
+                    <div className="space-y-2">
+                      {userStats.filter(u => u.id === selectedUserId).map(userData => (
+                        <div key={userData.id} className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm">Tento měsíc ({formatDuration(userData.monthlyHours)}):</span>
+                            <span className="font-semibold">
+                              {formatCurrency(userData.monthlyHours * hourlyWage)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm">Celkem ({formatDuration(userData.totalHours)}):</span>
+                            <span className="font-semibold">
+                              {formatCurrency(userData.totalHours * hourlyWage)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setWageDialogOpen(false)}>
+                Zavřít
               </Button>
             </DialogFooter>
           </DialogContent>
