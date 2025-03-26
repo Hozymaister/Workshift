@@ -9,6 +9,10 @@ import {
 } from "@shared/schema";
 import session from "express-session";
 import createMemoryStore from "memorystore";
+import { neon } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-http';
+import { eq, and, between, like, or } from 'drizzle-orm';
+import PgSession from 'connect-pg-simple';
 
 const MemoryStore = createMemoryStore(session);
 
@@ -428,4 +432,330 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// PostgreSQL storage implementation
+export class PostgreSQLStorage implements IStorage {
+  private db: ReturnType<typeof drizzle>;
+  sessionStore: any;
+
+  constructor() {
+    const sql = neon(process.env.DATABASE_URL!);
+    this.db = drizzle(sql);
+    
+    // Initialize session store with PostgreSQL
+    const PgStore = PgSession(session);
+    this.sessionStore = new PgStore({
+      conString: process.env.DATABASE_URL,
+      tableName: 'sessions',
+      createTableIfMissing: true,
+    });
+
+    // Initialize demo data
+    this.initDemoData();
+  }
+
+  private async initDemoData() {
+    try {
+      // Import hashPassword function
+      const { hashPassword } = await import('./auth');
+      
+      // Check if admin user already exists
+      const adminUser = await this.getUserByEmail("hozak.tomas@email.cz");
+      
+      if (!adminUser) {
+        const hashedPassword = await hashPassword("123456");
+        await this.createUser({
+          firstName: "Hozak",
+          lastName: "T",
+          username: "hozak.t",
+          email: "hozak.tomas@email.cz",
+          password: hashedPassword,
+          role: "admin"
+        });
+        console.log("Demo admin created: hozak.tomas@email.cz / 123456");
+      }
+    } catch (error) {
+      console.error("Error creating demo data:", error);
+    }
+  }
+
+  // User methods
+  async getUser(id: number): Promise<User | undefined> {
+    const result = await this.db.select().from(users).where(eq(users.id, id));
+    return result[0];
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const result = await this.db.select().from(users).where(eq(users.username, username));
+    return result[0];
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const result = await this.db.select().from(users).where(eq(users.email, email.toLowerCase()));
+    return result[0];
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    // Ensure lowercase email for consistency
+    const userData = {
+      ...insertUser,
+      email: insertUser.email.toLowerCase(),
+      role: insertUser.role || "worker"
+    };
+    
+    const result = await this.db.insert(users).values(userData).returning();
+    return result[0];
+  }
+
+  async updateUser(id: number, userData: Partial<InsertUser>): Promise<User | undefined> {
+    // If email is provided, ensure it's lowercase
+    if (userData.email) {
+      userData.email = userData.email.toLowerCase();
+    }
+    
+    const result = await this.db
+      .update(users)
+      .set(userData)
+      .where(eq(users.id, id))
+      .returning();
+    
+    return result[0];
+  }
+
+  async deleteUser(id: number): Promise<boolean> {
+    const result = await this.db.delete(users).where(eq(users.id, id));
+    return !!result;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return await this.db.select().from(users);
+  }
+
+  // Workplace methods
+  async getWorkplace(id: number): Promise<Workplace | undefined> {
+    const result = await this.db.select().from(workplaces).where(eq(workplaces.id, id));
+    return result[0];
+  }
+
+  async createWorkplace(workplace: InsertWorkplace): Promise<Workplace> {
+    const result = await this.db.insert(workplaces).values(workplace).returning();
+    return result[0];
+  }
+
+  async updateWorkplace(id: number, workplace: Partial<InsertWorkplace>): Promise<Workplace | undefined> {
+    const result = await this.db
+      .update(workplaces)
+      .set(workplace)
+      .where(eq(workplaces.id, id))
+      .returning();
+    
+    return result[0];
+  }
+
+  async deleteWorkplace(id: number): Promise<boolean> {
+    const result = await this.db.delete(workplaces).where(eq(workplaces.id, id));
+    return !!result;
+  }
+
+  async getAllWorkplaces(): Promise<Workplace[]> {
+    return await this.db.select().from(workplaces);
+  }
+
+  // Shift methods
+  async getShift(id: number): Promise<Shift | undefined> {
+    const result = await this.db.select().from(shifts).where(eq(shifts.id, id));
+    return result[0];
+  }
+
+  async createShift(shift: InsertShift): Promise<Shift> {
+    const result = await this.db.insert(shifts).values(shift).returning();
+    return result[0];
+  }
+
+  async updateShift(id: number, shift: Partial<InsertShift>): Promise<Shift | undefined> {
+    const result = await this.db
+      .update(shifts)
+      .set(shift)
+      .where(eq(shifts.id, id))
+      .returning();
+    
+    return result[0];
+  }
+
+  async deleteShift(id: number): Promise<boolean> {
+    const result = await this.db.delete(shifts).where(eq(shifts.id, id));
+    return !!result;
+  }
+
+  async getAllShifts(): Promise<Shift[]> {
+    return await this.db.select().from(shifts);
+  }
+
+  async getUserShifts(userId: number): Promise<Shift[]> {
+    return await this.db.select().from(shifts).where(eq(shifts.userId, userId));
+  }
+
+  async getShiftsByDate(startDate: Date, endDate: Date): Promise<Shift[]> {
+    return await this.db
+      .select()
+      .from(shifts)
+      .where(between(shifts.date, startDate, endDate));
+  }
+
+  // Exchange request methods
+  async getExchangeRequest(id: number): Promise<ExchangeRequest | undefined> {
+    const result = await this.db.select().from(exchangeRequests).where(eq(exchangeRequests.id, id));
+    return result[0];
+  }
+
+  async createExchangeRequest(request: InsertExchangeRequest): Promise<ExchangeRequest> {
+    const result = await this.db.insert(exchangeRequests).values(request).returning();
+    return result[0];
+  }
+
+  async updateExchangeRequest(id: number, request: Partial<InsertExchangeRequest>): Promise<ExchangeRequest | undefined> {
+    const result = await this.db
+      .update(exchangeRequests)
+      .set(request)
+      .where(eq(exchangeRequests.id, id))
+      .returning();
+    
+    return result[0];
+  }
+
+  async deleteExchangeRequest(id: number): Promise<boolean> {
+    const result = await this.db.delete(exchangeRequests).where(eq(exchangeRequests.id, id));
+    return !!result;
+  }
+
+  async getAllExchangeRequests(): Promise<ExchangeRequest[]> {
+    return await this.db.select().from(exchangeRequests);
+  }
+
+  async getUserExchangeRequests(userId: number): Promise<ExchangeRequest[]> {
+    return await this.db
+      .select()
+      .from(exchangeRequests)
+      .where(
+        or(
+          eq(exchangeRequests.requesterId, userId),
+          eq(exchangeRequests.requesteeId, userId)
+        )
+      );
+  }
+
+  async getPendingExchangeRequests(): Promise<ExchangeRequest[]> {
+    return await this.db
+      .select()
+      .from(exchangeRequests)
+      .where(eq(exchangeRequests.status, "pending"));
+  }
+
+  // Report methods
+  async getReport(id: number): Promise<Report | undefined> {
+    const result = await this.db.select().from(reports).where(eq(reports.id, id));
+    return result[0];
+  }
+
+  async createReport(report: InsertReport): Promise<Report> {
+    const result = await this.db.insert(reports).values(report).returning();
+    return result[0];
+  }
+
+  async getUserReports(userId: number): Promise<Report[]> {
+    return await this.db.select().from(reports).where(eq(reports.userId, userId));
+  }
+
+  // Customer methods
+  async getCustomer(id: number): Promise<Customer | undefined> {
+    const result = await this.db.select().from(customers).where(eq(customers.id, id));
+    return result[0];
+  }
+
+  async createCustomer(customer: InsertCustomer): Promise<Customer> {
+    const result = await this.db.insert(customers).values(customer).returning();
+    return result[0];
+  }
+
+  async updateCustomer(id: number, customer: Partial<InsertCustomer>): Promise<Customer | undefined> {
+    const result = await this.db
+      .update(customers)
+      .set(customer)
+      .where(eq(customers.id, id))
+      .returning();
+    
+    return result[0];
+  }
+
+  async deleteCustomer(id: number): Promise<boolean> {
+    const result = await this.db.delete(customers).where(eq(customers.id, id));
+    return !!result;
+  }
+
+  async getAllCustomers(): Promise<Customer[]> {
+    return await this.db.select().from(customers);
+  }
+
+  async getUserCustomers(userId: number): Promise<Customer[]> {
+    return await this.db.select().from(customers).where(eq(customers.userId, userId));
+  }
+
+  async searchCustomers(query: string, userId: number): Promise<Customer[]> {
+    if (!query) {
+      return this.getUserCustomers(userId);
+    }
+    
+    return await this.db
+      .select()
+      .from(customers)
+      .where(
+        and(
+          eq(customers.userId, userId),
+          or(
+            like(customers.name, `%${query}%`),
+            like(customers.ic || '', `%${query}%`),
+            like(customers.dic || '', `%${query}%`),
+            like(customers.email || '', `%${query}%`)
+          )
+        )
+      );
+  }
+
+  // Document methods
+  async getDocument(id: number): Promise<Document | undefined> {
+    const result = await this.db.select().from(documents).where(eq(documents.id, id));
+    return result[0];
+  }
+
+  async createDocument(document: InsertDocument): Promise<Document> {
+    const result = await this.db.insert(documents).values(document).returning();
+    return result[0];
+  }
+
+  async updateDocument(id: number, document: Partial<InsertDocument>): Promise<Document | undefined> {
+    const result = await this.db
+      .update(documents)
+      .set(document)
+      .where(eq(documents.id, id))
+      .returning();
+    
+    return result[0];
+  }
+
+  async deleteDocument(id: number): Promise<boolean> {
+    const result = await this.db.delete(documents).where(eq(documents.id, id));
+    return !!result;
+  }
+
+  async getAllDocuments(): Promise<Document[]> {
+    return await this.db.select().from(documents);
+  }
+
+  async getUserDocuments(userId: number): Promise<Document[]> {
+    return await this.db.select().from(documents).where(eq(documents.userId, userId));
+  }
+}
+
+// Use PostgreSQL storage in production, MemStorage as fallback
+export const storage = process.env.DATABASE_URL 
+  ? new PostgreSQLStorage() 
+  : new MemStorage();
