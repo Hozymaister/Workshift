@@ -260,6 +260,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Zkopírujeme tělo požadavku, abychom ho mohli upravit
       const shiftData = { ...req.body };
       
+      // Pro ladění - vypíšeme, co přesně přichází v požadavku
+      console.log("Received shift data:", JSON.stringify(shiftData, null, 2));
+      
       // Validace dat před vytvořením směny
       if (!shiftData.workplaceId) {
         return res.status(400).json({ error: "Workplace ID is required" });
@@ -275,17 +278,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Tyto sloupce jsou v databázi typu timestamp
       if (typeof shiftData.date === 'string') {
         shiftData.date = new Date(shiftData.date);
+        // Pro ladění - ověříme, že konverze proběhla správně
+        console.log("Converted date:", shiftData.date);
+      } else {
+        console.log("Date is not a string:", shiftData.date);
       }
       
       if (typeof shiftData.startTime === 'string') {
         shiftData.startTime = new Date(shiftData.startTime);
+        console.log("Converted startTime:", shiftData.startTime);
+      } else {
+        console.log("StartTime is not a string:", shiftData.startTime);
       }
       
       if (typeof shiftData.endTime === 'string') {
         shiftData.endTime = new Date(shiftData.endTime);
+        console.log("Converted endTime:", shiftData.endTime);
+      } else {
+        console.log("EndTime is not a string:", shiftData.endTime);
       }
       
+      // Ověříme, že všechna data jsou platná před uložením
+      if (!shiftData.date || !(shiftData.date instanceof Date) || isNaN(shiftData.date.getTime())) {
+        console.error("Invalid date:", shiftData.date);
+        return res.status(400).json({ error: "Invalid date format" });
+      }
+      
+      if (!shiftData.startTime || !(shiftData.startTime instanceof Date) || isNaN(shiftData.startTime.getTime())) {
+        console.error("Invalid startTime:", shiftData.startTime);
+        return res.status(400).json({ error: "Invalid startTime format" });
+      }
+      
+      if (!shiftData.endTime || !(shiftData.endTime instanceof Date) || isNaN(shiftData.endTime.getTime())) {
+        console.error("Invalid endTime:", shiftData.endTime);
+        return res.status(400).json({ error: "Invalid endTime format" });
+      }
+      
+      console.log("Final shift data to save:", {
+        workplaceId: shiftData.workplaceId,
+        userId: shiftData.userId,
+        date: shiftData.date,
+        startTime: shiftData.startTime,
+        endTime: shiftData.endTime,
+        notes: shiftData.notes
+      });
+      
       const shift = await storage.createShift(shiftData);
+      console.log("Created shift:", shift);
       res.status(201).json(shift);
     } catch (error) {
       console.error("Chyba při vytváření směny:", error);
@@ -320,6 +359,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Zkopírujeme tělo požadavku, abychom ho mohli upravit
       const shiftData = { ...req.body };
       
+      // Pro ladění - vypíšeme, co přesně přichází v požadavku
+      console.log("Received shift update data:", JSON.stringify(shiftData, null, 2));
+      
       // Ujistíme se, že workplaceId a userId jsou čísla
       if (shiftData.workplaceId) {
         shiftData.workplaceId = Number(shiftData.workplaceId);
@@ -332,20 +374,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Konvertujeme řetězce ISO na objekty Date
       if (typeof shiftData.date === 'string') {
         shiftData.date = new Date(shiftData.date);
+        console.log("Converted date:", shiftData.date);
       }
       
       if (typeof shiftData.startTime === 'string') {
         shiftData.startTime = new Date(shiftData.startTime);
+        console.log("Converted startTime:", shiftData.startTime);
       }
       
       if (typeof shiftData.endTime === 'string') {
         shiftData.endTime = new Date(shiftData.endTime);
+        console.log("Converted endTime:", shiftData.endTime);
       }
+      
+      // Ověříme, že všechna data jsou platná před uložením
+      if (shiftData.date && (!(shiftData.date instanceof Date) || isNaN(shiftData.date.getTime()))) {
+        console.error("Invalid date:", shiftData.date);
+        return res.status(400).json({ error: "Invalid date format" });
+      }
+      
+      if (shiftData.startTime && (!(shiftData.startTime instanceof Date) || isNaN(shiftData.startTime.getTime()))) {
+        console.error("Invalid startTime:", shiftData.startTime);
+        return res.status(400).json({ error: "Invalid startTime format" });
+      }
+      
+      if (shiftData.endTime && (!(shiftData.endTime instanceof Date) || isNaN(shiftData.endTime.getTime()))) {
+        console.error("Invalid endTime:", shiftData.endTime);
+        return res.status(400).json({ error: "Invalid endTime format" });
+      }
+      
+      console.log("Final shift data to update:", {
+        workplaceId: shiftData.workplaceId,
+        userId: shiftData.userId,
+        date: shiftData.date,
+        startTime: shiftData.startTime,
+        endTime: shiftData.endTime,
+        notes: shiftData.notes
+      });
       
       const updatedShift = await storage.updateShift(parseInt(req.params.id), shiftData);
       if (!updatedShift) {
         return res.status(404).send("Shift not found");
       }
+      
+      console.log("Updated shift:", updatedShift);
       res.json(updatedShift);
     } catch (error) {
       console.error("Chyba při aktualizaci směny:", error);

@@ -174,8 +174,11 @@ export default function ShiftsPage() {
                     {sortedShifts.map((shift) => (
                       <TableRow key={shift.id}>
                         <TableCell className="font-medium">{shift.workplace?.name || "Neznámý objekt"}</TableCell>
-                        <TableCell>{formatDate(shift.date.toString())}</TableCell>
-                        <TableCell>{formatTime(shift.startTime.toString())} - {formatTime(shift.endTime.toString())}</TableCell>
+                        <TableCell>{shift.date ? formatDate(shift.date.toString()) : "Neznámé datum"}</TableCell>
+                        <TableCell>
+                          {shift.startTime ? formatTime(shift.startTime.toString()) : "??:??"} - 
+                          {shift.endTime ? formatTime(shift.endTime.toString()) : "??:??"}
+                        </TableCell>
                         <TableCell>
                           {shift.user ? `${shift.user.firstName} ${shift.user.lastName}` : "Neobsazeno"}
                         </TableCell>
