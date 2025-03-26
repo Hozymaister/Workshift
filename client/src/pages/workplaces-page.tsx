@@ -532,7 +532,7 @@ export default function WorkplacesPage() {
         <Dialog open={isFormDialogOpen} onOpenChange={(open) => {
           if (!open) closeDialog();
         }}>
-          <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-[500px] h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {workplaceToEdit ? "Upravit pracovní objekt" : "Přidat nový pracovní objekt"}

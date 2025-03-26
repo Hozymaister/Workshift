@@ -355,11 +355,256 @@ export default function AuthPage() {
                       </Button>
                     </div>
                     
-                    <div className="text-center mt-2">
-
+                    <div className="text-center mt-4 pt-4 border-t border-gray-200">
+                      <div className="flex justify-center mb-2 space-x-4">
+                        <button 
+                          type="button"
+                          className="text-sm text-gray-600 hover:text-primary transition-colors"
+                          onClick={() => setActiveTab("about")}
+                        >
+                          O nás
+                        </button>
+                        <button 
+                          type="button"
+                          className="text-sm text-gray-600 hover:text-primary transition-colors"
+                          onClick={() => setActiveTab("pricing")}
+                        >
+                          Předplatné
+                        </button>
+                        <button 
+                          type="button"
+                          className="text-sm text-gray-600 hover:text-primary transition-colors"
+                          onClick={() => setActiveTab("contact")}
+                        >
+                          Kontakt
+                        </button>
+                      </div>
                     </div>
                   </form>
                 </Form>
+              </div>
+              
+              {/* O nás */}
+              <div className={`${activeTab === "about" ? "block" : "hidden"} p-6`}>
+                <div className="space-y-4">
+                  <button 
+                    type="button"
+                    className="text-sm text-primary flex items-center"
+                    onClick={() => setActiveTab("login")}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1"><path d="m15 18-6-6 6-6"/></svg>
+                    Zpět na přihlášení
+                  </button>
+                  
+                  <h2 className="text-xl font-semibold text-gray-800">O aplikaci ShiftManager</h2>
+                  <p className="text-gray-600">
+                    ShiftManager je kompletní systém pro správu směn, pracovníků a fakturace, který usnadňuje každodenní práci manažerům i zaměstnancům.
+                  </p>
+                  <div className="space-y-2">
+                    <h3 className="font-medium text-gray-800">Naše výhody:</h3>
+                    <ul className="list-disc pl-5 space-y-1 text-gray-600">
+                      <li>Přehledné plánování směn s kalendářem</li>
+                      <li>Automatické výpočty odpracovaných hodin</li>
+                      <li>Snadná správa pracovníků a jejich mezd</li>
+                      <li>Možnost výměny směn mezi pracovníky</li>
+                      <li>Detailní reporty a statistiky</li>
+                      <li>Generování faktur a finančních přehledů</li>
+                    </ul>
+                  </div>
+                  <p className="text-gray-600">
+                    Aplikace je optimalizována pro mobilní zařízení a dostupná odkudkoliv.
+                  </p>
+                </div>
+              </div>
+              
+              {/* Předplatné */}
+              <div className={`${activeTab === "pricing" ? "block" : "hidden"} p-6`}>
+                <div className="space-y-4">
+                  <button 
+                    type="button"
+                    className="text-sm text-primary flex items-center"
+                    onClick={() => setActiveTab("login")}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1"><path d="m15 18-6-6 6-6"/></svg>
+                    Zpět na přihlášení
+                  </button>
+                  
+                  <h2 className="text-xl font-semibold text-gray-800">Varianty předplatného</h2>
+                  <p className="text-gray-600">
+                    Vyberte si variantu předplatného, která nejlépe vyhovuje vašim potřebám:
+                  </p>
+                  
+                  <div className="grid gap-4">
+                    {/* Free Basic */}
+                    <div className="border rounded-lg p-4 bg-white">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-semibold text-gray-800">Free Basic</h3>
+                          <p className="text-sm text-gray-500">Zdarma</p>
+                        </div>
+                        <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded">Zdarma</span>
+                      </div>
+                      <ul className="mt-3 space-y-1 text-sm text-gray-600">
+                        <li className="flex items-center">
+                          <svg className="w-3.5 h-3.5 mr-2 text-green-500 flex-shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z"/>
+                          </svg>
+                          Plánování směn
+                        </li>
+                        <li className="flex items-center">
+                          <svg className="w-3.5 h-3.5 mr-2 text-green-500 flex-shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z"/>
+                          </svg>
+                          Přehledná tabulka směn
+                        </li>
+                        <li className="flex items-center text-gray-400">
+                          <svg className="w-3.5 h-3.5 mr-2 text-gray-300 flex-shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z"/>
+                          </svg>
+                          Evidence objektů
+                        </li>
+                        <li className="flex items-center text-gray-400">
+                          <svg className="w-3.5 h-3.5 mr-2 text-gray-300 flex-shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z"/>
+                          </svg>
+                          Výměna směn
+                        </li>
+                      </ul>
+                    </div>
+                    
+                    {/* Lite */}
+                    <div className="border rounded-lg p-4 bg-white border-blue-100">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-semibold text-gray-800">Lite</h3>
+                          <p className="text-sm text-gray-500">40 Kč/měsíc</p>
+                        </div>
+                        <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">Populární</span>
+                      </div>
+                      <ul className="mt-3 space-y-1 text-sm text-gray-600">
+                        <li className="flex items-center">
+                          <svg className="w-3.5 h-3.5 mr-2 text-green-500 flex-shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z"/>
+                          </svg>
+                          Plánování směn
+                        </li>
+                        <li className="flex items-center">
+                          <svg className="w-3.5 h-3.5 mr-2 text-green-500 flex-shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z"/>
+                          </svg>
+                          Přehledná tabulka směn
+                        </li>
+                        <li className="flex items-center">
+                          <svg className="w-3.5 h-3.5 mr-2 text-green-500 flex-shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z"/>
+                          </svg>
+                          Evidence objektů
+                        </li>
+                        <li className="flex items-center text-gray-400">
+                          <svg className="w-3.5 h-3.5 mr-2 text-gray-300 flex-shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z"/>
+                          </svg>
+                          Fakturace
+                        </li>
+                      </ul>
+                    </div>
+                    
+                    {/* Pro */}
+                    <div className="border rounded-lg p-4 bg-gradient-to-br from-blue-50 to-purple-50 border-primary/20">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-semibold text-gray-800">Pro</h3>
+                          <p className="text-sm text-gray-500">99 Kč/měsíc</p>
+                        </div>
+                        <span className="bg-primary/10 text-primary text-xs font-medium px-2.5 py-0.5 rounded">Doporučeno</span>
+                      </div>
+                      <ul className="mt-3 space-y-1 text-sm text-gray-600">
+                        <li className="flex items-center">
+                          <svg className="w-3.5 h-3.5 mr-2 text-green-500 flex-shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z"/>
+                          </svg>
+                          Plánování směn
+                        </li>
+                        <li className="flex items-center">
+                          <svg className="w-3.5 h-3.5 mr-2 text-green-500 flex-shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z"/>
+                          </svg>
+                          Přehledná tabulka směn
+                        </li>
+                        <li className="flex items-center">
+                          <svg className="w-3.5 h-3.5 mr-2 text-green-500 flex-shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z"/>
+                          </svg>
+                          Evidence objektů
+                        </li>
+                        <li className="flex items-center">
+                          <svg className="w-3.5 h-3.5 mr-2 text-green-500 flex-shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z"/>
+                          </svg>
+                          Výměna směn
+                        </li>
+                        <li className="flex items-center">
+                          <svg className="w-3.5 h-3.5 mr-2 text-green-500 flex-shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z"/>
+                          </svg>
+                          Fakturace a reporty
+                        </li>
+                        <li className="flex items-center">
+                          <svg className="w-3.5 h-3.5 mr-2 text-green-500 flex-shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z"/>
+                          </svg>
+                          Správa zákazníků
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Kontakt */}
+              <div className={`${activeTab === "contact" ? "block" : "hidden"} p-6`}>
+                <div className="space-y-4">
+                  <button 
+                    type="button"
+                    className="text-sm text-primary flex items-center"
+                    onClick={() => setActiveTab("login")}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1"><path d="m15 18-6-6 6-6"/></svg>
+                    Zpět na přihlášení
+                  </button>
+                  
+                  <h2 className="text-xl font-semibold text-gray-800">Kontaktujte nás</h2>
+                  <p className="text-gray-600">
+                    Máte-li jakékoliv dotazy ohledně aplikace nebo předplatného, neváhejte nás kontaktovat:
+                  </p>
+                  
+                  <div className="space-y-3">
+                    <div className="flex items-start">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-3 text-primary mt-0.5"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                      <div>
+                        <p className="font-medium text-gray-700">Email</p>
+                        <p className="text-gray-600">info@shiftmanager.cz</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-3 text-primary mt-0.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                      <div>
+                        <p className="font-medium text-gray-700">Telefon</p>
+                        <p className="text-gray-600">+420 123 456 789</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-3 text-primary mt-0.5"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                      <div>
+                        <p className="font-medium text-gray-700">Adresa</p>
+                        <p className="text-gray-600">ShiftManager s.r.o.</p>
+                        <p className="text-gray-600">Technologická 1, 708 00 Ostrava</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
               
               <div className={`${activeTab === "register" ? "block" : "hidden"} p-6`}>
