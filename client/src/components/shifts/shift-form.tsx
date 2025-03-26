@@ -78,12 +78,36 @@ export function ShiftForm({ open, onClose, shiftToEdit }: ShiftFormProps) {
 
   useEffect(() => {
     if (shiftToEdit && open) {
+      // Bezpečné zpracování dat s ochranou proti null hodnotám
+      const today = new Date();
+      let shiftDate = today;
+      let shiftStartTime = new Date(today);
+      let shiftEndTime = new Date(today);
+      
+      try {
+        shiftDate = shiftToEdit.date ? new Date(shiftToEdit.date) : today;
+      } catch (e) {
+        console.warn("Neplatné datum směny, použije se dnešní datum", e);
+      }
+      
+      try {
+        shiftStartTime = shiftToEdit.startTime ? new Date(shiftToEdit.startTime) : today;
+      } catch (e) {
+        console.warn("Neplatný čas začátku směny, použije se výchozí hodnota", e);
+      }
+      
+      try {
+        shiftEndTime = shiftToEdit.endTime ? new Date(shiftToEdit.endTime) : today;
+      } catch (e) {
+        console.warn("Neplatný čas konce směny, použije se výchozí hodnota", e);
+      }
+      
       form.reset({
         workplaceId: shiftToEdit.workplaceId ? shiftToEdit.workplaceId.toString() : undefined,
         userId: shiftToEdit.userId ? shiftToEdit.userId.toString() : null,
-        date: format(new Date(shiftToEdit.date), "yyyy-MM-dd"),
-        startTimeStr: format(new Date(shiftToEdit.startTime), "HH:mm"),
-        endTimeStr: format(new Date(shiftToEdit.endTime), "HH:mm"),
+        date: format(shiftDate, "yyyy-MM-dd"),
+        startTimeStr: format(shiftStartTime, "HH:mm"),
+        endTimeStr: format(shiftEndTime, "HH:mm"),
         notes: shiftToEdit.notes || "",
       });
     } else if (open) {

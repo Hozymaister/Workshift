@@ -110,6 +110,10 @@ export default function ShiftsPage() {
   };
   
   const sortedShifts = shifts?.sort((a, b) => {
+    // Bezpečné zpracování null hodnot při řazení
+    if (!a.date && !b.date) return 0;
+    if (!a.date) return 1; // Null data na konec
+    if (!b.date) return -1;
     return new Date(a.date).getTime() - new Date(b.date).getTime();
   });
 
