@@ -230,7 +230,7 @@ export function ShiftForm({ open, onClose, shiftToEdit }: ShiftFormProps) {
                   <FormItem>
                     <FormLabel>Začátek směny</FormLabel>
                     <FormControl>
-                      <Input type="time" {...field} />
+                      <Input type="time" {...field} className="bg-white border-slate-300 focus:border-primary/70 h-11" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -244,7 +244,7 @@ export function ShiftForm({ open, onClose, shiftToEdit }: ShiftFormProps) {
                   <FormItem>
                     <FormLabel>Konec směny</FormLabel>
                     <FormControl>
-                      <Input type="time" {...field} />
+                      <Input type="time" {...field} className="bg-white border-slate-300 focus:border-primary/70 h-11" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -263,7 +263,7 @@ export function ShiftForm({ open, onClose, shiftToEdit }: ShiftFormProps) {
                     defaultValue={field.value?.toString()}
                   >
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger className="bg-white border-slate-300 h-11">
                         <SelectValue placeholder="Vyberte pracovníka" />
                       </SelectTrigger>
                     </FormControl>
@@ -288,7 +288,7 @@ export function ShiftForm({ open, onClose, shiftToEdit }: ShiftFormProps) {
                 <FormItem>
                   <FormLabel>Poznámky</FormLabel>
                   <FormControl>
-                    <Textarea {...field} value={field.value || ''} rows={3} />
+                    <Textarea {...field} value={field.value || ''} rows={3} className="bg-white border-slate-300 focus:border-primary/70 resize-none" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
