@@ -75,7 +75,7 @@ type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
 type NewPasswordFormValues = z.infer<typeof newPasswordSchema>;
 
 export default function AuthPage() {
-  const { user, loginMutation, registerMutation } = useAuth();
+  const { user, loginMutation, registerMutation, refetchUser } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("login");
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
@@ -118,6 +118,11 @@ export default function AuthPage() {
       email: normalizedEmail,
       password: data.password,
     }, {
+      onSuccess: () => {
+        console.log("Manuální aktualizace stavu uživatele po přihlášení");
+        // Explicitně aktualizujeme stav uživatele po úspěšném přihlášení
+        refetchUser();
+      },
       onError: (error) => {
         console.error("Login mutation error:", error);
       }

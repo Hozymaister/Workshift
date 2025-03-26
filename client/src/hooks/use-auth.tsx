@@ -70,6 +70,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: (user: SafeUser) => {
       console.log("Setting user data in query cache");
       queryClient.setQueryData(["/api/user"], user);
+      console.log("Refreshing user data from server");
+      refetchUser();
       // Přesměrování provede ProtectedRoute
     },
     onError: (error: Error) => {
