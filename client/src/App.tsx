@@ -9,6 +9,7 @@ import ShiftsPage from "@/pages/shifts-page";
 import ShiftTablePage from "@/pages/shift-table-page";
 import ExchangesPage from "@/pages/exchanges-page";
 import WorkplacesPage from "@/pages/workplaces-page";
+import WorkplaceDetailPage from "@/pages/workplace-detail-page";
 import WorkersPage from "@/pages/workers-page";
 import ReportsPage from "@/pages/reports-page";
 import InvoicePage from "@/pages/invoice-page";
@@ -27,6 +28,7 @@ function Router() {
       <ProtectedRoute path="/shift-table" component={ShiftTablePage} />
       <ProtectedRoute path="/exchanges" component={ExchangesPage} />
       <ProtectedRoute path="/workplaces" component={WorkplacesPage} />
+      <ProtectedRoute path="/workplaces/:id" component={WorkplaceDetailPage} />
       <ProtectedRoute path="/workers" component={WorkersPage} />
       <ProtectedRoute path="/reports" component={ReportsPage} />
       <ProtectedRoute path="/invoice" component={InvoicePage} />
