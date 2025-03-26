@@ -1,6 +1,7 @@
 import { Switch, Route } from "wouter";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/hooks/use-auth";
+import { LanguageProvider } from "@/hooks/use-language";
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
 import DashboardPage from "@/pages/dashboard-page";
@@ -41,9 +42,11 @@ function Router() {
 function App() {
   return (
     <>
-      <AuthProvider>
-        <Router />
-      </AuthProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <Router />
+        </AuthProvider>
+      </LanguageProvider>
       <Toaster />
     </>
   );
