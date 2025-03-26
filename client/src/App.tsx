@@ -5,11 +5,12 @@ import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
 import DashboardPage from "@/pages/dashboard-page";
 import ShiftsPage from "@/pages/shifts-page";
-import ShiftTablePage from "@/pages/shift-table-page"; // Nová stránka
+import ShiftTablePage from "@/pages/shift-table-page";
 import ExchangesPage from "@/pages/exchanges-page";
 import WorkplacesPage from "@/pages/workplaces-page";
 import WorkersPage from "@/pages/workers-page";
 import ReportsPage from "@/pages/reports-page";
+import InvoicePage from "@/pages/invoice-page";
 import { ProtectedRoute } from "./lib/protected-route";
 
 function Router() {
@@ -23,6 +24,7 @@ function Router() {
       <ProtectedRoute path="/workplaces" component={WorkplacesPage} />
       <ProtectedRoute path="/workers" component={WorkersPage} />
       <ProtectedRoute path="/reports" component={ReportsPage} />
+      <ProtectedRoute path="/invoice" component={InvoicePage} />
       <Route component={NotFound} />
     </Switch>
   );
