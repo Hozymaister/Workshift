@@ -47,6 +47,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
 import { 
   Trophy, 
   Download, 
@@ -54,7 +55,8 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Clock, 
-  Building, 
+  Building,
+  Building2,
   Users, 
   User as UserIcon, 
   UserCircle,
@@ -135,6 +137,7 @@ export default function WorkplaceDetailPage() {
   
   // Dialog pro editaci pracoviště
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [aresLoading, setAresLoading] = useState(false);
   const [editForm, setEditForm] = useState<EditWorkplaceFormData>({
     name: "",
     type: "",
@@ -346,6 +349,56 @@ export default function WorkplaceDetailPage() {
     updateWorkplaceMutation.mutate(editForm);
   };
   
+  // Handler pro vyhledání údajů v ARES
+  const handleAresLookup = async () => {
+    if (!editForm.companyId || editForm.companyId.length < 6) return;
+    
+    setAresLoading(true);
+    try {
+      // URL ARES API pro JSON response
+      const url = `https://ares.gov.cz/ekonomicke-subjekty-v-be/rest/ekonomicke-subjekty/${editForm.companyId}`;
+      
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`Nepodařilo se načíst data z ARES (${response.status})`);
+      }
+      
+      const data = await response.json();
+      
+      if (data && data.nazev) {
+        // Aktualizace formuláře daty z ARES
+        setEditForm({
+          ...editForm,
+          companyName: data.nazev?.obchodniJmeno || data.nazev?.hodnota || "",
+          companyVatId: data.dic ? `CZ${editForm.companyId}` : "",
+          companyAddress: data.sidlo ? 
+            `${data.sidlo.ulice || ""} ${data.sidlo.cisloDomovni || ""}, ${data.sidlo.obec || ""}, ${data.sidlo.psc || ""}` : 
+            ""
+        });
+        
+        toast({
+          title: "Úspěch",
+          description: "Údaje byly načteny z registru ARES.",
+        });
+      } else {
+        toast({
+          title: "Upozornění",
+          description: "Nepodařilo se najít údaje o firmě v registru ARES.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Chyba",
+        description: `Nepodařilo se načíst data z ARES: ${(error as Error).message}`,
+        variant: "destructive",
+      });
+    } finally {
+      setAresLoading(false);
+    }
+  };
+  
   // Helper pro získání ikony podle typu pracoviště
   const getTypeIcon = (type: string) => {
     switch(type.toLowerCase()) {
@@ -520,6 +573,32 @@ export default function WorkplaceDetailPage() {
                     <p className="text-sm text-slate-600">{getManagerName(workplace.managerId)}</p>
                   </div>
                 </div>
+                
+                {/* Údaje o firmě */}
+                {(workplace.companyName || workplace.companyId || workplace.companyVatId) && (
+                  <>
+                    <Separator className="my-2" />
+                    <div className="flex items-start">
+                      <Building2 className="h-5 w-5 text-slate-400 mt-0.5 mr-2" />
+                      <div>
+                        <p className="text-sm font-medium text-slate-900">Údaje o firmě:</p>
+                        {workplace.companyName && (
+                          <p className="text-sm text-slate-600">{workplace.companyName}</p>
+                        )}
+                        {workplace.companyId && (
+                          <p className="text-sm text-slate-600">IČO: {workplace.companyId}</p>
+                        )}
+                        {workplace.companyVatId && (
+                          <p className="text-sm text-slate-600">DIČ: {workplace.companyVatId}</p>
+                        )}
+                        {workplace.companyAddress && (
+                          <p className="text-sm text-slate-600">Adresa: {workplace.companyAddress}</p>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+                
                 {workplace.notes && (
                   <div className="flex items-start">
                     <Info className="h-5 w-5 text-slate-400 mt-0.5 mr-2" />
@@ -1065,11 +1144,26 @@ export default function WorkplaceDetailPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="companyId">IČO</Label>
-                      <Input
-                        id="companyId"
-                        value={editForm.companyId}
-                        onChange={(e) => setEditForm({ ...editForm, companyId: e.target.value })}
-                      />
+                      <div className="flex gap-2">
+                        <Input
+                          id="companyId"
+                          value={editForm.companyId}
+                          onChange={(e) => setEditForm({ ...editForm, companyId: e.target.value })}
+                        />
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          className="shrink-0"
+                          onClick={handleAresLookup}
+                          disabled={!editForm.companyId || editForm.companyId.length < 6 || aresLoading}
+                        >
+                          {aresLoading ? (
+                            <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Načítám...</>
+                          ) : (
+                            <>Ověřit v ARES</>
+                          )}
+                        </Button>
+                      </div>
                     </div>
                     
                     <div className="space-y-2">
