@@ -10,7 +10,7 @@ export default function CustomersPage() {
   // Pouze správci mají přístup k adresáři zákazníků
   if (user?.role !== "admin") {
     setLocation("/");
-    return null;
+    return <div></div>; // Vracíme prázdný element místo null
   }
 
   return (
