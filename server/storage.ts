@@ -374,6 +374,44 @@ export class MemStorage implements IStorage {
       )
     );
   }
+
+  // Document methods
+  async getDocument(id: number): Promise<Document | undefined> {
+    return this.documents.get(id);
+  }
+
+  async createDocument(insertDocument: InsertDocument): Promise<Document> {
+    const id = this.documentIdCounter++;
+    const document: Document = { 
+      ...insertDocument, 
+      id, 
+      createdAt: new Date(),
+      thumbnailPath: insertDocument.thumbnailPath ?? null
+    };
+    this.documents.set(id, document);
+    return document;
+  }
+
+  async updateDocument(id: number, documentData: Partial<InsertDocument>): Promise<Document | undefined> {
+    const existingDocument = this.documents.get(id);
+    if (!existingDocument) return undefined;
+    
+    const updatedDocument = { ...existingDocument, ...documentData };
+    this.documents.set(id, updatedDocument);
+    return updatedDocument;
+  }
+
+  async deleteDocument(id: number): Promise<boolean> {
+    return this.documents.delete(id);
+  }
+
+  async getAllDocuments(): Promise<Document[]> {
+    return Array.from(this.documents.values());
+  }
+
+  async getUserDocuments(userId: number): Promise<Document[]> {
+    return Array.from(this.documents.values()).filter(document => document.userId === userId);
+  }
 }
 
 export const storage = new MemStorage();

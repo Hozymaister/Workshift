@@ -5,6 +5,10 @@ import { setupAuth, hashPassword } from "./auth";
 import { format, parseISO, addHours, differenceInHours } from "date-fns";
 import fetch from "node-fetch";
 import { XMLParser } from "fast-xml-parser";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+import { v4 as uuidv4 } from "uuid";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Sets up /api/register, /api/login, /api/logout, /api/user
@@ -641,6 +645,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting customer:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  });
+
+  // API endpointy pro dokumenty
+  app.get("/api/documents", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).send("Unauthorized");
+      }
+      
+      const documents = await storage.getUserDocuments(req.user.id);
+      res.json(documents);
+    } catch (error) {
+      console.error("Error getting documents:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  });
+
+  app.post("/api/documents", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).send("Unauthorized");
+      }
+      
+      const documentData = req.body;
+      
+      // Validace vstupních dat
+      if (!documentData.name || !documentData.type || !documentData.path || !documentData.size) {
+        return res.status(400).send("Missing required fields");
+      }
+      
+      // Přidáme ID uživatele k dokumentu
+      const document = await storage.createDocument({
+        ...documentData,
+        userId: req.user.id
+      });
+      
+      res.status(201).json(document);
+    } catch (error) {
+      console.error("Error creating document:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  });
+
+  app.get("/api/documents/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).send("Unauthorized");
+      }
+      
+      const documentId = parseInt(req.params.id);
+      const document = await storage.getDocument(documentId);
+      
+      if (!document) {
+        return res.status(404).send("Document not found");
+      }
+      
+      // Ověření, že dokument patří přihlášenému uživateli
+      if (document.userId !== req.user.id) {
+        return res.status(403).send("Forbidden: You don't have access to this document");
+      }
+      
+      res.json(document);
+    } catch (error) {
+      console.error("Error getting document:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  });
+
+  app.delete("/api/documents/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).send("Unauthorized");
+      }
+      
+      const documentId = parseInt(req.params.id);
+      const document = await storage.getDocument(documentId);
+      
+      if (!document) {
+        return res.status(404).send("Document not found");
+      }
+      
+      // Ověření, že dokument patří přihlášenému uživateli
+      if (document.userId !== req.user.id) {
+        return res.status(403).send("Forbidden: You don't have access to this document");
+      }
+      
+      await storage.deleteDocument(documentId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting document:", error);
       res.status(500).send("Internal Server Error");
     }
   });
