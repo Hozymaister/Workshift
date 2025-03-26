@@ -12,6 +12,8 @@ import WorkersPage from "@/pages/workers-page";
 import ReportsPage from "@/pages/reports-page";
 import InvoicePage from "@/pages/invoice-page";
 import CustomersPage from "@/pages/customers-page";
+import ProfilePage from "@/pages/profile-page";
+import SettingsPage from "@/pages/settings-page";
 import { ProtectedRoute } from "./lib/protected-route";
 
 function Router() {
@@ -20,16 +22,16 @@ function Router() {
       <Route path="/auth" component={AuthPage} />
       <ProtectedRoute path="/" component={DashboardPage} />
       <ProtectedRoute path="/shifts" component={ShiftsPage} />
-      <ProtectedRoute path="/shift-table" component={ShiftTablePage} /> {/* Nová trasa pro tabulku směn */}
+      <ProtectedRoute path="/shift-table" component={ShiftTablePage} />
       <ProtectedRoute path="/exchanges" component={ExchangesPage} />
       <ProtectedRoute path="/workplaces" component={WorkplacesPage} />
       <ProtectedRoute path="/workers" component={WorkersPage} />
       <ProtectedRoute path="/reports" component={ReportsPage} />
       <ProtectedRoute path="/invoice" component={InvoicePage} />
       <ProtectedRoute path="/customers" component={CustomersPage} />
-      <Route path="*">
-        <NotFound />
-      </Route>
+      <ProtectedRoute path="/profile" component={ProfilePage} />
+      <ProtectedRoute path="/settings" component={SettingsPage} />
+      <Route component={NotFound} />
     </Switch>
   );
 }

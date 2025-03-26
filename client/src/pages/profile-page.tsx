@@ -46,7 +46,7 @@ export default function ProfilePage() {
   }, 0);
 
   if (!user) {
-    return null;
+    return <div>Načítání profilu...</div>;
   }
 
   return (

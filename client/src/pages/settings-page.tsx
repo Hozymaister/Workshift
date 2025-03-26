@@ -24,17 +24,17 @@ import {
   FormLabel, 
   FormMessage 
 } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { 
-  Input, 
-  Switch, 
-  Button, 
-  Separator,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui";
+} from "@/components/ui/select";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -93,6 +93,10 @@ export default function SettingsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("profile");
+  
+  if (!user) {
+    return <div>Načítání nastavení...</div>;
+  }
 
   // Formulář pro profil
   const profileForm = useForm<ProfileFormValues>({
