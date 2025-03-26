@@ -3,6 +3,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { MobileNavigation } from "@/components/layout/mobile-navigation";
 import { ShiftForm } from "@/components/shifts/shift-form";
+import { ExchangeForm } from "@/components/shifts/exchange-form";
 import { Button } from "@/components/ui/button";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Shift } from "@shared/schema";
@@ -57,6 +58,8 @@ export default function ShiftsPage() {
   const [isShiftFormOpen, setIsShiftFormOpen] = useState(false);
   const [shiftToEdit, setShiftToEdit] = useState<ShiftWithDetails | undefined>(undefined);
   const [shiftToDelete, setShiftToDelete] = useState<number | null>(null);
+  const [isExchangeFormOpen, setIsExchangeFormOpen] = useState(false);
+  const [shiftToExchange, setShiftToExchange] = useState<ShiftWithDetails | undefined>(undefined);
   
   const { data: shifts, isLoading } = useQuery<ShiftWithDetails[]>({
     queryKey: ["/api/shifts", { userId: user?.id }],
@@ -90,6 +93,11 @@ export default function ShiftsPage() {
   const handleDeleteShift = (id: number) => {
     deleteShiftMutation.mutate(id);
     setShiftToDelete(null);
+  };
+
+  const handleExchangeShift = (shift: ShiftWithDetails) => {
+    setShiftToExchange(shift);
+    setIsExchangeFormOpen(true);
   };
   
   const formatDate = (dateString: string) => {

@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -51,12 +52,12 @@ export function ShiftForm({ open, onClose, shiftToEdit }: ShiftFormProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const { data: workplaces } = useQuery({
+  const { data: workplaces = [] } = useQuery<any[]>({
     queryKey: ["/api/workplaces"],
     enabled: open,
   });
   
-  const { data: workers } = useQuery({
+  const { data: workers = [] } = useQuery<any[]>({
     queryKey: ["/api/workers"],
     enabled: open,
   });
@@ -168,6 +169,11 @@ export function ShiftForm({ open, onClose, shiftToEdit }: ShiftFormProps) {
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>{shiftToEdit ? "Upravit směnu" : "Přidat novou směnu"}</DialogTitle>
+          <DialogDescription>
+            {shiftToEdit 
+              ? "Upravte detaily směny níže" 
+              : "Vyplňte formulář pro vytvoření nové směny"}
+          </DialogDescription>
         </DialogHeader>
         
         <Form {...form}>
@@ -260,7 +266,7 @@ export function ShiftForm({ open, onClose, shiftToEdit }: ShiftFormProps) {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">Neobsazeno</SelectItem>
+                      <SelectItem value="null">Neobsazeno</SelectItem>
                       {workers?.map((worker) => (
                         <SelectItem key={worker.id} value={worker.id.toString()}>
                           {worker.firstName} {worker.lastName}
