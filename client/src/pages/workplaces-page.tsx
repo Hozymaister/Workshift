@@ -50,6 +50,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Separator } from "@/components/ui/separator";
 import {
   Select,
   SelectContent,
@@ -104,6 +105,7 @@ export default function WorkplacesPage() {
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [workplaceToEdit, setWorkplaceToEdit] = useState<Workplace | null>(null);
   const [workplaceToDelete, setWorkplaceToDelete] = useState<number | null>(null);
+  const [aresLoading, setAresLoading] = useState(false);
   
   const isAdmin = user?.role === "admin";
   
@@ -302,6 +304,89 @@ export default function WorkplacesPage() {
         return "bg-purple-100 text-purple-700";
       default:
         return "bg-slate-100 text-slate-700";
+    }
+  };
+  
+  // Funkce pro validaci IČO
+  const validateICO = (ico: string): boolean => {
+    // Odstranit mezery a netisknutelné znaky
+    const cleanedICO = ico.trim().replace(/\s/g, "");
+    
+    // Zkontrolovat délku (8 číslic)
+    if (!/^\d{8}$/.test(cleanedICO)) {
+      return false;
+    }
+    
+    // Algoritmus pro kontrolu české IČO
+    const digits = cleanedICO.split("").map(Number);
+    const sum = digits.slice(0, 7).reduce((acc, digit, index) => {
+      return acc + digit * (8 - index);
+    }, 0);
+    
+    const remainder = sum % 11;
+    const checkDigit = remainder === 0 ? 1 : (remainder === 1 ? 0 : 11 - remainder);
+    
+    return checkDigit === digits[7];
+  };
+  
+  // Funkce pro vyhledávání v ARES
+  const handleAresLookup = async () => {
+    const icoValue = form.getValues("companyId");
+    
+    if (!icoValue) {
+      toast({
+        title: "Chyba",
+        description: "Prosím zadejte IČO pro vyhledání v ARES.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!validateICO(icoValue)) {
+      toast({
+        title: "Chyba",
+        description: "Zadané IČO není platné. Zkontrolujte, zda má správný formát (8 číslic).",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setAresLoading(true);
+    
+    try {
+      // Volání ARES API
+      const response = await fetch(`/api/ares?ico=${icoValue}`);
+      
+      if (!response.ok) {
+        throw new Error("Nepodařilo se získat data z ARES");
+      }
+      
+      const data = await response.json();
+      
+      if (data && data.found) {
+        // Nastavit hodnoty formuláře podle dat z ARES
+        form.setValue("companyName", data.name || "");
+        form.setValue("companyVatId", data.dic || "");
+        form.setValue("companyAddress", data.address || "");
+        
+        toast({
+          title: "Úspěch",
+          description: "Údaje byly úspěšně načteny z ARES.",
+        });
+      } else {
+        toast({
+          title: "Informace",
+          description: "Firma s tímto IČO nebyla v registru ARES nalezena.",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Chyba",
+        description: `Nepodařilo se získat data z ARES: ${error instanceof Error ? error.message : "Neznámá chyba"}`,
+        variant: "destructive",
+      });
+    } finally {
+      setAresLoading(false);
     }
   };
 
@@ -592,6 +677,88 @@ export default function WorkplacesPage() {
                     )}
                   />
                 )}
+                
+                {/* Sekce s informacemi o firmě */}
+                <Separator className="my-4" />
+                <h3 className="text-lg font-medium mb-4">Informace o firmě</h3>
+                
+                <FormField
+                  control={form.control}
+                  name="companyName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Název firmy</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Název firmy (nepovinné)" {...field} className="bg-white border-slate-300 focus:border-primary/70 h-11" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="companyId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>IČO</FormLabel>
+                        <div className="flex space-x-2">
+                          <FormControl>
+                            <Input placeholder="IČO (nepovinné)" {...field} className="bg-white border-slate-300 focus:border-primary/70 h-11" />
+                          </FormControl>
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            size="icon" 
+                            onClick={handleAresLookup}
+                            disabled={aresLoading}
+                            className="h-11 px-4 flex-shrink-0"
+                          >
+                            {aresLoading ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Search className="h-4 w-4 mr-2" />
+                            )}
+                            <span>{aresLoading ? "Ověřuji..." : "Ověřit v ARES"}</span>
+                          </Button>
+                        </div>
+                        <FormDescription>
+                          Zadejte IČO a klikněte na tlačítko "Ověřit v ARES" pro automatické doplnění údajů
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="companyVatId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>DIČ</FormLabel>
+                        <FormControl>
+                          <Input placeholder="DIČ (nepovinné)" {...field} className="bg-white border-slate-300 focus:border-primary/70 h-11" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                <FormField
+                  control={form.control}
+                  name="companyAddress"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Adresa firmy</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Adresa firmy (nepovinné)" {...field} className="bg-white border-slate-300 focus:border-primary/70 h-11" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 
                 <DialogFooter>
                   <Button variant="outline" type="button" onClick={closeDialog}>
