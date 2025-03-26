@@ -30,6 +30,7 @@ function Router() {
       <ProtectedRoute path="/reports" component={ReportsPage} />
       <ProtectedRoute path="/invoice" component={InvoicePage} />
       <ProtectedRoute path="/customers" component={CustomersPage} />
+      <ProtectedRoute path="/scan" component={ScanPage} />
       <ProtectedRoute path="/profile" component={ProfilePage} />
       <ProtectedRoute path="/settings" component={SettingsPage} />
       <Route component={NotFound} />

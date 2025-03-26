@@ -4,7 +4,8 @@ import {
   shifts, type Shift, type InsertShift,
   exchangeRequests, type ExchangeRequest, type InsertExchangeRequest,
   reports, type Report, type InsertReport,
-  customers, type Customer, type InsertCustomer
+  customers, type Customer, type InsertCustomer,
+  documents, type Document, type InsertDocument
 } from "@shared/schema";
 import session from "express-session";
 import createMemoryStore from "memorystore";
@@ -60,6 +61,14 @@ export interface IStorage {
   getUserCustomers(userId: number): Promise<Customer[]>;
   searchCustomers(query: string, userId: number): Promise<Customer[]>;
   
+  // Document operations
+  getDocument(id: number): Promise<Document | undefined>;
+  createDocument(document: InsertDocument): Promise<Document>;
+  updateDocument(id: number, document: Partial<InsertDocument>): Promise<Document | undefined>;
+  deleteDocument(id: number): Promise<boolean>;
+  getAllDocuments(): Promise<Document[]>;
+  getUserDocuments(userId: number): Promise<Document[]>;
+  
   // Session store
   sessionStore: any; // Using any to avoid SessionStore type issues
 }
@@ -71,6 +80,7 @@ export class MemStorage implements IStorage {
   private exchangeRequests: Map<number, ExchangeRequest>;
   private reports: Map<number, Report>;
   private customers: Map<number, Customer>;
+  private documents: Map<number, Document>;
   sessionStore: any; // Using any to avoid SessionStore type issues
   private userIdCounter: number;
   private workplaceIdCounter: number;
@@ -78,6 +88,7 @@ export class MemStorage implements IStorage {
   private exchangeRequestIdCounter: number;
   private reportIdCounter: number;
   private customerIdCounter: number;
+  private documentIdCounter: number;
 
   constructor() {
     this.users = new Map();
@@ -86,12 +97,14 @@ export class MemStorage implements IStorage {
     this.exchangeRequests = new Map();
     this.reports = new Map();
     this.customers = new Map();
+    this.documents = new Map();
     this.userIdCounter = 1;
     this.workplaceIdCounter = 1;
     this.shiftIdCounter = 1;
     this.exchangeRequestIdCounter = 1;
     this.reportIdCounter = 1;
     this.customerIdCounter = 1;
+    this.documentIdCounter = 1;
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000, // 24 hours
     });

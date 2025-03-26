@@ -95,6 +95,23 @@ export const insertReportSchema = createInsertSchema(reports).omit({
   id: true,
 });
 
+// Document schema - pro naskenované dokumenty
+export const documents = pgTable("documents", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  name: text("name").notNull(),
+  type: text("type", { enum: ["image", "pdf"] }).notNull(),
+  size: text("size").notNull(),
+  path: text("path").notNull(),
+  thumbnailPath: text("thumbnail_path"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertDocumentSchema = createInsertSchema(documents).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -113,3 +130,6 @@ export type Report = typeof reports.$inferSelect;
 
 export type InsertCustomer = z.infer<typeof insertCustomerSchema>;
 export type Customer = typeof customers.$inferSelect;
+
+export type InsertDocument = z.infer<typeof insertDocumentSchema>;
+export type Document = typeof documents.$inferSelect;
