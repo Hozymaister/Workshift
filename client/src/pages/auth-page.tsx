@@ -351,7 +351,7 @@ export default function AuthPage() {
                           console.log("Form errors:", loginForm.formState.errors);
                         }}
                       >
-                        {loginMutation.isPending ? "Přihlašování..." : "Přihlásit se"}
+                        {loginMutation.isPending ? t('loading') : t('login')}
                       </Button>
                     </div>
                     
