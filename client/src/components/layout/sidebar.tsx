@@ -42,8 +42,12 @@ export function Sidebar() {
     <nav className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 bg-slate-800 text-white">
       <div className="flex flex-col h-full">
         <div className="px-4 py-6 border-b border-slate-700">
-          <h1 className="text-2xl font-bold">ShiftManager</h1>
-          <p className="text-slate-400 text-sm">Správa směn a pracovníků</p>
+          <Link href="/">
+            <div className="cursor-pointer">
+              <h1 className="text-2xl font-bold">ShiftManager</h1>
+              <p className="text-slate-400 text-sm">Správa směn a pracovníků</p>
+            </div>
+          </Link>
         </div>
         
         <div className="flex-1 overflow-y-auto py-4">
@@ -65,13 +69,13 @@ export function Sidebar() {
             {navItems.map((item) => (
               <li key={item.path}>
                 <Link href={item.path}>
-                  <a className={cn(
-                    "flex items-center px-4 py-2 text-slate-300 rounded-md",
+                  <div className={cn(
+                    "flex items-center px-4 py-2 text-slate-300 rounded-md cursor-pointer",
                     location === item.path ? "bg-slate-700" : "hover:bg-slate-700"
                   )}>
                     {item.icon}
                     {item.label}
-                  </a>
+                  </div>
                 </Link>
               </li>
             ))}

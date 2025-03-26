@@ -28,15 +28,24 @@ export function Header({ title }: { title: string }) {
     return location === path;
   };
 
-  // Seznam navigačních položek
-  const navItems = [
-    { path: '/', label: 'Domů', icon: <Home className="h-4 w-4" /> },
+  // Základní navigační položky
+  const commonNavItems = [
+    { path: '/', label: 'Dashboard', icon: <Home className="h-4 w-4" /> },
     { path: '/shifts', label: 'Směny', icon: <Calendar className="h-4 w-4" /> },
     { path: '/shift-table', label: 'Tabulka směn', icon: <ClipboardList className="h-4 w-4" /> },
-    { path: '/workers', label: 'Pracovníci', icon: <Users className="h-4 w-4" /> },
+  ];
+  
+  // Položky menu pouze pro správce
+  const adminNavItems = [
     { path: '/workplaces', label: 'Pracoviště', icon: <BarChart3 className="h-4 w-4" /> },
+    { path: '/workers', label: 'Pracovníci', icon: <Users className="h-4 w-4" /> },
     { path: '/invoice', label: 'Fakturace', icon: <FileText className="h-4 w-4" /> },
   ];
+  
+  // Kombinujeme položky podle role uživatele
+  const navItems = user?.role === "admin" 
+    ? [...commonNavItems, ...adminNavItems] 
+    : commonNavItems;
 
   return (
     <>
