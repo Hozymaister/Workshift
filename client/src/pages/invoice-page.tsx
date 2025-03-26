@@ -402,7 +402,7 @@ export default function InvoicePage() {
     doc.text(`Způsob platby: ${paymentMethodText}`, 20, 100);
     
     // DPH status
-    doc.text(`Plátce DPH: ${formData.isVatPayer ? "Ano" : "Ne"}`, 20, 105);
+    doc.text(`Dodavatel ${formData.isVatPayer ? "je" : "není"} plátce DPH`, 20, 105);
     
     // Položky faktury
     doc.setFontSize(11);
@@ -924,8 +924,17 @@ export default function InvoicePage() {
                               <FormItem className="mt-4">
                                 <FormLabel>DIČ</FormLabel>
                                 <FormControl>
-                                  <Input {...field} />
+                                  <Input 
+                                    {...field} 
+                                    disabled={!form.watch("isVatPayer")} 
+                                    placeholder={!form.watch("isVatPayer") ? "Nedostupné pro neplátce DPH" : ""}
+                                  />
                                 </FormControl>
+                                {!form.watch("isVatPayer") && (
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    DIČ lze vyplnit pouze pro plátce DPH
+                                  </p>
+                                )}
                                 <FormMessage />
                               </FormItem>
                             )}
@@ -939,7 +948,7 @@ export default function InvoicePage() {
                                 <div className="space-y-0.5">
                                   <FormLabel className="text-base">Plátce DPH</FormLabel>
                                   <FormDescription>
-                                    Je dodavatel plátcem DPH?
+                                    Jste plátcem DPH?
                                   </FormDescription>
                                 </div>
                                 <FormControl>
