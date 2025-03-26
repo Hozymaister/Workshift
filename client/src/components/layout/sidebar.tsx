@@ -1,6 +1,6 @@
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
-import { LogOut, LayoutDashboard, Calendar, RefreshCw, Building2, Users, FileText, Table, Receipt } from "lucide-react";
+import { LogOut, LayoutDashboard, Calendar, RefreshCw, Building2, Users, FileText, Table, Receipt, Book } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";

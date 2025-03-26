@@ -11,6 +11,7 @@ import WorkplacesPage from "@/pages/workplaces-page";
 import WorkersPage from "@/pages/workers-page";
 import ReportsPage from "@/pages/reports-page";
 import InvoicePage from "@/pages/invoice-page";
+import CustomersPage from "@/pages/customers-page";
 import { ProtectedRoute } from "./lib/protected-route";
 
 function Router() {
@@ -25,6 +26,7 @@ function Router() {
       <ProtectedRoute path="/workers" component={WorkersPage} />
       <ProtectedRoute path="/reports" component={ReportsPage} />
       <ProtectedRoute path="/invoice" component={InvoicePage} />
+      <ProtectedRoute path="/customers" component={CustomersPage} />
       <Route component={NotFound} />
     </Switch>
   );
