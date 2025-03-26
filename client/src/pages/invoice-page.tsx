@@ -355,82 +355,260 @@ export default function InvoicePage() {
     // Získání dat z formuláře
     const formData = createInvoiceForm.getValues();
     
-    // Vytvoření nového PDF dokumentu
+    // Vytvoření nového PDF dokumentu (A4 formát, orientace na výšku)
     const doc = new jsPDF();
     
-    // Přidání nadpisu
-    doc.setFontSize(20);
-    doc.text("FAKTURA", 105, 20, { align: "center" });
-    doc.setFontSize(12);
-    doc.text(`Číslo: ${formData.invoiceNumber}`, 105, 30, { align: "center" });
+    // Definice barev a stylů
+    const primaryColor = "#505050";
+    const secondaryColor = "#eeeeee";
+    const accentColor = "#303030";
     
-    // Informace o dodavateli a odběrateli
+    // Základní nastavení stránky
+    doc.setFillColor(255, 255, 255);
+    doc.rect(0, 0, 210, 297, "F");
+    
+    // Horní pruh pro číslo faktury a název
+    doc.setFillColor(255, 255, 255);
+    doc.rect(0, 0, 210, 40, "F");
+    
+    // Šedý pruh pro celkovou částku
+    doc.setFillColor(240, 240, 240);
+    doc.rect(10, 40, 190, 20, "F");
+    
+    // Nadpis a číslo faktury - moderní, jednoduchý design
+    doc.setTextColor(150, 150, 150);
+    doc.setFontSize(24);
+    doc.setFont("helvetica", "normal");
+    doc.text("FAKTURA", 20, 20);
+    
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(24);
+    doc.setFont("helvetica", "bold");
+    doc.text(formData.invoiceNumber, 190, 20, { align: "right" });
+    
+    // Celková částka k zaplacení
+    let totalAmount = 0;
+    invoiceItems.forEach(item => {
+      totalAmount += item.quantity * item.pricePerUnit;
+    });
+    
+    doc.setFontSize(14);
+    doc.setTextColor(80, 80, 80);
+    doc.text("Prosím o zaplacení", 20, 52);
+    
+    doc.setFontSize(18);
+    doc.setTextColor(0, 0, 0);
+    doc.setFont("helvetica", "bold");
+    doc.text(`${totalAmount.toLocaleString()} Kč`, 190, 52, { align: "right" });
+    
+    // Údaje formuláře faktury
+    doc.setTextColor(80, 80, 80);
     doc.setFontSize(11);
-    doc.text("Dodavatel:", 20, 50);
-    doc.text(`${user?.firstName} ${user?.lastName}`, 20, 60);
-    // Přidáváme jen základní informace o dodavateli
-    if (formData.isVatPayer) doc.text("Plátce DPH", 20, 70);
+    doc.setFont("helvetica", "normal");
     
-    doc.text("Odběratel:", 120, 50);
-    doc.text(formData.customerName, 120, 60);
-    doc.text(formData.customerAddress, 120, 65);
-    if (formData.customerIC) doc.text(`IČO: ${formData.customerIC}`, 120, 75);
-    if (formData.customerDIC && formData.isVatPayer) doc.text(`DIČ: ${formData.customerDIC}`, 120, 80);
+    const leftColumnX = 20;
+    const rightColumnX = 110;
+    let yPos = 80;
     
-    // Informace o faktuře
-    doc.text(`Datum vystavení: ${format(formData.dateIssued, "dd.MM.yyyy", { locale: cs })}`, 20, 95);
-    doc.text(`Datum splatnosti: ${format(formData.dateDue, "dd.MM.yyyy", { locale: cs })}`, 20, 100);
-    doc.text(`Způsob platby: ${
-      formData.paymentMethod === "bank" ? "Bankovním převodem" : 
-      formData.paymentMethod === "cash" ? "Hotově" : "Kartou"
-    }`, 20, 105);
+    // Levý sloupec - informace o faktuře
+    doc.setFontSize(10);
+    doc.setTextColor(120, 120, 120);
+    doc.text("Forma úhrady:", leftColumnX, yPos);
+    doc.setTextColor(0, 0, 0);
+    doc.text(formData.paymentMethod === "bank" ? "bankovním převodem" : 
+             formData.paymentMethod === "cash" ? "hotově" : "kartou", 
+             leftColumnX + 30, yPos);
     
-    if (formData.paymentMethod === "bank" && formData.bankAccount) {
-      doc.text(`Číslo účtu: ${formData.bankAccount}`, 120, 95);
+    yPos += 5;
+    doc.setTextColor(120, 120, 120);
+    doc.text("Číslo účtu:", leftColumnX, yPos);
+    doc.setTextColor(0, 0, 0);
+    doc.text(formData.bankAccount || "Neuvedeno", leftColumnX + 30, yPos);
+    
+    yPos += 5;
+    doc.setTextColor(120, 120, 120);
+    doc.text("Variabilní symbol:", leftColumnX, yPos);
+    doc.setTextColor(0, 0, 0);
+    doc.text(formData.invoiceNumber.replace(/\//g, ""), leftColumnX + 30, yPos);
+    
+    yPos += 5;
+    doc.setTextColor(120, 120, 120);
+    doc.text("Datum vystavení:", leftColumnX, yPos);
+    doc.setTextColor(0, 0, 0);
+    doc.text(format(formData.dateIssued, "dd.MM.yyyy", { locale: cs }), leftColumnX + 30, yPos);
+    
+    yPos += 5;
+    doc.setTextColor(120, 120, 120);
+    doc.text("Datum splatnosti:", leftColumnX, yPos);
+    doc.setTextColor(0, 0, 0);
+    doc.text(format(formData.dateDue, "dd.MM.yyyy", { locale: cs }), leftColumnX + 30, yPos);
+    
+    // Banka
+    yPos += 10;
+    doc.setTextColor(120, 120, 120);
+    doc.text("Banka dodavatele:", leftColumnX, yPos);
+    doc.setTextColor(0, 0, 0);
+    doc.text("Air Bank a.s.", leftColumnX, yPos + 5);
+    doc.text("IBAN: CZ123456789", leftColumnX, yPos + 10);
+    
+    // Dodavatel a odběratel
+    yPos = 80;
+    
+    // Dodavatel
+    doc.setFontSize(10);
+    doc.setTextColor(120, 120, 120);
+    doc.text("Dodavatel:", rightColumnX, yPos);
+    doc.setTextColor(0, 0, 0);
+    doc.setFont("helvetica", "bold");
+    
+    yPos += 5;
+    // Jméno dodavatele
+    doc.text(`${user?.firstName || ""} ${user?.lastName || ""}`, rightColumnX, yPos);
+    doc.setFont("helvetica", "normal");
+    
+    yPos += 5;
+    // Adresa dodavatele - ukázková adresa
+    doc.text("Technická 123/45", rightColumnX, yPos);
+    yPos += 5;
+    doc.text("60200 Brno", rightColumnX, yPos);
+    yPos += 5;
+    doc.text("Česká republika", rightColumnX, yPos);
+    
+    yPos += 7;
+    doc.setTextColor(120, 120, 120);
+    doc.text("IČO:", rightColumnX, yPos);
+    doc.setTextColor(0, 0, 0);
+    doc.text("04817871", rightColumnX + 15, yPos);
+    
+    yPos += 5;
+    if (formData.isVatPayer) {
+      doc.setTextColor(120, 120, 120);
+      doc.text("DIČ:", rightColumnX, yPos);
+      doc.setTextColor(0, 0, 0);
+      doc.text("CZ04817871", rightColumnX + 15, yPos);
     }
     
+    // Odběratel
+    yPos += 15;
+    doc.setTextColor(120, 120, 120);
+    doc.text("Odběratel:", rightColumnX, yPos);
+    doc.setTextColor(0, 0, 0);
+    doc.setFont("helvetica", "bold");
+    
+    yPos += 5;
+    // Jméno odběratele
+    doc.text(formData.customerName, rightColumnX, yPos);
+    doc.setFont("helvetica", "normal");
+    
+    yPos += 5;
+    // Adresa odběratele
+    const addressLines = formData.customerAddress.split(',');
+    addressLines.forEach(line => {
+      doc.text(line.trim(), rightColumnX, yPos);
+      yPos += 5;
+    });
+    
+    if (formData.customerIC) {
+      doc.setTextColor(120, 120, 120);
+      doc.text("IČO:", rightColumnX, yPos);
+      doc.setTextColor(0, 0, 0);
+      doc.text(formData.customerIC, rightColumnX + 15, yPos);
+      yPos += 5;
+    }
+    
+    if (formData.customerDIC && formData.isVatPayer) {
+      doc.setTextColor(120, 120, 120);
+      doc.text("DIČ:", rightColumnX, yPos);
+      doc.setTextColor(0, 0, 0);
+      doc.text(formData.customerDIC, rightColumnX + 15, yPos);
+    }
+    
+    // Generování QR kódu pro platbu
+    // (Poznámka: V reálné implementaci bychom museli zahrnout generování QR kódu pro platbu)
+    
+    // Tabulka s položkami faktury
+    yPos = 170;
+    
+    // Hlavička tabulky - šedý pruh
+    doc.setFillColor(240, 240, 240);
+    doc.rect(10, yPos, 190, 10, "F");
+    
+    doc.setTextColor(80, 80, 80);
+    doc.setFontSize(9);
+    doc.text("Popis", 15, yPos + 7);
+    doc.text("Množství", 110, yPos + 7, { align: "right" });
+    doc.text("Jednotka", 130, yPos + 7, { align: "center" });
+    doc.text("Cena/ks", 160, yPos + 7, { align: "right" });
+    doc.text("Celkem", 195, yPos + 7, { align: "right" });
+    
     // Položky faktury
-    doc.text("Popis", 20, 125);
-    doc.text("Množství", 100, 125);
-    doc.text("Jednotka", 120, 125);
-    doc.text("Cena/ks", 140, 125);
-    doc.text("Celkem", 170, 125);
-    
-    doc.line(20, 127, 190, 127);
-    
-    let yPos = 135;
-    let totalAmount = 0;
+    yPos += 15;
+    let currentItem = 1;
     
     invoiceItems.forEach(item => {
       const itemTotal = item.quantity * item.pricePerUnit;
-      totalAmount += itemTotal;
       
-      doc.text(item.description, 20, yPos);
-      doc.text(String(item.quantity), 100, yPos, { align: "right" });
-      doc.text(item.unit, 120, yPos);
-      doc.text(`${item.pricePerUnit.toLocaleString()} Kč`, 140, yPos, { align: "right" });
-      doc.text(`${itemTotal.toLocaleString()} Kč`, 170, yPos, { align: "right" });
+      // Přidání stínování pro sudé řádky
+      if (currentItem % 2 === 0) {
+        doc.setFillColor(248, 248, 248);
+        doc.rect(10, yPos - 5, 190, 10, "F");
+      }
+      
+      doc.setTextColor(0, 0, 0);
+      doc.text(item.description, 15, yPos);
+      doc.text(String(item.quantity), 110, yPos, { align: "right" });
+      doc.text(item.unit, 130, yPos, { align: "center" });
+      doc.text(`${item.pricePerUnit.toLocaleString()} Kč`, 160, yPos, { align: "right" });
+      doc.text(`${itemTotal.toLocaleString()} Kč`, 195, yPos, { align: "right" });
       
       yPos += 10;
+      currentItem++;
     });
     
-    doc.line(20, yPos, 190, yPos);
-    yPos += 10;
+    // Součet - šedý pruh
+    doc.setFillColor(240, 240, 240);
+    doc.rect(10, yPos, 190, 10, "F");
     
     doc.setFont("helvetica", "bold");
-    doc.text("Celkem k úhradě:", 140, yPos);
-    doc.text(`${totalAmount.toLocaleString()} Kč`, 170, yPos, { align: "right" });
-    doc.setFont("helvetica", "normal");
+    doc.setTextColor(0, 0, 0);
+    doc.text("Celkem k úhradě:", 130, yPos + 7);
+    doc.text(`${totalAmount.toLocaleString()} Kč`, 195, yPos + 7, { align: "right" });
     
-    // Poznámka
+    // Poznámka a dodatečné informace
+    yPos += 20;
     if (formData.notes) {
-      yPos += 20;
-      doc.text("Poznámka:", 20, yPos);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(80, 80, 80);
+      doc.text("Poznámka:", 15, yPos);
       yPos += 5;
-      doc.text(formData.notes, 20, yPos);
+      doc.setTextColor(0, 0, 0);
+      
+      // Rozdělení poznámky na řádky, pokud je dlouhá
+      const noteLines = doc.splitTextToSize(formData.notes, 180);
+      doc.text(noteLines, 15, yPos);
+      yPos += noteLines.length * 5;
     }
     
-    // Přímé stažení dokumentu
+    // Patička
+    doc.setFillColor(248, 248, 248);
+    doc.rect(0, 270, 210, 27, "F");
+    
+    doc.setFontSize(8);
+    doc.setTextColor(120, 120, 120);
+    
+    // Levá část patičky
+    doc.text("Strana 1 / 1", 15, 280);
+    
+    // Střední část patičky
+    const contactInfo = "hozak.tomas@mail.cz | +420 704 247 855";
+    doc.text(contactInfo, 105, 280, { align: "center" });
+    
+    // Pravá část patičky
+    const digitallySignedText = "Daňová schránka: mojedan@";
+    doc.text(digitallySignedText, 195, 280, { align: "right" });
+    
+    // Přímé stažení dokumentu s vhodným názvem
     doc.save(`faktura_${formData.invoiceNumber.replace(/\//g, "_")}.pdf`);
     
     // Zavření dialogu náhledu, pokud je otevřený
