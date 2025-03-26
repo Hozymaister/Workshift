@@ -88,6 +88,11 @@ const formSchema = z.object({
   address: z.string().optional(),
   notes: z.string().optional(),
   managerId: z.number().nullable().optional(),
+  // Přidané údaje o firmě
+  companyName: z.string().optional(),
+  companyId: z.string().optional(),    // IČO
+  companyVatId: z.string().optional(), // DIČ
+  companyAddress: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -130,6 +135,10 @@ export default function WorkplacesPage() {
         address: workplaceToEdit.address || "",
         notes: workplaceToEdit.notes || "",
         managerId: workplaceToEdit.managerId || null,
+        companyName: workplaceToEdit.companyName || "",
+        companyId: workplaceToEdit.companyId || "",
+        companyVatId: workplaceToEdit.companyVatId || "",
+        companyAddress: workplaceToEdit.companyAddress || "",
       });
     } else {
       form.reset({
@@ -229,6 +238,10 @@ export default function WorkplacesPage() {
         address: workplace.address || "",
         notes: workplace.notes || "",
         managerId: workplace.managerId || null,
+        companyName: workplace.companyName || "",
+        companyId: workplace.companyId || "",
+        companyVatId: workplace.companyVatId || "",
+        companyAddress: workplace.companyAddress || "",
       });
     } else {
       form.reset({
