@@ -184,7 +184,7 @@ export function CustomerForm({ isOpen, onClose, customerToEdit }: CustomerFormPr
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[550px]">
+      <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {customerToEdit ? "Upravit zákazníka" : "Přidat nového zákazníka"}
