@@ -1618,35 +1618,35 @@ export default function InvoicePage() {
                 </div>
               </div>
               
-              <div className="bg-white p-4 rounded-lg shadow">
+              <div className="bg-white rounded-lg shadow">
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
                       <tr className="border-b">
-                        <th className="py-2 text-left">Typ</th>
-                        <th className="py-2 text-left">Číslo</th>
-                        <th className="py-2 text-left">Datum</th>
-                        <th className="py-2 text-left">Zákazník/Dodavatel</th>
-                        <th className="py-2 text-right">Částka</th>
-                        <th className="py-2 text-center">Stav</th>
-                        <th className="py-2 text-center">Akce</th>
+                        <th className="p-3 text-left">Typ</th>
+                        <th className="p-3 text-left">Číslo</th>
+                        <th className="p-3 text-left">Datum</th>
+                        <th className="p-3 text-left">Zákazník/Dodavatel</th>
+                        <th className="p-3 text-right">Částka</th>
+                        <th className="p-3 text-center">Stav</th>
+                        <th className="p-3 text-center">Akce</th>
                       </tr>
                     </thead>
                     <tbody>
                       {invoiceHistory.map((invoice) => (
-                        <tr key={invoice.id} className="border-b">
-                          <td className="py-3">{invoice.type === "issued" ? "Vydaná" : "Přijatá"}</td>
-                          <td className="py-3">{invoice.number}</td>
-                          <td className="py-3">{format(invoice.date, "dd.MM.yyyy", { locale: cs })}</td>
-                          <td className="py-3">{invoice.clientOrSupplier}</td>
-                          <td className="py-3 text-right">{invoice.amount.toLocaleString()} Kč</td>
-                          <td className="py-3 text-center">
+                        <tr key={invoice.id} className="border-b hover:bg-slate-50">
+                          <td className="p-3 whitespace-nowrap">{invoice.type === "issued" ? "Vydaná" : "Přijatá"}</td>
+                          <td className="p-3 whitespace-nowrap">{invoice.number}</td>
+                          <td className="p-3 whitespace-nowrap">{format(invoice.date, "dd.MM.yyyy", { locale: cs })}</td>
+                          <td className="p-3 max-w-[200px] truncate">{invoice.clientOrSupplier}</td>
+                          <td className="p-3 text-right whitespace-nowrap">{invoice.amount.toLocaleString()} Kč</td>
+                          <td className="p-3 text-center whitespace-nowrap">
                             <Badge variant={invoice.isPaid ? "success" : "warning"}>
                               {invoice.isPaid ? "Zaplaceno" : "Nezaplaceno"}
                             </Badge>
                           </td>
-                          <td className="py-3 text-center">
-                            <Button variant="ghost" size="icon">
+                          <td className="p-3 text-center whitespace-nowrap">
+                            <Button variant="ghost" size="icon" title="Stáhnout fakturu">
                               <FileDown className="h-4 w-4" />
                             </Button>
                           </td>

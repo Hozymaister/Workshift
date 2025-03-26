@@ -120,10 +120,8 @@ export function ExchangeRequests() {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
         <CardTitle className="text-lg font-medium">Žádosti o výměnu směn</CardTitle>
-        <Link href="/exchanges">
-          <a className="text-sm font-medium text-primary hover:text-primary-dark">
-            Zobrazit vše
-          </a>
+        <Link href="/exchanges" className="text-sm font-medium text-primary hover:text-primary-dark">
+          Zobrazit vše
         </Link>
       </CardHeader>
       <CardContent className="pb-2">
