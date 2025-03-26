@@ -520,6 +520,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/customers/:id", isAuthenticated, async (req, res) => {
     try {
+      if (!req.user) {
+        return res.status(401).send("Unauthorized");
+      }
+      
       const customerId = parseInt(req.params.id);
       const customer = await storage.getCustomer(customerId);
       
@@ -528,7 +532,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Ověření, že zákazník patří přihlášenému uživateli
-      if (customer.userId !== req.user.id) {
+      if (req.user && customer.userId !== req.user.id) {
         return res.status(403).send("Forbidden: You don't have access to this customer");
       }
       
@@ -541,6 +545,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/customers", isAuthenticated, async (req, res) => {
     try {
+      if (!req.user) {
+        return res.status(401).send("Unauthorized");
+      }
+      
       const userId = req.user.id;
       const customerData = { ...req.body, userId };
       
@@ -569,6 +577,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/customers/:id", isAuthenticated, async (req, res) => {
     try {
+      if (!req.user) {
+        return res.status(401).send("Unauthorized");
+      }
+      
       const customerId = parseInt(req.params.id);
       const existingCustomer = await storage.getCustomer(customerId);
       
@@ -577,7 +589,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Ověření, že zákazník patří přihlášenému uživateli
-      if (existingCustomer.userId !== req.user.id) {
+      if (req.user && existingCustomer.userId !== req.user.id) {
         return res.status(403).send("Forbidden: You don't have access to this customer");
       }
       
@@ -609,6 +621,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/customers/:id", isAuthenticated, async (req, res) => {
     try {
+      if (!req.user) {
+        return res.status(401).send("Unauthorized");
+      }
+      
       const customerId = parseInt(req.params.id);
       const existingCustomer = await storage.getCustomer(customerId);
       
@@ -617,7 +633,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Ověření, že zákazník patří přihlášenému uživateli
-      if (existingCustomer.userId !== req.user.id) {
+      if (req.user && existingCustomer.userId !== req.user.id) {
         return res.status(403).send("Forbidden: You don't have access to this customer");
       }
       
@@ -632,6 +648,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Endpoint pro hledání informací o firmě v ARES podle IČO
   app.get("/api/ares", isAuthenticated, async (req, res) => {
     try {
+      if (!req.user) {
+        return res.status(401).send("Unauthorized");
+      }
+      
       const ico = req.query.ico;
       
       if (!ico || typeof ico !== 'string' || !/^\d{8}$/.test(ico)) {
