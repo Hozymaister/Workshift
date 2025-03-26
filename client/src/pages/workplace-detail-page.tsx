@@ -398,11 +398,24 @@ export default function WorkplaceDetailPage() {
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-2xl font-bold text-slate-900">{workplace.name}</h2>
-                {workplace.type && (
-                  <Badge variant="outline" className="text-sm">
-                    {workplace.type}
-                  </Badge>
-                )}
+                
+                <div className="flex items-center gap-2">
+                  {workplace.type && (
+                    <Badge variant="outline" className="text-sm">
+                      <span className="flex items-center">
+                        {getTypeIcon(workplace.type)}
+                        <span className="ml-1">{getTypeName(workplace.type)}</span>
+                      </span>
+                    </Badge>
+                  )}
+                  
+                  {workplace.managerId && (
+                    <Badge variant="outline" className="text-sm text-amber-700 bg-amber-50 hover:bg-amber-100">
+                      <Crown className="h-3 w-3 mr-1 text-amber-500" />
+                      <span>Správce</span>
+                    </Badge>
+                  )}
+                </div>
               </div>
               <p className="mt-1 text-sm text-slate-500">
                 Detail a správa pracoviště
