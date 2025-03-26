@@ -165,7 +165,11 @@ export default function WorkplaceDetailPage() {
         type: workplace.type || "",
         address: workplace.address || "",
         notes: workplace.notes || "",
-        managerId: workplace.managerId || null
+        managerId: workplace.managerId || null,
+        companyName: workplace.companyName || "",
+        companyId: workplace.companyId || "",
+        companyVatId: workplace.companyVatId || "",
+        companyAddress: workplace.companyAddress || ""
       });
     }
   }, [workplace]);
@@ -1038,6 +1042,55 @@ export default function WorkplaceDetailPage() {
                   value={editForm.notes}
                   onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
                 />
+              </div>
+              
+              <Separator className="my-4" />
+              
+              <div>
+                <h3 className="text-sm font-medium mb-2 flex items-center">
+                  <Building2 className="h-4 w-4 mr-1 text-slate-500" />
+                  Údaje o firmě
+                </h3>
+                
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="companyName">Název firmy</Label>
+                    <Input
+                      id="companyName"
+                      value={editForm.companyName}
+                      onChange={(e) => setEditForm({ ...editForm, companyName: e.target.value })}
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="companyId">IČO</Label>
+                      <Input
+                        id="companyId"
+                        value={editForm.companyId}
+                        onChange={(e) => setEditForm({ ...editForm, companyId: e.target.value })}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="companyVatId">DIČ</Label>
+                      <Input
+                        id="companyVatId"
+                        value={editForm.companyVatId}
+                        onChange={(e) => setEditForm({ ...editForm, companyVatId: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="companyAddress">Adresa firmy</Label>
+                    <Input
+                      id="companyAddress"
+                      value={editForm.companyAddress}
+                      onChange={(e) => setEditForm({ ...editForm, companyAddress: e.target.value })}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
             
