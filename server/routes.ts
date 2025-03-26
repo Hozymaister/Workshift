@@ -104,6 +104,123 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const safeUsers = users.map(({ password, ...user }) => user);
     res.json(safeUsers);
   });
+  
+  // Vytvoření nového pracovníka
+  app.post("/api/workers", isAdmin, async (req, res) => {
+    try {
+      const userData = req.body;
+      
+      // Ověříme, zda email a username již neexistuje
+      const existingEmail = await storage.getUserByEmail(userData.email);
+      if (existingEmail) {
+        return res.status(400).json({ error: "Email již existuje" });
+      }
+      
+      const existingUsername = await storage.getUserByUsername(userData.username);
+      if (existingUsername) {
+        return res.status(400).json({ error: "Uživatelské jméno již existuje" });
+      }
+      
+      const hashedPassword = await hashPassword(userData.password);
+      
+      // Převedeme hourlyWage na číslo pokud existuje
+      if (userData.hourlyWage && typeof userData.hourlyWage === 'string') {
+        userData.hourlyWage = parseInt(userData.hourlyWage);
+      }
+      
+      const newUser = await storage.createUser({
+        ...userData,
+        password: hashedPassword
+      });
+      
+      // Odebereme heslo před odesláním odpovědi
+      const { password, ...safeUser } = newUser;
+      res.status(201).json(safeUser);
+    } catch (error: any) {
+      console.error("Chyba při vytváření pracovníka:", error);
+      res.status(500).json({ error: error.message || "Nepodařilo se vytvořit pracovníka" });
+    }
+  });
+  
+  // Aktualizace pracovníka
+  app.patch("/api/workers/:id", isAdmin, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const userData = req.body;
+      
+      // Ověříme, zda pracovník existuje
+      const existingUser = await storage.getUser(userId);
+      if (!existingUser) {
+        return res.status(404).json({ error: "Pracovník nenalezen" });
+      }
+      
+      // Ověříme, zda nový email již neexistuje (pokud se mění)
+      if (userData.email && userData.email !== existingUser.email) {
+        const existingEmail = await storage.getUserByEmail(userData.email);
+        if (existingEmail && existingEmail.id !== userId) {
+          return res.status(400).json({ error: "Email již existuje" });
+        }
+      }
+      
+      // Ověříme, zda nové uživatelské jméno již neexistuje (pokud se mění)
+      if (userData.username && userData.username !== existingUser.username) {
+        const existingUsername = await storage.getUserByUsername(userData.username);
+        if (existingUsername && existingUsername.id !== userId) {
+          return res.status(400).json({ error: "Uživatelské jméno již existuje" });
+        }
+      }
+      
+      // Pokud se mění heslo, zahashujeme ho
+      if (userData.password) {
+        userData.password = await hashPassword(userData.password);
+      }
+      
+      // Převedeme hourlyWage na číslo pokud existuje
+      if (userData.hourlyWage && typeof userData.hourlyWage === 'string') {
+        userData.hourlyWage = parseInt(userData.hourlyWage);
+      }
+      
+      const updatedUser = await storage.updateUser(userId, userData);
+      if (!updatedUser) {
+        return res.status(500).json({ error: "Nepodařilo se aktualizovat pracovníka" });
+      }
+      
+      // Odebereme heslo před odesláním odpovědi
+      const { password, ...safeUser } = updatedUser;
+      res.json(safeUser);
+    } catch (error: any) {
+      console.error("Chyba při aktualizaci pracovníka:", error);
+      res.status(500).json({ error: error.message || "Nepodařilo se aktualizovat pracovníka" });
+    }
+  });
+  
+  // Smazání pracovníka
+  app.delete("/api/workers/:id", isAdmin, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      
+      // Ověříme, zda pracovník existuje
+      const existingUser = await storage.getUser(userId);
+      if (!existingUser) {
+        return res.status(404).json({ error: "Pracovník nenalezen" });
+      }
+      
+      // Nelze smazat vlastní účet
+      if (userId === req.user?.id) {
+        return res.status(400).json({ error: "Nelze smazat vlastní účet" });
+      }
+      
+      const success = await storage.deleteUser(userId);
+      if (!success) {
+        return res.status(500).json({ error: "Nepodařilo se smazat pracovníka" });
+      }
+      
+      res.status(200).json({ success: true });
+    } catch (error: any) {
+      console.error("Chyba při mazání pracovníka:", error);
+      res.status(500).json({ error: error.message || "Nepodařilo se smazat pracovníka" });
+    }
+  });
 
   // Shift routes
   app.get("/api/shifts", isAuthenticated, async (req, res) => {

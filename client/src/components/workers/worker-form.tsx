@@ -55,7 +55,10 @@ const workerFormSchema = insertUserSchema.extend({
   dateOfBirth: z.date().optional(),
   personalId: z.string().optional(),
   phone: z.string().optional(),
-  hourlyWage: z.string().transform((value) => value === "" ? undefined : parseInt(value)).optional(),
+  hourlyWage: z.union([
+    z.string().transform((value) => value === "" ? undefined : parseInt(value)),
+    z.number().optional()
+  ]).optional(),
   notes: z.string().optional(),
 }).refine(data => data.password === data.confirmPassword, {
   message: "Hesla se neshodují",
@@ -87,7 +90,7 @@ export function WorkerForm({ isOpen, onClose, workerToEdit }: WorkerFormProps) {
     dateOfBirth: workerToEdit?.dateOfBirth ? new Date(workerToEdit.dateOfBirth) : undefined,
     personalId: workerToEdit?.personalId || "",
     phone: workerToEdit?.phone || "",
-    hourlyWage: workerToEdit?.hourlyWage !== undefined ? workerToEdit.hourlyWage.toString() : "",
+    hourlyWage: workerToEdit?.hourlyWage ? workerToEdit.hourlyWage : undefined,
     notes: workerToEdit?.notes || "",
   };
 
@@ -376,11 +379,19 @@ export function WorkerForm({ isOpen, onClose, workerToEdit }: WorkerFormProps) {
                   <FormField
                     control={form.control}
                     name="hourlyWage"
-                    render={({ field }) => (
+                    render={({ field: { value, onChange, ...field } }) => (
                       <FormItem>
                         <FormLabel>Hodinová mzda (Kč)</FormLabel>
                         <FormControl>
-                          <Input type="number" {...field} />
+                          <Input 
+                            type="number" 
+                            value={value === undefined ? "" : String(value)}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              onChange(val === "" ? undefined : Number(val));
+                            }}
+                            {...field} 
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

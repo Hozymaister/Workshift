@@ -20,6 +20,7 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, userData: Partial<InsertUser>): Promise<User | undefined>;
+  deleteUser(id: number): Promise<boolean>;
   getAllUsers(): Promise<User[]>;
   
   // Workplace operations
@@ -154,9 +155,18 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.userIdCounter++;
-    // Zajistíme, že role je vždy definovaná
+    // Zajistíme, že role je vždy definovaná a ostatní pole jsou null pokud nejsou definované
     const role = insertUser.role || "worker";
-    const user: User = { ...insertUser, id, role };
+    const user: User = { 
+      ...insertUser, 
+      id, 
+      role,
+      dateOfBirth: insertUser.dateOfBirth ?? null,
+      personalId: insertUser.personalId ?? null,
+      phone: insertUser.phone ?? null,
+      hourlyWage: insertUser.hourlyWage ?? null,
+      notes: insertUser.notes ?? null
+    };
     this.users.set(id, user);
     return user;
   }
@@ -172,6 +182,10 @@ export class MemStorage implements IStorage {
 
   async getAllUsers(): Promise<User[]> {
     return Array.from(this.users.values());
+  }
+  
+  async deleteUser(id: number): Promise<boolean> {
+    return this.users.delete(id);
   }
 
   // Workplace methods
