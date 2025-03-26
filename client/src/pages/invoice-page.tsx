@@ -35,6 +35,8 @@ import {
   DialogFooter,
   DialogClose
 } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -153,6 +155,9 @@ export default function InvoicePage() {
   const [editingItem, setEditingItem] = useState<string | null>(null);
   const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  
+  // Filtr pro historii faktur
+  const [yearFilter, setYearFilter] = useState<string>("current");
   
   // Historie vydaných a přijatých faktur
   const [invoiceHistory, setInvoiceHistory] = useState<Invoice[]>([
@@ -1325,7 +1330,7 @@ export default function InvoicePage() {
                           invoiceHistory.map((invoice) => (
                             <tr key={invoice.id} className="bg-white border-b hover:bg-slate-50">
                               <td className="px-4 py-3">
-                                <Badge variant={invoice.type === "issued" ? "success" : "destructive"}>
+                                <Badge variant={invoice.type === "issued" ? "default" : "destructive"} className={invoice.type === "issued" ? "bg-green-100 text-green-800 hover:bg-green-100" : ""}>
                                   {invoice.type === "issued" ? "Vystavená" : "Přijatá"}
                                 </Badge>
                               </td>
