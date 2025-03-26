@@ -992,20 +992,28 @@ export default function WorkplaceDetailPage() {
               <div className="space-y-2">
                 <Label htmlFor="manager">Vedoucí pracoviště</Label>
                 <Select
-                  value={editForm.managerId?.toString() || ""}
+                  value={editForm.managerId?.toString() || "none"}
                   onValueChange={(value) => setEditForm({ 
                     ...editForm, 
-                    managerId: value ? parseInt(value) : null 
+                    managerId: value !== "none" ? parseInt(value) : null 
                   })}
                 >
                   <SelectTrigger id="manager">
                     <SelectValue placeholder="Vyberte vedoucího" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Žádný vedoucí</SelectItem>
+                    <SelectItem value="none">
+                      <div className="flex items-center">
+                        <UserCircle className="h-4 w-4 mr-2 text-slate-400" />
+                        <span>Žádný vedoucí</span>
+                      </div>
+                    </SelectItem>
                     {allUsers.map(user => (
                       <SelectItem key={user.id} value={user.id.toString()}>
-                        {user.firstName} {user.lastName}
+                        <div className="flex items-center">
+                          <UserCircle className="h-4 w-4 mr-2" />
+                          <span>{user.firstName} {user.lastName}</span>
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
