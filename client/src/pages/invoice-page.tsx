@@ -1992,6 +1992,92 @@ export default function InvoicePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog pro stažení PDF faktury */}
+      <Dialog open={pdfDialogOpen} onOpenChange={setPdfDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Faktura PDF připravena ke stažení</DialogTitle>
+            <DialogDescription>
+              Vaše faktura byla vytvořena a je připravena ke stažení.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex flex-col space-y-4 my-6">
+            {generatedPdfUrl && (
+              <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50 p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center">
+                    <div className="bg-red-100 p-3 rounded-full mr-3">
+                      <FileText className="h-6 w-6 text-red-500" />
+                    </div>
+                    <div>
+                      <p className="font-medium">{pdfFileName}</p>
+                      <p className="text-sm text-slate-500">PDF dokument</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
+                  <Button 
+                    variant="default" 
+                    className="flex-1"
+                    onClick={() => {
+                      // Vytvoření neviditelného odkazu pro automatické stažení
+                      const link = document.createElement('a');
+                      link.href = generatedPdfUrl;
+                      link.download = pdfFileName;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Stáhnout
+                  </Button>
+                  
+                  <Button 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={() => {
+                      // Otevření PDF v novém okně/záložce
+                      window.open(generatedPdfUrl, '_blank');
+                    }}
+                  >
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    Otevřít
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertTitle>Informace</AlertTitle>
+              <AlertDescription>
+                Soubor se stáhne do složky stažených souborů vašeho zařízení.
+              </AlertDescription>
+            </Alert>
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => {
+                setPdfDialogOpen(false);
+                // Uvolnění URL objektu, když už dialog není potřeba
+                if (generatedPdfUrl) {
+                  URL.revokeObjectURL(generatedPdfUrl);
+                  setGeneratedPdfUrl(null);
+                }
+              }}
+            >
+              Zavřít
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
