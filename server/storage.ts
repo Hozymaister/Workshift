@@ -61,7 +61,7 @@ export interface IStorage {
   searchCustomers(query: string, userId: number): Promise<Customer[]>;
   
   // Session store
-  sessionStore: session.SessionStore;
+  sessionStore: any; // Using any to avoid SessionStore type issues
 }
 
 export class MemStorage implements IStorage {
@@ -71,7 +71,7 @@ export class MemStorage implements IStorage {
   private exchangeRequests: Map<number, ExchangeRequest>;
   private reports: Map<number, Report>;
   private customers: Map<number, Customer>;
-  sessionStore: session.SessionStore;
+  sessionStore: any; // Using any to avoid SessionStore type issues
   private userIdCounter: number;
   private workplaceIdCounter: number;
   private shiftIdCounter: number;
@@ -141,7 +141,9 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.userIdCounter++;
-    const user: User = { ...insertUser, id };
+    // Zajistíme, že role je vždy definovaná
+    const role = insertUser.role || "worker";
+    const user: User = { ...insertUser, id, role };
     this.users.set(id, user);
     return user;
   }
@@ -166,7 +168,13 @@ export class MemStorage implements IStorage {
 
   async createWorkplace(insertWorkplace: InsertWorkplace): Promise<Workplace> {
     const id = this.workplaceIdCounter++;
-    const workplace: Workplace = { ...insertWorkplace, id };
+    // Zajistíme, že všechny povinné atributy jsou nastaveny
+    const workplace: Workplace = { 
+      ...insertWorkplace, 
+      id,
+      address: insertWorkplace.address ?? null,
+      notes: insertWorkplace.notes ?? null 
+    };
     this.workplaces.set(id, workplace);
     return workplace;
   }
@@ -195,7 +203,12 @@ export class MemStorage implements IStorage {
 
   async createShift(insertShift: InsertShift): Promise<Shift> {
     const id = this.shiftIdCounter++;
-    const shift: Shift = { ...insertShift, id };
+    const shift: Shift = { 
+      ...insertShift, 
+      id,
+      notes: insertShift.notes ?? null,
+      userId: insertShift.userId ?? null
+    };
     this.shifts.set(id, shift);
     return shift;
   }
@@ -235,7 +248,13 @@ export class MemStorage implements IStorage {
 
   async createExchangeRequest(insertExchangeRequest: InsertExchangeRequest): Promise<ExchangeRequest> {
     const id = this.exchangeRequestIdCounter++;
-    const exchangeRequest: ExchangeRequest = { ...insertExchangeRequest, id };
+    const exchangeRequest: ExchangeRequest = { 
+      ...insertExchangeRequest, 
+      id,
+      status: insertExchangeRequest.status || "pending",
+      notes: insertExchangeRequest.notes ?? null,
+      requesteeId: insertExchangeRequest.requesteeId ?? null
+    };
     this.exchangeRequests.set(id, exchangeRequest);
     return exchangeRequest;
   }
@@ -292,7 +311,18 @@ export class MemStorage implements IStorage {
 
   async createCustomer(insertCustomer: InsertCustomer): Promise<Customer> {
     const id = this.customerIdCounter++;
-    const customer: Customer = { ...insertCustomer, id, createdAt: new Date() };
+    const customer: Customer = { 
+      ...insertCustomer, 
+      id, 
+      createdAt: new Date(),
+      email: insertCustomer.email ?? null,
+      notes: insertCustomer.notes ?? null,
+      city: insertCustomer.city ?? null,
+      zip: insertCustomer.zip ?? null,
+      ic: insertCustomer.ic ?? null,
+      dic: insertCustomer.dic ?? null,
+      phone: insertCustomer.phone ?? null
+    };
     this.customers.set(id, customer);
     return customer;
   }

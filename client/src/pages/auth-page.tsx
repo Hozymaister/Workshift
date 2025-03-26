@@ -119,21 +119,15 @@ export default function AuthPage() {
     loginMutation.mutate({
       email: data.email,
       password: data.password,
-    }, {
-      onSuccess: () => {
-        // Okamžité přesměrování na dashboard po úspěšném přihlášení
-        window.location.href = "/";
-      }
     });
+    // Není potřeba přesměrovat, auth hook se postará o obnovení stavu a 
+    // komponenta ProtectedRoute automaticky přesměruje uživatele
   };
 
   const onRegisterSubmit = (data: RegisterFormValues) => {
-    registerMutation.mutate(data, {
-      onSuccess: () => {
-        // Okamžité přesměrování na dashboard po úspěšné registraci
-        window.location.href = "/";
-      }
-    });
+    registerMutation.mutate(data);
+    // Není potřeba přesměrovat, auth hook se postará o obnovení stavu a 
+    // komponenta ProtectedRoute automaticky přesměruje uživatele
   };
   
   // Reset password form
