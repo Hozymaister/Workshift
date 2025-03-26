@@ -117,11 +117,21 @@ export default function AuthPage() {
     loginMutation.mutate({
       email: data.email,
       password: data.password,
+    }, {
+      onSuccess: () => {
+        // Okamžité přesměrování na dashboard
+        window.location.href = '/';
+      }
     });
   };
 
   const onRegisterSubmit = (data: RegisterFormValues) => {
-    registerMutation.mutate(data);
+    registerMutation.mutate(data, {
+      onSuccess: () => {
+        // Okamžité přesměrování na dashboard
+        window.location.href = '/';
+      }
+    });
   };
   
   // Reset password form
@@ -151,7 +161,7 @@ export default function AuthPage() {
     onSuccess: () => {
       toast({
         title: "Kód byl vygenerován",
-        description: "DEMO VERZE: Kód najdete v konzoli serveru (např. [Reset code for email@example.com]: 123456)",
+        description: "Kód pro reset hesla byl odeslán na váš email.",
       });
       setResetEmail(resetPasswordForm.getValues().email);
       setIsResetDialogOpen(false);
@@ -469,8 +479,7 @@ export default function AuthPage() {
           <DialogHeader>
             <DialogTitle>Zapomenuté heslo</DialogTitle>
             <DialogDescription>
-              Zadejte svůj e-mail pro obnovení hesla. V demo verzi bude kód pro reset zobrazen v konzoli serveru. 
-              V produkční verzi by byl odeslán na zadaný email.
+              Zadejte svůj e-mail pro obnovení hesla. Na tento email vám bude zaslán kód pro reset hesla.
             </DialogDescription>
           </DialogHeader>
           
@@ -510,7 +519,7 @@ export default function AuthPage() {
           <DialogHeader>
             <DialogTitle>Změna hesla</DialogTitle>
             <DialogDescription>
-              Zadejte kód, který najdete v konzoli serveru (např. [Reset code for {resetEmail}]: 123456) a vaše nové heslo.
+              Zadejte kód, který vám byl zaslán na email {resetEmail ? resetEmail : ''} a vaše nové heslo.
             </DialogDescription>
           </DialogHeader>
           
