@@ -57,6 +57,7 @@ import {
   Building, 
   Users, 
   User as UserIcon, 
+  UserCircle,
   DollarSign,
   Crown,
   MapPin,
