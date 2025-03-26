@@ -11,7 +11,7 @@ import session from "express-session";
 import createMemoryStore from "memorystore";
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
-import { eq, and, between, like, or } from 'drizzle-orm';
+import { eq, and, between, like, or, sql } from 'drizzle-orm';
 import PgSession from 'connect-pg-simple';
 
 const MemoryStore = createMemoryStore(session);
@@ -265,10 +265,14 @@ export class MemStorage implements IStorage {
     return Array.from(this.shifts.values()).filter(shift => shift.userId === userId);
   }
 
-  async getShiftsByDate(startDate: Date, endDate: Date): Promise<Shift[]> {
+  async getShiftsByDate(startDate: Date | string, endDate: Date | string): Promise<Shift[]> {
+    const start = typeof startDate === 'string' ? new Date(startDate) : startDate;
+    const end = typeof endDate === 'string' ? new Date(endDate) : endDate;
+    
     return Array.from(this.shifts.values()).filter(shift => {
+      if (!shift.date) return false;
       const shiftDate = new Date(shift.date);
-      return shiftDate >= startDate && shiftDate <= endDate;
+      return shiftDate >= start && shiftDate <= end;
     });
   }
 
