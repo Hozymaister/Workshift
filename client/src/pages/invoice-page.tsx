@@ -96,6 +96,7 @@ const invoiceSchema = z.object({
   customerAddress: z.string().min(1, "Adresa zákazníka je povinná"),
   customerIC: z.string().optional(),
   customerDIC: z.string().optional(),
+  isVatPayer: z.boolean().default(true),
   notes: z.string().optional(),
   paymentMethod: z.enum(["bank", "cash", "card"]),
   bankAccount: z.string().optional(),
@@ -242,6 +243,7 @@ export default function InvoicePage() {
       customerAddress: "",
       customerIC: "",
       customerDIC: "",
+      isVatPayer: true,
       notes: "",
       paymentMethod: "bank",
       bankAccount: "",
@@ -761,6 +763,27 @@ export default function InvoicePage() {
                                   <Input {...field} />
                                 </FormControl>
                                 <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={form.control}
+                            name="isVatPayer"
+                            render={({ field }) => (
+                              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 shadow-sm mt-4">
+                                <div className="space-y-0.5">
+                                  <FormLabel className="text-base">Plátce DPH</FormLabel>
+                                  <FormDescription>
+                                    Je odběratel plátcem DPH?
+                                  </FormDescription>
+                                </div>
+                                <FormControl>
+                                  <Switch
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                  />
+                                </FormControl>
                               </FormItem>
                             )}
                           />
