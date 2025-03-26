@@ -119,11 +119,21 @@ export default function AuthPage() {
     loginMutation.mutate({
       email: data.email,
       password: data.password,
+    }, {
+      onSuccess: () => {
+        // Okamžité přesměrování na dashboard po úspěšném přihlášení
+        window.location.href = "/";
+      }
     });
   };
 
   const onRegisterSubmit = (data: RegisterFormValues) => {
-    registerMutation.mutate(data);
+    registerMutation.mutate(data, {
+      onSuccess: () => {
+        // Okamžité přesměrování na dashboard po úspěšné registraci
+        window.location.href = "/";
+      }
+    });
   };
   
   // Reset password form
@@ -200,7 +210,13 @@ export default function AuthPage() {
   };
   
   const onNewPasswordSubmit = (data: NewPasswordFormValues) => {
-    newPasswordMutation.mutate(data);
+    newPasswordMutation.mutate(data, {
+      onSuccess: () => {
+        // Po změně hesla zůstaneme na přihlašovací stránce, jen zavřeme dialog
+        setIsNewPasswordDialogOpen(false);
+        setActiveTab("login");
+      }
+    });
   };
 
   // If already logged in, redirect to dashboard
