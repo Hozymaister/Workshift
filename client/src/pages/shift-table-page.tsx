@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { cs } from 'date-fns/locale';
-import { Calendar, Download, Printer } from "lucide-react";
+import { Calendar, Download, Printer, Loader2 } from "lucide-react";
 import { Shift, User, Workplace } from "@shared/schema";
 import { getQueryFn } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -10,8 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Layout } from "@/components/layout/layout";
 
 interface ShiftWithDetails extends Shift {
   user?: User;
@@ -148,31 +148,32 @@ export default function ShiftTablePage() {
   };
 
   return (
-    <div className="p-6 max-w-[1400px] mx-auto">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Plán směn</h1>
-          <p className="text-muted-foreground">Tabulkový přehled všech naplánovaných směn</p>
+    <Layout title="Plán směn">
+      <div className="max-w-[1400px] mx-auto">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">Plán směn</h1>
+            <p className="text-muted-foreground">Tabulkový přehled všech naplánovaných směn</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button 
+              variant="outline" 
+              onClick={exportToCSV}
+              className="flex items-center gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Export CSV
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={printTable}
+              className="flex items-center gap-2 print:hidden"
+            >
+              <Printer className="h-4 w-4" />
+              Tisk
+            </Button>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button 
-            variant="outline" 
-            onClick={exportToCSV}
-            className="flex items-center gap-2"
-          >
-            <Download className="h-4 w-4" />
-            Export CSV
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={printTable}
-            className="flex items-center gap-2 print:hidden"
-          >
-            <Printer className="h-4 w-4" />
-            Tisk
-          </Button>
-        </div>
-      </div>
 
       <Card className="mb-6">
         <CardHeader>
@@ -329,6 +330,7 @@ export default function ShiftTablePage() {
           }
         }
       `}} />
-    </div>
+      </div>
+    </Layout>
   );
 }
