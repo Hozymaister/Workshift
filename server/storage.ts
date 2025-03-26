@@ -449,8 +449,13 @@ export class PostgreSQLStorage implements IStorage {
       createTableIfMissing: true,
     });
 
-    // Initialize demo data
-    this.initDemoData();
+    // Note: We'll initialize demo data after tables are created
+    // The initDemoData method will be called separately after migrations
+  }
+  
+  // Method to initialize the demo data after tables are created
+  public async initialize() {
+    await this.initDemoData();
   }
 
   private async initDemoData() {
