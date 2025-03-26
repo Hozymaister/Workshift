@@ -364,7 +364,7 @@ export default function WorkplacesPage() {
       
       const data = await response.json();
       
-      if (data && data.found) {
+      if (data && data.name) {
         // Nastavit hodnoty formuláře podle dat z ARES
         form.setValue("companyName", data.name || "");
         form.setValue("companyVatId", data.dic || "");
@@ -532,7 +532,7 @@ export default function WorkplacesPage() {
         <Dialog open={isFormDialogOpen} onOpenChange={(open) => {
           if (!open) closeDialog();
         }}>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {workplaceToEdit ? "Upravit pracovní objekt" : "Přidat nový pracovní objekt"}
@@ -711,17 +711,18 @@ export default function WorkplacesPage() {
                           <Button 
                             type="button" 
                             variant="outline" 
-                            size="icon" 
                             onClick={handleAresLookup}
                             disabled={aresLoading}
-                            className="h-11 px-4 flex-shrink-0"
+                            className="h-11 px-4 flex-shrink-0 whitespace-nowrap"
                           >
                             {aresLoading ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
-                              <Search className="h-4 w-4 mr-2" />
+                              <div className="flex items-center">
+                                <Search className="h-4 w-4 mr-2" />
+                                <span>{aresLoading ? "Ověřuji..." : "Ověřit v ARES"}</span>
+                              </div>
                             )}
-                            <span>{aresLoading ? "Ověřuji..." : "Ověřit v ARES"}</span>
                           </Button>
                         </div>
                         <FormDescription>
