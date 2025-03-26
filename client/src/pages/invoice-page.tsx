@@ -73,7 +73,8 @@ import {
   PieChart,
   LineChart,
   ArrowDown,
-  ArrowUp
+  ArrowUp,
+  Pencil
 } from "lucide-react";
 import {
   BarChart,
@@ -854,17 +855,109 @@ export default function InvoicePage() {
                       <div className="border-t pt-4">
                         <CardTitle className="mb-4">Položky faktury</CardTitle>
                         
-                        {invoiceItems.length === 0 ? (
-                          <div className="text-center py-10 border border-dashed rounded-md">
-                            <p className="text-slate-500">Zatím nebyly přidány žádné položky</p>
+                        {/* Přidání položky přímo ve formuláři */}
+                        <div className="mb-6 p-4 border rounded-md bg-slate-50">
+                          <h4 className="font-semibold mb-3">Přidat novou položku</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div>
+                              <FormItem>
+                                <FormLabel>Popis položky</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    placeholder="Popis položky" 
+                                    {...itemForm.register("description")}
+                                  />
+                                </FormControl>
+                                {itemForm.formState.errors.description && (
+                                  <p className="text-sm text-red-500">{itemForm.formState.errors.description.message}</p>
+                                )}
+                              </FormItem>
+                            </div>
+                            
+                            <div>
+                              <FormItem>
+                                <FormLabel>Množství</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    type="number" 
+                                    min="0.01" 
+                                    step="0.01"
+                                    placeholder="Množství"
+                                    {...itemForm.register("quantity", { 
+                                      valueAsNumber: true,
+                                    })}
+                                  />
+                                </FormControl>
+                                {itemForm.formState.errors.quantity && (
+                                  <p className="text-sm text-red-500">{itemForm.formState.errors.quantity.message}</p>
+                                )}
+                              </FormItem>
+                            </div>
+                            
+                            <div>
+                              <FormItem>
+                                <FormLabel>Jednotka</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    placeholder="ks, hod, m²"
+                                    {...itemForm.register("unit")}
+                                  />
+                                </FormControl>
+                                {itemForm.formState.errors.unit && (
+                                  <p className="text-sm text-red-500">{itemForm.formState.errors.unit.message}</p>
+                                )}
+                              </FormItem>
+                            </div>
+                            
+                            <div>
+                              <FormItem>
+                                <FormLabel>Cena za jednotku (Kč)</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    type="number" 
+                                    min="0" 
+                                    step="0.01"
+                                    placeholder="0.00"
+                                    {...itemForm.register("pricePerUnit", { 
+                                      valueAsNumber: true,
+                                    })}
+                                  />
+                                </FormControl>
+                                {itemForm.formState.errors.pricePerUnit && (
+                                  <p className="text-sm text-red-500">{itemForm.formState.errors.pricePerUnit.message}</p>
+                                )}
+                              </FormItem>
+                            </div>
+                          </div>
+                          
+                          <div className="mt-4 flex justify-end">
                             <Button 
-                              variant="outline" 
-                              className="mt-4"
-                              onClick={addItem}
+                              variant="secondary" 
+                              type="button"
+                              onClick={() => {
+                                const data = itemForm.getValues();
+                                if (itemForm.formState.isValid) {
+                                  onItemSubmit(data);
+                                  itemForm.reset({
+                                    description: "",
+                                    quantity: 1,
+                                    unit: "ks",
+                                    pricePerUnit: 0,
+                                  });
+                                } else {
+                                  itemForm.trigger();
+                                }
+                              }}
                             >
                               <Plus className="mr-2 h-4 w-4" />
                               Přidat položku
                             </Button>
+                          </div>
+                        </div>
+                        
+                        {invoiceItems.length === 0 ? (
+                          <div className="text-center py-6 border border-dashed rounded-md">
+                            <p className="text-slate-500">Zatím nebyly přidány žádné položky</p>
                           </div>
                         ) : (
                           <>
@@ -908,7 +1001,7 @@ export default function InvoicePage() {
                                             type="button"
                                             onClick={() => editItem(item.id)}
                                           >
-                                            <Printer className="h-4 w-4" />
+                                            <Pencil className="h-4 w-4" />
                                           </Button>
                                           <Button
                                             variant="ghost"
@@ -936,16 +1029,6 @@ export default function InvoicePage() {
                                   </tr>
                                 </tbody>
                               </table>
-                            </div>
-                            <div className="mt-4">
-                              <Button 
-                                variant="outline" 
-                                type="button"
-                                onClick={addItem}
-                              >
-                                <Plus className="mr-2 h-4 w-4" />
-                                Přidat další položku
-                              </Button>
                             </div>
                           </>
                         )}
