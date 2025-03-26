@@ -237,6 +237,9 @@ export class MemStorage implements IStorage {
     const shift: Shift = { 
       ...insertShift, 
       id,
+      date: insertShift.date ?? null,
+      startTime: insertShift.startTime ?? null,
+      endTime: insertShift.endTime ?? null,
       notes: insertShift.notes ?? null,
       userId: insertShift.userId ?? null
     };
