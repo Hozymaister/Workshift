@@ -256,8 +256,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/shifts", isAdmin, async (req, res) => {
-    const shift = await storage.createShift(req.body);
-    res.status(201).json(shift);
+    try {
+      // Zkopírujeme tělo požadavku, abychom ho mohli upravit
+      const shiftData = { ...req.body };
+      
+      // Validace dat před vytvořením směny
+      if (!shiftData.workplaceId) {
+        return res.status(400).json({ error: "Workplace ID is required" });
+      }
+      
+      // Ujistíme se, že workplaceId a userId jsou čísla
+      shiftData.workplaceId = Number(shiftData.workplaceId);
+      if (shiftData.userId) {
+        shiftData.userId = Number(shiftData.userId);
+      }
+      
+      // Konvertujeme řetězce ISO na objekty Date
+      // Tyto sloupce jsou v databázi typu timestamp
+      if (typeof shiftData.date === 'string') {
+        shiftData.date = new Date(shiftData.date);
+      }
+      
+      if (typeof shiftData.startTime === 'string') {
+        shiftData.startTime = new Date(shiftData.startTime);
+      }
+      
+      if (typeof shiftData.endTime === 'string') {
+        shiftData.endTime = new Date(shiftData.endTime);
+      }
+      
+      const shift = await storage.createShift(shiftData);
+      res.status(201).json(shift);
+    } catch (error) {
+      console.error("Chyba při vytváření směny:", error);
+      res.status(500).json({ error: "Nepodařilo se vytvořit směnu" });
+    }
   });
 
   app.get("/api/shifts/:id", isAuthenticated, async (req, res) => {
@@ -283,11 +316,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.put("/api/shifts/:id", isAdmin, async (req, res) => {
-    const updatedShift = await storage.updateShift(parseInt(req.params.id), req.body);
-    if (!updatedShift) {
-      return res.status(404).send("Shift not found");
+    try {
+      // Zkopírujeme tělo požadavku, abychom ho mohli upravit
+      const shiftData = { ...req.body };
+      
+      // Ujistíme se, že workplaceId a userId jsou čísla
+      if (shiftData.workplaceId) {
+        shiftData.workplaceId = Number(shiftData.workplaceId);
+      }
+      
+      if (shiftData.userId) {
+        shiftData.userId = Number(shiftData.userId);
+      }
+      
+      // Konvertujeme řetězce ISO na objekty Date
+      if (typeof shiftData.date === 'string') {
+        shiftData.date = new Date(shiftData.date);
+      }
+      
+      if (typeof shiftData.startTime === 'string') {
+        shiftData.startTime = new Date(shiftData.startTime);
+      }
+      
+      if (typeof shiftData.endTime === 'string') {
+        shiftData.endTime = new Date(shiftData.endTime);
+      }
+      
+      const updatedShift = await storage.updateShift(parseInt(req.params.id), shiftData);
+      if (!updatedShift) {
+        return res.status(404).send("Shift not found");
+      }
+      res.json(updatedShift);
+    } catch (error) {
+      console.error("Chyba při aktualizaci směny:", error);
+      res.status(500).json({ error: "Nepodařilo se aktualizovat směnu" });
     }
-    res.json(updatedShift);
   });
 
   app.delete("/api/shifts/:id", isAdmin, async (req, res) => {
