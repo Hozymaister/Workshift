@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { useLanguage } from "@/hooks/use-language";
 import { useLocation, Link } from "wouter";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Bell, Menu, Home, Calendar, Users, BarChart3, ClipboardList, FileText, User, LogOut, Settings } from "lucide-react";
 import { MobileMenu } from "./mobile-menu";
 import { Badge } from "@/components/ui/badge";
+import { LanguageSwitcher } from "@/components/language/language-switcher";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,6 +24,7 @@ import {
 export function Header({ title }: { title: string }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, logoutMutation } = useAuth();
+  const { t } = useLanguage();
   const [location, navigate] = useLocation();
   
   const handleLogout = () => {
@@ -50,16 +53,16 @@ export function Header({ title }: { title: string }) {
 
   // Základní navigační položky
   const commonNavItems = [
-    { path: '/', label: 'Dashboard', icon: <Home className="h-4 w-4" /> },
-    { path: '/shifts', label: 'Směny', icon: <Calendar className="h-4 w-4" /> },
-    { path: '/shift-table', label: 'Tabulka směn', icon: <ClipboardList className="h-4 w-4" /> },
+    { path: '/', label: t('dashboard'), icon: <Home className="h-4 w-4" /> },
+    { path: '/shifts', label: t('shifts'), icon: <Calendar className="h-4 w-4" /> },
+    { path: '/shift-table', label: t('shift_table'), icon: <ClipboardList className="h-4 w-4" /> },
   ];
   
   // Položky menu pouze pro správce
   const adminNavItems = [
-    { path: '/workplaces', label: 'Pracoviště', icon: <BarChart3 className="h-4 w-4" /> },
-    { path: '/workers', label: 'Pracovníci', icon: <Users className="h-4 w-4" /> },
-    { path: '/invoice', label: 'Fakturace', icon: <FileText className="h-4 w-4" /> },
+    { path: '/workplaces', label: t('workplaces'), icon: <BarChart3 className="h-4 w-4" /> },
+    { path: '/workers', label: t('workers'), icon: <Users className="h-4 w-4" /> },
+    { path: '/invoice', label: t('invoice'), icon: <FileText className="h-4 w-4" /> },
   ];
   
   // Kombinujeme položky podle role uživatele
@@ -84,6 +87,7 @@ export function Header({ title }: { title: string }) {
             <h1 className="ml-4 text-lg font-medium">{title}</h1>
           </div>
           <div className="flex items-center">
+            <LanguageSwitcher />
             <Popover>
               <PopoverTrigger asChild>
                 <Button 
@@ -140,19 +144,19 @@ export function Header({ title }: { title: string }) {
                   <Link href="/profile">
                     <DropdownMenuItem className="cursor-pointer">
                       <User className="mr-2 h-4 w-4" />
-                      <span>Profil</span>
+                      <span>{t('profile')}</span>
                     </DropdownMenuItem>
                   </Link>
                   <Link href="/settings">
                     <DropdownMenuItem className="cursor-pointer">
                       <Settings className="mr-2 h-4 w-4" />
-                      <span>Nastavení</span>
+                      <span>{t('settings')}</span>
                     </DropdownMenuItem>
                   </Link>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem className="cursor-pointer" onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
-                    <span>Odhlásit se</span>
+                    <span>{t('logout')}</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -184,6 +188,7 @@ export function Header({ title }: { title: string }) {
             </div>
             
             <div className="flex items-center space-x-3">
+              <LanguageSwitcher />
               <Popover>
                 <PopoverTrigger asChild>
                   <Button 
@@ -245,19 +250,19 @@ export function Header({ title }: { title: string }) {
                     <Link href="/profile">
                       <DropdownMenuItem className="cursor-pointer">
                         <User className="mr-2 h-4 w-4" />
-                        <span>Profil</span>
+                        <span>{t('profile')}</span>
                       </DropdownMenuItem>
                     </Link>
                     <Link href="/settings">
                       <DropdownMenuItem className="cursor-pointer">
                         <Settings className="mr-2 h-4 w-4" />
-                        <span>Nastavení</span>
+                        <span>{t('settings')}</span>
                       </DropdownMenuItem>
                     </Link>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem className="cursor-pointer" onClick={handleLogout}>
                       <LogOut className="mr-2 h-4 w-4" />
-                      <span>Odhlásit se</span>
+                      <span>{t('logout')}</span>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
