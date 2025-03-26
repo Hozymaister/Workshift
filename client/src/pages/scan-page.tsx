@@ -351,105 +351,111 @@ export default function ScanPage() {
           <div className="md:col-span-2">
             <Card>
               <CardHeader className="border-b bg-slate-50">
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="camera" className="flex items-center">
-                      <ScanLine className="h-4 w-4 mr-2" />
-                      Kamera
-                    </TabsTrigger>
-                    <TabsTrigger value="upload" className="flex items-center">
-                      <Upload className="h-4 w-4 mr-2" />
-                      Nahrání souboru
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </CardHeader>
-              
-              <CardContent className="p-6">
-                <TabsContent value="camera" className="mt-0">
-                  <div className="flex flex-col items-center">
-                    <div className="relative w-full aspect-[4/3] bg-slate-100 rounded-md overflow-hidden border mb-4">
-                      <video 
-                        ref={videoRef} 
-                        autoPlay 
-                        playsInline 
-                        className="absolute inset-0 w-full h-full object-cover"
-                      />
-                      {isScanning && (
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                          <div className="bg-white rounded-md p-4 flex flex-col items-center">
-                            <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
-                            <p className="text-slate-800">Detekce dokumentu...</p>
+                <div className="w-full">
+                  <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="camera" className="flex items-center">
+                        <ScanLine className="h-4 w-4 mr-2" />
+                        Kamera
+                      </TabsTrigger>
+                      <TabsTrigger value="upload" className="flex items-center">
+                        <Upload className="h-4 w-4 mr-2" />
+                        Nahrání souboru
+                      </TabsTrigger>
+                    </TabsList>
+                  
+                    <CardContent className="p-6">
+                      <TabsContent value="camera" className="mt-0">
+                        <div className="flex flex-col items-center">
+                          <div className="relative w-full aspect-[4/3] bg-slate-100 rounded-md overflow-hidden border mb-4">
+                            <video 
+                              ref={videoRef} 
+                              autoPlay 
+                              playsInline 
+                              className="absolute inset-0 w-full h-full object-cover"
+                            />
+                            {isScanning && (
+                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                <div className="bg-white rounded-md p-4 flex flex-col items-center">
+                                  <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
+                                  <p className="text-slate-800">Detekce dokumentu...</p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          
+                          <p className="text-sm text-slate-500 mb-6 text-center max-w-md">
+                            Zamiřte kameru na dokument, který chcete naskenovat. Systém automaticky rozpozná okraje dokumentu.
+                          </p>
+                          
+                          <div className="flex gap-4">
+                            <Button 
+                              onClick={handleScan} 
+                              disabled={isScanning}
+                              size="lg"
+                              className="bg-gradient-to-r from-primary to-primary/80"
+                            >
+                              {isScanning ? (
+                                <>
+                                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                                  Skenování...
+                                </>
+                              ) : (
+                                <>
+                                  <ScanLine className="mr-2 h-5 w-5" />
+                                  Naskenovat dokument
+                                </>
+                              )}
+                            </Button>
                           </div>
                         </div>
-                      )}
-                    </div>
-                    
-                    <p className="text-sm text-slate-500 mb-6 text-center max-w-md">
-                      Zamiřte kameru na dokument, který chcete naskenovat. Systém automaticky rozpozná okraje dokumentu.
-                    </p>
-                    
-                    <div className="flex gap-4">
-                      <Button 
-                        onClick={handleScan} 
-                        disabled={isScanning}
-                        size="lg"
-                        className="bg-gradient-to-r from-primary to-primary/80"
-                      >
-                        {isScanning ? (
-                          <>
-                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                            Skenování...
-                          </>
-                        ) : (
-                          <>
-                            <ScanLine className="mr-2 h-5 w-5" />
-                            Naskenovat dokument
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="upload" className="mt-0">
-                  <div className="flex flex-col items-center">
-                    <div 
-                      className="border-2 border-dashed border-slate-300 rounded-lg p-10 w-full max-w-xl mx-auto text-center mb-6 hover:bg-slate-50 cursor-pointer transition-colors"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      <input
-                        type="file"
-                        accept="image/*,.pdf"
-                        className="hidden"
-                        ref={fileInputRef}
-                        onChange={handleFileUpload}
-                      />
-                      <Upload className="mx-auto h-12 w-12 text-slate-400" />
-                      <h3 className="mt-4 text-lg font-medium text-slate-900">
-                        Nahrajte dokument
-                      </h3>
-                      <p className="mt-2 text-sm text-slate-500 max-w-xs mx-auto">
-                        Klikněte nebo přetáhněte soubor do oblasti. Podporované formáty: PDF, JPG, PNG.
-                      </p>
-                      {isUploading && (
-                        <div className="mt-4 flex items-center justify-center gap-2">
-                          <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                          <span className="text-slate-700">Nahrávání...</span>
+                      </TabsContent>
+                      
+                      <TabsContent value="upload" className="mt-0">
+                        <div className="flex flex-col items-center">
+                          <div 
+                            className="border-2 border-dashed border-slate-300 rounded-lg p-10 w-full max-w-xl mx-auto text-center mb-6 hover:bg-slate-50 cursor-pointer transition-colors"
+                            onClick={() => fileInputRef.current?.click()}
+                          >
+                            <input
+                              type="file"
+                              accept="image/*,.pdf"
+                              className="hidden"
+                              ref={fileInputRef}
+                              onChange={handleFileUpload}
+                            />
+                            <Upload className="mx-auto h-12 w-12 text-slate-400" />
+                            <h3 className="mt-4 text-lg font-medium text-slate-900">
+                              Nahrajte dokument
+                            </h3>
+                            <p className="mt-2 text-sm text-slate-500 max-w-xs mx-auto">
+                              Klikněte nebo přetáhněte soubor do oblasti. Podporované formáty: PDF, JPG, PNG.
+                            </p>
+                            {isUploading && (
+                              <div className="mt-4 flex items-center justify-center gap-2">
+                                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                                <span className="text-slate-700">Nahrávání...</span>
+                              </div>
+                            )}
+                          </div>
+                          
+                          <Button 
+                            type="button" 
+                            variant="outline"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={isUploading}
+                          >
+                            Vybrat soubor
+                          </Button>
                         </div>
-                      )}
-                    </div>
-                    
-                    <Button 
-                      type="button" 
-                      variant="outline"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isUploading}
-                    >
-                      Vybrat soubor
-                    </Button>
-                  </div>
-                </TabsContent>
+                      </TabsContent>
+                    </CardContent>
+                  </Tabs>
+                </div>
+              </CardHeader>
+              
+              <CardContent className="p-0">
+                {/* Obsah přesunut dovnitř Tabs */}
               </CardContent>
             </Card>
           </div>
