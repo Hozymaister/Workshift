@@ -22,7 +22,7 @@ type AuthContextType = {
 
 const loginSchema = z.object({
   email: z.string().email("Zadejte platný email"),
-  password: z.string().min(6, "Heslo musí mít alespoň 6 znaků"),
+  password: z.string().min(1, "Heslo je povinné"),
 });
 
 const registerSchema = insertUserSchema.extend({
@@ -51,14 +51,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
-      const res = await apiRequest("POST", "/api/login", credentials);
-      return await res.json();
+      console.log("Attempting login with:", { 
+        email: credentials.email, 
+        passwordProvided: !!credentials.password 
+      });
+      try {
+        const res = await apiRequest("POST", "/api/login", credentials);
+        const userData = await res.json();
+        console.log("Login successful:", { userId: userData.id });
+        return userData;
+      } catch (error) {
+        console.error("Login error:", error);
+        throw error;
+      }
     },
     onSuccess: (user: SafeUser) => {
+      console.log("Setting user data in query cache");
       queryClient.setQueryData(["/api/user"], user);
       // Přesměrování provede ProtectedRoute
     },
     onError: (error: Error) => {
+      console.error("Login mutation error handler:", error);
       toast({
         title: "Přihlášení selhalo",
         description: error.message,

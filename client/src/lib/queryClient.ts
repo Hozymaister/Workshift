@@ -2,8 +2,19 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
+    let errorMessage = res.statusText;
+    try {
+      // Try to get more detailed error from response body
+      const text = await res.text();
+      if (text) {
+        errorMessage = text;
+      }
+    } catch (e) {
+      console.error("Failed to parse error response body:", e);
+    }
+    
+    console.error(`API Response Error: ${res.status} ${errorMessage}`);
+    throw new Error(`${res.status}: ${errorMessage}`);
   }
 }
 
@@ -12,15 +23,23 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const res = await fetch(url, {
-    method,
-    headers: data ? { "Content-Type": "application/json" } : {},
-    body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
-  });
+  console.log(`API Request: ${method} ${url}`, data);
+  
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: data ? { "Content-Type": "application/json" } : {},
+      body: data ? JSON.stringify(data) : undefined,
+      credentials: "include",
+    });
 
-  await throwIfResNotOk(res);
-  return res;
+    console.log(`API Response: ${res.status} ${res.statusText}`);
+    await throwIfResNotOk(res);
+    return res;
+  } catch (error) {
+    console.error(`API Request Error: ${method} ${url}`, error);
+    throw error;
+  }
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
