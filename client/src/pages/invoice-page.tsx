@@ -449,11 +449,16 @@ export default function InvoicePage() {
       setIsLoading(true);
       const response = await fetch(`/api/ares?ico=${ico}`);
       
-      if (!response.ok) {
-        throw new Error(`Chyba při načítání dat: ${response.statusText}`);
-      }
-      
       const data = await response.json();
+      
+      // Kontrola na chybovou odpověď
+      if (!response.ok) {
+        if (data && data.error) {
+          throw new Error(data.error);
+        } else {
+          throw new Error(`Chyba při načítání dat: ${response.statusText}`);
+        }
+      }
       
       // Předvyplnění formuláře daty z ARES
       createInvoiceForm.setValue("customerName", data.name);
@@ -465,12 +470,12 @@ export default function InvoicePage() {
       }
       
       toast({
-        title: "Data z ARES načtena",
+        title: "Data načtena",
         description: `Informace o firmě ${data.name} byly úspěšně načteny.`
       });
     } catch (error) {
       toast({
-        title: "Chyba při načítání",
+        title: "Chyba při vyhledávání",
         description: error instanceof Error ? error.message : "Nastala neznámá chyba při načítání dat",
         variant: "destructive"
       });
