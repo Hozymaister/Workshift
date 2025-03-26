@@ -406,7 +406,7 @@ export default function WorkplacesPage() {
                     <FormItem>
                       <FormLabel>Název objektu</FormLabel>
                       <FormControl>
-                        <Input placeholder="Název pracovního objektu" {...field} />
+                        <Input placeholder="Název pracovního objektu" {...field} className="bg-white border-slate-300 focus:border-primary/70 h-11" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -424,7 +424,7 @@ export default function WorkplacesPage() {
                         defaultValue={field.value}
                       >
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger className="bg-white border-slate-300 h-11">
                             <SelectValue placeholder="Vyberte typ objektu" />
                           </SelectTrigger>
                         </FormControl>
@@ -461,7 +461,7 @@ export default function WorkplacesPage() {
                     <FormItem>
                       <FormLabel>Adresa</FormLabel>
                       <FormControl>
-                        <Input placeholder="Adresa objektu (nepovinné)" {...field} />
+                        <Input placeholder="Adresa objektu (nepovinné)" {...field} className="bg-white border-slate-300 focus:border-primary/70 h-11" />
                       </FormControl>
                       <FormDescription>
                         Zadejte adresu objektu pro snazší orientaci
@@ -481,7 +481,8 @@ export default function WorkplacesPage() {
                         <Textarea 
                           placeholder="Doplňující informace o objektu (nepovinné)" 
                           {...field} 
-                          rows={3} 
+                          rows={3}
+                          className="bg-white border-slate-300 focus:border-primary/70 resize-none"
                         />
                       </FormControl>
                       <FormMessage />
