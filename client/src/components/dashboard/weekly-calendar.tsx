@@ -1,12 +1,34 @@
+import React, { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Shift } from "@shared/schema";
-import { format, startOfWeek, addDays, isSameDay, isToday } from "date-fns";
+import { Shift, Workplace } from "@shared/schema";
+import { 
+  format, 
+  startOfWeek, 
+  startOfMonth,
+  endOfMonth,
+  addDays, 
+  addMonths,
+  subMonths,
+  isSameDay, 
+  isToday,
+  isWeekend,
+  eachDayOfInterval,
+  getDate,
+} from "date-fns";
 import { cs } from "date-fns/locale";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Info, Clock, User, MapPin } from "lucide-react";
+import { 
+  Info, Clock, User, MapPin, Calendar as CalendarIcon, 
+  ArrowLeftRight, ChevronLeft, ChevronRight, Maximize 
+} from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { CalendarModal } from "@/components/ui/calendar-modal";
+import { WorkplaceFilter } from "@/components/ui/workplace-filter";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface ShiftWithDetails extends Shift {
   workplace?: {
@@ -50,29 +72,72 @@ function getWorkplaceIcon(type: string | undefined) {
 }
 
 export function WeeklyCalendar() {
-  const today = new Date();
-  const startOfCurrentWeek = startOfWeek(today, { weekStartsOn: 1 }); // Start from Monday
+  // State for the modal
+  const [isModalOpen, setIsModalOpen] = useState(false);
   
-  const startDate = format(startOfCurrentWeek, "yyyy-MM-dd");
-  const endDate = format(addDays(startOfCurrentWeek, 6), "yyyy-MM-dd");
+  // State for filter by workplace
+  const [selectedWorkplaceId, setSelectedWorkplaceId] = useState<number | null>(null);
   
-  const { data: shifts, isLoading } = useQuery<ShiftWithDetails[]>({
-    queryKey: ["/api/shifts", { startDate, endDate }],
+  // State for current view date
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  
+  // State for view mode (week or month)
+  const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
+
+  // Compute date intervals based on viewMode
+  const dateInterval = viewMode === 'week' 
+    ? {
+        start: startOfWeek(selectedDate, { weekStartsOn: 1 }),
+        end: addDays(startOfWeek(selectedDate, { weekStartsOn: 1 }), 6)
+      }
+    : {
+        start: startOfMonth(selectedDate),
+        end: endOfMonth(selectedDate)
+      };
+  
+  const startDateStr = format(dateInterval.start, "yyyy-MM-dd");
+  const endDateStr = format(dateInterval.end, "yyyy-MM-dd");
+  
+  // Fetch shifts based on date interval
+  const { data: shifts = [], isLoading: shiftsLoading } = useQuery<ShiftWithDetails[]>({
+    queryKey: ["/api/shifts", { startDate: startDateStr, endDate: endDateStr }],
   });
   
-  // Generate array of days for the week
-  const weekDays = Array.from({ length: 7 }).map((_, i) => {
-    const date = addDays(startOfCurrentWeek, i);
+  // Fetch workplaces
+  const { data: workplaces = [], isLoading: workplacesLoading } = useQuery<Workplace[]>({
+    queryKey: ["/api/workplaces"],
+  });
+  
+  // Filter shifts by selected workplace
+  const filteredShifts = selectedWorkplaceId
+    ? shifts.filter(shift => shift.workplace?.id === selectedWorkplaceId)
+    : shifts;
+  
+  // Generate days for the current view (week or month)
+  const days = eachDayOfInterval({
+    start: dateInterval.start,
+    end: dateInterval.end
+  }).map(date => {
     return {
       fullDate: date,
       dayName: format(date, "EEE", { locale: cs }).charAt(0).toUpperCase() + format(date, "EEE", { locale: cs }).slice(1),
       dayNum: format(date, "d"),
-      monthShort: format(date, "L") + ".",
+      monthShort: format(date, "LLL", { locale: cs }).substring(0, 3),
       isToday: isToday(date),
-      shifts: shifts?.filter(shift => shift.date && isSameDay(new Date(shift.date), date)) || [],
+      isWeekend: isWeekend(date),
+      shifts: filteredShifts.filter(shift => shift.date && isSameDay(new Date(shift.date), date)) || [],
     };
   });
   
+  // Calculate number of days in a row based on view mode
+  const daysInRow = viewMode === 'week' ? 7 : 7;
+  
+  // Split days into rows
+  const dayRows = Array.from({ length: Math.ceil(days.length / daysInRow) }).map((_, i) =>
+    days.slice(i * daysInRow, (i + 1) * daysInRow)
+  );
+  
+  // Format time helper
   const formatTime = (dateString: string | null) => {
     if (!dateString) return "??:??";
     try {
@@ -82,6 +147,7 @@ export function WeeklyCalendar() {
     }
   };
 
+  // Calculate duration helper
   const calculateDuration = (startTime: string, endTime: string) => {
     try {
       const start = new Date(startTime);
@@ -93,7 +159,177 @@ export function WeeklyCalendar() {
     }
   };
 
-  if (isLoading) {
+  // Navigation handlers
+  const handlePreviousPeriod = () => {
+    setSelectedDate(viewMode === 'week' 
+      ? addDays(selectedDate, -7) 
+      : subMonths(selectedDate, 1)
+    );
+  };
+
+  const handleNextPeriod = () => {
+    setSelectedDate(viewMode === 'week' 
+      ? addDays(selectedDate, 7) 
+      : addMonths(selectedDate, 1)
+    );
+  };
+
+  const handleToday = () => {
+    setSelectedDate(new Date());
+  };
+
+  const toggleViewMode = () => {
+    setViewMode(viewMode === 'week' ? 'month' : 'week');
+  };
+
+  // Calendar grid content renderer
+  const renderCalendarContent = useCallback((isModal: boolean = false) => {
+    // Determine grid columns based on view mode and modal
+    const gridCols = isModal 
+      ? 'grid-cols-7'
+      : viewMode === 'week' 
+        ? 'grid-cols-7' 
+        : 'grid-cols-7';
+    
+    return (
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={`${viewMode}-${format(selectedDate, 'yyyy-MM')}`}
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: 10 }}
+          transition={{ duration: 0.3 }}
+          className="bg-white shadow rounded-lg overflow-hidden"
+        >
+          <div className={`flex ${isModal ? 'sticky top-0 z-10 bg-white' : ''} border-b border-slate-200`}>
+            {dayRows[0]?.map((day, index) => (
+              <div 
+                key={`header-${index}`} 
+                className={cn(
+                  "flex-1 text-center py-2 border-r border-slate-200 last:border-r-0",
+                  day.isToday ? "bg-primary/5" : "",
+                  day.isWeekend ? "bg-slate-50" : ""
+                )}
+              >
+                <div className="text-sm font-medium text-slate-900">{day.dayName}</div>
+                <div className="text-sm text-slate-500">
+                  {day.isToday ? (
+                    <Badge variant="default" className="rounded-full px-2 py-0.5">
+                      {day.dayNum}. {day.monthShort}
+                    </Badge>
+                  ) : (
+                    <span>
+                      {day.dayNum}. {day.monthShort}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          <div className={`grid ${gridCols} ${isModal ? 'min-h-[600px]' : 'min-h-[250px]'}`}>
+            {dayRows.map((row, rowIndex) => (
+              // Používáme div místo React.Fragment
+              <div key={`row-${rowIndex}`} className="contents">
+                {row.map((day, dayIndex) => (
+                  <motion.div 
+                    key={`day-${rowIndex}-${dayIndex}`}
+                    whileHover={{ backgroundColor: 'rgba(243, 244, 246, 0.5)' }}
+                    className={cn(
+                      "border-r border-b border-slate-200 p-1.5 min-h-[150px]",
+                      dayIndex === daysInRow - 1 ? "border-r-0" : "",
+                      day.isToday ? "bg-primary/5" : "",
+                      day.isWeekend ? "bg-slate-50/50" : ""
+                    )}
+                  >
+                    {day.shifts.length === 0 ? (
+                      <div className="h-full w-full flex items-center justify-center text-xs text-slate-400">
+                        {day.isToday ? "Dnes nemáte směny" : "Žádné směny"}
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {day.shifts.map((shift, shiftIndex) => (
+                          <TooltipProvider key={`shift-${shiftIndex}`}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <motion.div 
+                                  className={cn(
+                                    "rounded p-2 text-sm cursor-pointer",
+                                    getDayClass(shift.workplace?.type)
+                                  )}
+                                  whileHover={{ 
+                                    y: -2,
+                                    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)"
+                                  }}
+                                  whileTap={{ y: 0 }}
+                                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                                >
+                                  <div className="font-medium flex items-center text-xs gap-1">
+                                    {getWorkplaceIcon(shift.workplace?.type)}
+                                    <span className="truncate max-w-[80px]">
+                                      {shift.workplace?.name || "Neznámý objekt"}
+                                    </span>
+                                  </div>
+                                  <div className="text-xs mt-1 flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    <span>
+                                      {formatTime(shift.startTime)} - {formatTime(shift.endTime)}
+                                    </span>
+                                  </div>
+                                  {shift.user && (
+                                    <div className="text-xs mt-1 flex items-center gap-1 max-w-full truncate">
+                                      <User className="h-3 w-3 shrink-0" />
+                                      <span className="truncate">
+                                        {`${shift.user.firstName} ${shift.user.lastName.charAt(0)}.`}
+                                      </span>
+                                    </div>
+                                  )}
+                                </motion.div>
+                              </TooltipTrigger>
+                              <TooltipContent side="right" className="max-w-xs">
+                                <div className="space-y-2 p-1">
+                                  <div className="font-medium">
+                                    {shift.workplace?.name || "Neznámý objekt"}
+                                  </div>
+                                  <div className="text-xs flex items-center gap-2">
+                                    <Clock className="h-4 w-4" />
+                                    <span>
+                                      {formatTime(shift.startTime)} - {formatTime(shift.endTime)}
+                                      <span className="ml-1 text-slate-400">
+                                        ({shift.startTime && shift.endTime ? calculateDuration(shift.startTime, shift.endTime) : "? h"})
+                                      </span>
+                                    </span>
+                                  </div>
+                                  <div className="text-xs flex items-center gap-2">
+                                    <User className="h-4 w-4" />
+                                    <span>
+                                      {shift.user ? `${shift.user.firstName} ${shift.user.lastName}` : "Neobsazeno"}
+                                    </span>
+                                  </div>
+                                  {shift.notes && (
+                                    <div className="text-xs flex items-start gap-2">
+                                      <Info className="h-4 w-4 shrink-0 mt-0.5" />
+                                      <span>{shift.notes}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ))}
+                      </div>
+                    )}
+                  </motion.div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      </AnimatePresence>
+    );
+  }, [viewMode, selectedDate, dayRows, daysInRow, filteredShifts]);
+
+  if (shiftsLoading || workplacesLoading) {
     return (
       <div className="mt-8">
         <Skeleton className="h-6 w-48 mb-4" />
@@ -103,118 +339,97 @@ export function WeeklyCalendar() {
   }
 
   return (
-    <div className="mt-8">
-      <h3 className="text-lg font-medium text-slate-900 mb-4">Přehled směn - aktuální týden</h3>
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="flex border-b border-slate-200">
-          {weekDays.map((day, index) => (
-            <div 
-              key={index} 
-              className={cn(
-                "flex-1 text-center py-2 border-r border-slate-200 last:border-r-0",
-                day.isToday ? "bg-primary/5" : ""
-              )}
-            >
-              <div className="text-sm font-medium text-slate-900">{day.dayName}</div>
-              <div className="text-sm text-slate-500">
-                {day.isToday ? (
-                  <Badge variant="default" className="rounded-full px-2 py-0.5">
-                    {day.dayNum}.{day.monthShort}
-                  </Badge>
-                ) : (
-                  <span>{day.dayNum}.{day.monthShort}</span>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
+    <div className="mt-4">
+      {/* Filter by workplace */}
+      <WorkplaceFilter 
+        selectedWorkplaceId={selectedWorkplaceId}
+        onSelectWorkplace={setSelectedWorkplaceId}
+      />
+      
+      {/* Calendar header with controls */}
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-medium text-slate-900">
+          Přehled směn - {viewMode === 'week' ? 'týden' : 'měsíc'}{' '}
+          <span className="text-primary">
+            {format(
+              viewMode === 'week'
+                ? dateInterval.start
+                : selectedDate,
+              viewMode === 'week'
+                ? "d. MMMM"
+                : "LLLL yyyy",
+              { locale: cs }
+            )}
+          </span>
+        </h3>
         
-        <div className="grid grid-cols-7 min-h-[250px]">
-          {weekDays.map((day, dayIndex) => (
-            <div 
-              key={dayIndex} 
-              className={cn(
-                "border-r border-b border-slate-200 p-1.5 min-h-[140px]",
-                dayIndex === 6 ? "border-r-0" : "",
-                day.isToday ? "bg-primary/5" : ""
-              )}
-            >
-              {day.shifts.length === 0 ? (
-                <div className="h-full w-full flex items-center justify-center text-xs text-slate-400">
-                  {day.isToday ? "Dnes nemáte směny" : "Žádné směny"}
-                </div>
-              ) : (
-                <div className="space-y-1.5">
-                  {day.shifts.map((shift, shiftIndex) => (
-                    <TooltipProvider key={shiftIndex}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div 
-                            className={cn(
-                              "rounded p-2 text-sm cursor-pointer transition-all",
-                              getDayClass(shift.workplace?.type),
-                              "hover:translate-y-[-2px] hover:shadow-md"
-                            )}
-                          >
-                            <div className="font-medium flex items-center text-xs gap-1">
-                              {getWorkplaceIcon(shift.workplace?.type)}
-                              <span className="truncate max-w-[80px]">
-                                {shift.workplace?.name || "Neznámý objekt"}
-                              </span>
-                            </div>
-                            <div className="text-xs mt-1 flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              <span>
-                                {formatTime(shift.startTime)} - {formatTime(shift.endTime)}
-                              </span>
-                            </div>
-                            {shift.user && (
-                              <div className="text-xs mt-1 flex items-center gap-1 max-w-full truncate">
-                                <User className="h-3 w-3 shrink-0" />
-                                <span className="truncate">
-                                  {`${shift.user.firstName} ${shift.user.lastName.charAt(0)}.`}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent side="right" className="max-w-xs">
-                          <div className="space-y-2 p-1">
-                            <div className="font-medium">
-                              {shift.workplace?.name || "Neznámý objekt"}
-                            </div>
-                            <div className="text-xs flex items-center gap-2">
-                              <Clock className="h-4 w-4" />
-                              <span>
-                                {formatTime(shift.startTime)} - {formatTime(shift.endTime)}
-                                <span className="ml-1 text-slate-400">
-                                  ({shift.startTime && shift.endTime ? calculateDuration(shift.startTime, shift.endTime) : "? h"})
-                                </span>
-                              </span>
-                            </div>
-                            <div className="text-xs flex items-center gap-2">
-                              <User className="h-4 w-4" />
-                              <span>
-                                {shift.user ? `${shift.user.firstName} ${shift.user.lastName}` : "Neobsazeno"}
-                              </span>
-                            </div>
-                            {shift.notes && (
-                              <div className="text-xs flex items-start gap-2">
-                                <Info className="h-4 w-4 shrink-0 mt-0.5" />
-                                <span>{shift.notes}</span>
-                              </div>
-                            )}
-                          </div>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
+        <div className="flex items-center space-x-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="h-8"
+            onClick={handlePreviousPeriod}
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            {viewMode === 'week' ? 'Předchozí' : 'Před.'}
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="h-8"
+            onClick={handleToday}
+          >
+            Dnes
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="h-8"
+            onClick={handleNextPeriod}
+          >
+            {viewMode === 'week' ? 'Následující' : 'Násl.'}
+            <ChevronRight className="h-4 w-4 ml-1" />
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="h-8"
+            onClick={toggleViewMode}
+          >
+            <ArrowLeftRight className="h-4 w-4 mr-1" />
+            {viewMode === 'week' ? 'Měsíc' : 'Týden'}
+          </Button>
         </div>
       </div>
+      
+      {/* Calendar grid with scroll area */}
+      <div className="w-full overflow-x-auto">
+        {renderCalendarContent()}
+      </div>
+      
+      {/* Fullscreen button */}
+      <div className="flex justify-center mt-4">
+        <Button
+          variant="outline"
+          onClick={() => setIsModalOpen(true)}
+          className="w-full max-w-xs"
+        >
+          <Maximize className="h-4 w-4 mr-2" />
+          Zobrazit na celou obrazovku
+        </Button>
+      </div>
+      
+      {/* Fullscreen modal */}
+      <CalendarModal
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        shifts={filteredShifts}
+        workplaces={workplaces}
+        selectedDate={selectedDate}
+        setSelectedDate={setSelectedDate}
+        selectedWorkplaceId={selectedWorkplaceId}
+        renderCalendarContent={renderCalendarContent}
+      />
     </div>
   );
 }
