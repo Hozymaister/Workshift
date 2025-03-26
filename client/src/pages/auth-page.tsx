@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
+import { useLanguage } from "@/hooks/use-language";
 import { Redirect } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -77,6 +78,7 @@ type NewPasswordFormValues = z.infer<typeof newPasswordSchema>;
 export default function AuthPage() {
   const { user, loginMutation, registerMutation, refetchUser } = useAuth();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState("login");
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [isNewPasswordDialogOpen, setIsNewPasswordDialogOpen] = useState(false);
@@ -267,14 +269,14 @@ export default function AuthPage() {
                   className={`py-3 text-center font-medium ${activeTab === "login" ? "border-b-2 border-primary text-primary" : "text-gray-500"}`}
                   onClick={() => setActiveTab("login")}
                 >
-                  Přihlášení
+                  {t('login')}
                 </button>
                 <button 
                   type="button"
                   className={`py-3 text-center font-medium ${activeTab === "register" ? "border-b-2 border-primary text-primary" : "text-gray-500"}`}
                   onClick={() => setActiveTab("register")}
                 >
-                  Registrace
+                  {t('register')}
                 </button>
               </div>
               
