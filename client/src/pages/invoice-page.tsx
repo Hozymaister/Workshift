@@ -76,7 +76,10 @@ import {
   LineChart,
   ArrowDown,
   ArrowUp,
-  Pencil
+  Pencil,
+  FileText,
+  ExternalLink,
+  Info
 } from "lucide-react";
 import {
   BarChart,
