@@ -11,3 +11,33 @@
     @apply font-sans antialiased bg-background text-foreground;
   }
 }
+
+/* Úpravy formulářových prvků */
+.form-input,
+.form-select,
+.form-multiselect {
+  @apply border-slate-200 bg-white focus:border-slate-300 focus:ring-1 focus:ring-slate-200 focus-visible:outline-none;
+}
+
+/* Úprava tlačítek, aby měla subtilnější styl */
+.button-subtle {
+  @apply bg-white text-slate-700 border border-slate-200 hover:bg-slate-50;
+}
+
+/* Úprava kalendáře a datových vstupů */
+.rdp-button:focus:not([disabled]), 
+.rdp-button:active:not([disabled]),
+.rdp-button:hover:not([disabled]) {
+  @apply bg-slate-100;
+}
+
+.rdp-day_selected, 
+.rdp-day_selected:focus, 
+.rdp-day_selected:hover {
+  @apply bg-slate-700 text-white;
+}
+
+/* Úprava dialogů a vyskakovacích oken */
+.dialog-content {
+  @apply bg-white border-slate-200;
+}
