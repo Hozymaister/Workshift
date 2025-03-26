@@ -26,19 +26,19 @@ export default function ShiftTablePage() {
   const [endDate, setEndDate] = useState<string>(format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'));
 
   // Získání dat směn
-  const { data: shifts, isLoading: isLoadingShifts } = useQuery<ShiftWithDetails[]>({
+  const { data: shifts = [], isLoading: isLoadingShifts } = useQuery<ShiftWithDetails[]>({
     queryKey: ['/api/shifts'],
     queryFn: getQueryFn({ on401: "throw" }),
   });
 
   // Získání dat pracovníků
-  const { data: users } = useQuery<User[]>({
+  const { data: users = [] } = useQuery<User[]>({
     queryKey: ['/api/workers'],
     queryFn: getQueryFn({ on401: "throw" }),
   });
 
   // Získání dat pracovišť
-  const { data: workplaces } = useQuery<Workplace[]>({
+  const { data: workplaces = [] } = useQuery<Workplace[]>({
     queryKey: ['/api/workplaces'],
     queryFn: getQueryFn({ on401: "throw" }),
   });
@@ -47,8 +47,7 @@ export default function ShiftTablePage() {
   const [enhancedShifts, setEnhancedShifts] = useState<ShiftWithDetails[]>([]);
 
   useEffect(() => {
-    if (!shifts || !users || !workplaces) return;
-
+    // Odstranili jsme podmínku, která mohla způsobovat, že se data nezobrazovala
     const enhanced = shifts.map(shift => {
       const user = users.find(u => u.id === shift.userId);
       const workplace = workplaces.find(w => w.id === shift.workplaceId);
@@ -61,6 +60,9 @@ export default function ShiftTablePage() {
     });
     
     setEnhancedShifts(enhanced);
+    
+    // Log pro diagnostiku
+    console.log("Data pro tabulku:", { shifts, users, workplaces, enhanced });
   }, [shifts, users, workplaces]);
 
   // Filtrování směn na základě vyhledávacího dotazu a filtru pracoviště
