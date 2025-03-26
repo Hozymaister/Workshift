@@ -11,12 +11,7 @@ import {
   Card,
   CardContent,
 } from "@/components/ui/card";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+// Upravili jsme strukturu - místo Tabs používáme standardní div strukturu
 import {
   Form,
   FormControl,
@@ -261,13 +256,25 @@ export default function AuthPage() {
               <p className="text-slate-600">Systém pro správu směn a pracovníků</p>
             </div>
           
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid grid-cols-2 w-full rounded-none">
-                <TabsTrigger value="login">Přihlášení</TabsTrigger>
-                <TabsTrigger value="register">Registrace</TabsTrigger>
-              </TabsList>
+            <div className="w-full">
+              <div className="grid grid-cols-2 w-full rounded-none border-b">
+                <button 
+                  type="button"
+                  className={`py-3 text-center font-medium ${activeTab === "login" ? "border-b-2 border-primary text-primary" : "text-gray-500"}`}
+                  onClick={() => setActiveTab("login")}
+                >
+                  Přihlášení
+                </button>
+                <button 
+                  type="button"
+                  className={`py-3 text-center font-medium ${activeTab === "register" ? "border-b-2 border-primary text-primary" : "text-gray-500"}`}
+                  onClick={() => setActiveTab("register")}
+                >
+                  Registrace
+                </button>
+              </div>
               
-              <TabsContent value="login" className="p-6">
+              <div className={`${activeTab === "login" ? "block" : "hidden"} p-6`}>
                 <Form {...loginForm}>
                   <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
                     <FormField
@@ -314,13 +321,13 @@ export default function AuthPage() {
                           </FormItem>
                         )}
                       />
-                      <Button 
-                        variant="link" 
-                        className="text-sm p-0 h-auto" 
+                      <button 
+                        type="button"
+                        className="text-sm p-0 h-auto text-primary underline" 
                         onClick={() => setIsResetDialogOpen(true)}
                       >
                         Zapomenuté heslo?
-                      </Button>
+                      </button>
                     </div>
                     
                     <Button 
@@ -332,9 +339,9 @@ export default function AuthPage() {
                     </Button>
                   </form>
                 </Form>
-              </TabsContent>
+              </div>
               
-              <TabsContent value="register" className="p-6">
+              <div className={`${activeTab === "register" ? "block" : "hidden"} p-6`}>
                 <Form {...registerForm}>
                   <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
@@ -467,8 +474,8 @@ export default function AuthPage() {
                     </Button>
                   </form>
                 </Form>
-              </TabsContent>
-            </Tabs>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
