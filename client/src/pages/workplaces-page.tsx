@@ -392,7 +392,7 @@ export default function WorkplacesPage() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-slate-100">
+    <div className="flex flex-col md:flex-row min-h-full bg-slate-100">
       <Sidebar />
       
       <main className="flex-1 md:ml-64 pb-16 md:pb-0">
