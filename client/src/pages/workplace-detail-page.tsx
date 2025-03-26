@@ -109,6 +109,11 @@ interface EditWorkplaceFormData {
   address: string;
   notes: string;
   managerId: number | null;
+  // Přidané údaje o firmě
+  companyName: string;
+  companyId: string;    // IČO
+  companyVatId: string; // DIČ
+  companyAddress: string;
 }
 
 export default function WorkplaceDetailPage() {
@@ -135,7 +140,11 @@ export default function WorkplaceDetailPage() {
     type: "",
     address: "",
     notes: "",
-    managerId: null
+    managerId: null,
+    companyName: "",
+    companyId: "",
+    companyVatId: "",
+    companyAddress: ""
   });
   
   // Získání dat o pracovišti

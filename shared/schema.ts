@@ -51,6 +51,11 @@ export const workplaces = pgTable("workplaces", {
   address: text("address"),
   notes: text("notes"),
   managerId: integer("manager_id"),
+  // Údaje o klientovi/firmě
+  companyName: text("company_name"),
+  companyId: text("company_id"), // IČO
+  companyVatId: text("company_vat_id"), // DIČ
+  companyAddress: text("company_address"),
 });
 
 export const insertWorkplaceSchema = createInsertSchema(workplaces).omit({
