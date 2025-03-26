@@ -15,7 +15,7 @@ export default function CustomersPage() {
 
   return (
     <Layout title="Adresář zákazníků">
-      <div className="container mx-auto space-y-6 overflow-hidden">
+      <div className="container mx-auto">
         <CustomersTable />
       </div>
     </Layout>

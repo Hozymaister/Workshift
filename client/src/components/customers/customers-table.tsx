@@ -162,15 +162,15 @@ export function CustomersTable() {
                 : "Zatím nemáte žádné zákazníky. Přidejte prvního kliknutím na tlačítko výše."}
             </div>
           ) : (
-            <div className="rounded-md border overflow-auto">
+            <div className="rounded-md border overflow-x-auto max-w-full">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Název</TableHead>
-                    <TableHead>IČO / DIČ</TableHead>
-                    <TableHead className="hidden sm:table-cell">Adresa</TableHead>
-                    <TableHead className="hidden md:table-cell">Kontakt</TableHead>
-                    <TableHead className="text-right">Akce</TableHead>
+                    <TableHead className="min-w-[150px]">Název</TableHead>
+                    <TableHead className="min-w-[120px]">IČO / DIČ</TableHead>
+                    <TableHead className="hidden sm:table-cell min-w-[200px]">Adresa</TableHead>
+                    <TableHead className="hidden md:table-cell min-w-[150px]">Kontakt</TableHead>
+                    <TableHead className="text-right min-w-[100px]">Akce</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
