@@ -1293,15 +1293,31 @@ export default function InvoicePage() {
                   <CardDescription>Přehled všech vystavených a přijatých faktur</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="relative mb-4">
-                    <Input 
-                      className="pl-10" 
-                      placeholder="Hledat faktury..." 
-                    />
-                    <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                      </svg>
+                  <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                    <div className="relative flex-1">
+                      <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                      </div>
+                      <Input 
+                        className="pl-10" 
+                        placeholder="Hledat faktury..." 
+                      />
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Label htmlFor="year-filter">Filtrovat podle roku:</Label>
+                      <Select value={yearFilter} onValueChange={setYearFilter}>
+                        <SelectTrigger id="year-filter" className="w-[180px]">
+                          <SelectValue placeholder="Vyberte rok" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="current">Aktuální rok (2025)</SelectItem>
+                          <SelectItem value="2024">2024</SelectItem>
+                          <SelectItem value="2023">2023</SelectItem>
+                          <SelectItem value="all">Všechny roky</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                   
@@ -1320,14 +1336,24 @@ export default function InvoicePage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {invoiceHistory.length === 0 ? (
+                        {invoiceHistory.filter(invoice => {
+                          // Filtrování podle roku
+                          if (yearFilter === "all") return true;
+                          if (yearFilter === "current") return invoice.date.getFullYear() === 2025;
+                          return invoice.date.getFullYear() === parseInt(yearFilter);
+                        }).length === 0 ? (
                           <tr className="bg-white border-b">
                             <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
-                              Žádné faktury k zobrazení
+                              Žádné faktury k zobrazení pro vybraný rok
                             </td>
                           </tr>
                         ) : (
-                          invoiceHistory.map((invoice) => (
+                          invoiceHistory.filter(invoice => {
+                            // Filtrování podle roku
+                            if (yearFilter === "all") return true;
+                            if (yearFilter === "current") return invoice.date.getFullYear() === 2025;
+                            return invoice.date.getFullYear() === parseInt(yearFilter);
+                          }).map((invoice) => (
                             <tr key={invoice.id} className="bg-white border-b hover:bg-slate-50">
                               <td className="px-4 py-3">
                                 <Badge variant={invoice.type === "issued" ? "default" : "destructive"} className={invoice.type === "issued" ? "bg-green-100 text-green-800 hover:bg-green-100" : ""}>
