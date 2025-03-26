@@ -61,9 +61,9 @@ export const shifts = pgTable("shifts", {
   id: serial("id").primaryKey(),
   workplaceId: integer("workplace_id").notNull(),
   userId: integer("user_id"),
-  date: timestamp("date").notNull(),
-  startTime: timestamp("start_time").notNull(),
-  endTime: timestamp("end_time").notNull(),
+  date: timestamp("date", { mode: 'string' }),
+  startTime: timestamp("start_time", { mode: 'string' }),
+  endTime: timestamp("end_time", { mode: 'string' }),
   notes: text("notes"),
 });
 
