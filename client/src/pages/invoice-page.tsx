@@ -96,12 +96,24 @@ const invoiceSchema = z.object({
   dateDue: z.date(),
   customerName: z.string().min(1, "Jméno zákazníka je povinné"),
   customerAddress: z.string().min(1, "Adresa zákazníka je povinná"),
-  customerIC: z.string().optional(),
-  customerDIC: z.string().optional(),
+  customerIC: z.string()
+    .optional()
+    .refine(val => !val || /^\d{8}$/.test(val), {
+      message: "IČO musí obsahovat přesně 8 číslic"
+    }),
+  customerDIC: z.string()
+    .optional()
+    .refine(val => !val || /^CZ\d{8,10}$/.test(val), {
+      message: "DIČ musí být ve formátu 'CZ' následovaný 8-10 číslicemi"
+    }),
   isVatPayer: z.boolean().default(true),
   notes: z.string().optional(),
   paymentMethod: z.enum(["bank", "cash", "card"]),
-  bankAccount: z.string().optional(),
+  bankAccount: z.string()
+    .optional()
+    .refine(val => !val || /^\d{1,6}-\d{10}\/\d{4}$/.test(val), {
+      message: "Číslo účtu musí být ve formátu '123456-1234567890/1234'"
+    }),
 });
 
 const invoiceItemSchema = z.object({
@@ -121,8 +133,16 @@ const receivedInvoiceSchema = z.object({
   dateDue: z.date(),
   supplierName: z.string().min(1, "Jméno dodavatele je povinné"),
   supplierAddress: z.string().min(1, "Adresa dodavatele je povinná"),
-  supplierIC: z.string().optional(),
-  supplierDIC: z.string().optional(),
+  supplierIC: z.string()
+    .optional()
+    .refine(val => !val || /^\d{8}$/.test(val), {
+      message: "IČO musí obsahovat přesně 8 číslic"
+    }),
+  supplierDIC: z.string()
+    .optional()
+    .refine(val => !val || /^CZ\d{8,10}$/.test(val), {
+      message: "DIČ musí být ve formátu 'CZ' následovaný 8-10 číslicemi"
+    }),
   notes: z.string().optional(),
   amount: z.number().min(0.01, "Částka musí být větší než 0"),
   isPaid: z.boolean().default(false),
@@ -919,7 +939,7 @@ export default function InvoicePage() {
                                 <div className="space-y-0.5">
                                   <FormLabel className="text-base">Plátce DPH</FormLabel>
                                   <FormDescription>
-                                    Je odběratel plátcem DPH?
+                                    Je dodavatel plátcem DPH?
                                   </FormDescription>
                                 </div>
                                 <FormControl>
