@@ -406,6 +406,141 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(200).json({ message: "Password has been successfully reset." });
   });
 
+  // Customers routes - Adresář zákazníků
+  app.get("/api/customers", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const customers = await storage.getUserCustomers(userId);
+      res.json(customers);
+    } catch (error) {
+      console.error("Error getting customers:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  });
+
+  app.get("/api/customers/search", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const query = req.query.q as string || "";
+      const customers = await storage.searchCustomers(query, userId);
+      res.json(customers);
+    } catch (error) {
+      console.error("Error searching customers:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  });
+
+  app.get("/api/customers/:id", isAuthenticated, async (req, res) => {
+    try {
+      const customerId = parseInt(req.params.id);
+      const customer = await storage.getCustomer(customerId);
+      
+      if (!customer) {
+        return res.status(404).send("Customer not found");
+      }
+      
+      // Ověření, že zákazník patří přihlášenému uživateli
+      if (customer.userId !== req.user.id) {
+        return res.status(403).send("Forbidden: You don't have access to this customer");
+      }
+      
+      res.json(customer);
+    } catch (error) {
+      console.error("Error getting customer:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  });
+
+  app.post("/api/customers", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const customerData = { ...req.body, userId };
+      
+      // Základní validace
+      if (!customerData.name || !customerData.address) {
+        return res.status(400).send("Name and address are required");
+      }
+      
+      // Validace DIČ, pokud je uvedeno
+      if (customerData.dic && !/^CZ\d{8,10}$/.test(customerData.dic)) {
+        return res.status(400).send("DIČ must be in format 'CZ' followed by 8-10 digits");
+      }
+      
+      // Validace IČO, pokud je uvedeno
+      if (customerData.ic && !/^\d{8}$/.test(customerData.ic)) {
+        return res.status(400).send("IČO must be exactly 8 digits");
+      }
+      
+      const customer = await storage.createCustomer(customerData);
+      res.status(201).json(customer);
+    } catch (error) {
+      console.error("Error creating customer:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  });
+
+  app.put("/api/customers/:id", isAuthenticated, async (req, res) => {
+    try {
+      const customerId = parseInt(req.params.id);
+      const existingCustomer = await storage.getCustomer(customerId);
+      
+      if (!existingCustomer) {
+        return res.status(404).send("Customer not found");
+      }
+      
+      // Ověření, že zákazník patří přihlášenému uživateli
+      if (existingCustomer.userId !== req.user.id) {
+        return res.status(403).send("Forbidden: You don't have access to this customer");
+      }
+      
+      // Nesmíme přepsat userId
+      const { userId, ...updateData } = req.body;
+      
+      // Základní validace
+      if (!updateData.name || !updateData.address) {
+        return res.status(400).send("Name and address are required");
+      }
+      
+      // Validace DIČ, pokud je uvedeno
+      if (updateData.dic && !/^CZ\d{8,10}$/.test(updateData.dic)) {
+        return res.status(400).send("DIČ must be in format 'CZ' followed by 8-10 digits");
+      }
+      
+      // Validace IČO, pokud je uvedeno
+      if (updateData.ic && !/^\d{8}$/.test(updateData.ic)) {
+        return res.status(400).send("IČO must be exactly 8 digits");
+      }
+      
+      const updatedCustomer = await storage.updateCustomer(customerId, updateData);
+      res.json(updatedCustomer);
+    } catch (error) {
+      console.error("Error updating customer:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  });
+
+  app.delete("/api/customers/:id", isAuthenticated, async (req, res) => {
+    try {
+      const customerId = parseInt(req.params.id);
+      const existingCustomer = await storage.getCustomer(customerId);
+      
+      if (!existingCustomer) {
+        return res.status(404).send("Customer not found");
+      }
+      
+      // Ověření, že zákazník patří přihlášenému uživateli
+      if (existingCustomer.userId !== req.user.id) {
+        return res.status(403).send("Forbidden: You don't have access to this customer");
+      }
+      
+      await storage.deleteCustomer(customerId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting customer:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

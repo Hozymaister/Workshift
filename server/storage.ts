@@ -3,7 +3,8 @@ import {
   workplaces, type Workplace, type InsertWorkplace,
   shifts, type Shift, type InsertShift,
   exchangeRequests, type ExchangeRequest, type InsertExchangeRequest,
-  reports, type Report, type InsertReport 
+  reports, type Report, type InsertReport,
+  customers, type Customer, type InsertCustomer
 } from "@shared/schema";
 import session from "express-session";
 import createMemoryStore from "memorystore";
@@ -282,6 +283,53 @@ export class MemStorage implements IStorage {
 
   async getUserReports(userId: number): Promise<Report[]> {
     return Array.from(this.reports.values()).filter(report => report.userId === userId);
+  }
+
+  // Customer methods
+  async getCustomer(id: number): Promise<Customer | undefined> {
+    return this.customers.get(id);
+  }
+
+  async createCustomer(insertCustomer: InsertCustomer): Promise<Customer> {
+    const id = this.customerIdCounter++;
+    const customer: Customer = { ...insertCustomer, id, createdAt: new Date() };
+    this.customers.set(id, customer);
+    return customer;
+  }
+
+  async updateCustomer(id: number, customerData: Partial<InsertCustomer>): Promise<Customer | undefined> {
+    const existingCustomer = this.customers.get(id);
+    if (!existingCustomer) return undefined;
+    
+    const updatedCustomer = { ...existingCustomer, ...customerData };
+    this.customers.set(id, updatedCustomer);
+    return updatedCustomer;
+  }
+
+  async deleteCustomer(id: number): Promise<boolean> {
+    return this.customers.delete(id);
+  }
+
+  async getAllCustomers(): Promise<Customer[]> {
+    return Array.from(this.customers.values());
+  }
+
+  async getUserCustomers(userId: number): Promise<Customer[]> {
+    return Array.from(this.customers.values()).filter(customer => customer.userId === userId);
+  }
+
+  async searchCustomers(query: string, userId: number): Promise<Customer[]> {
+    if (!query) return this.getUserCustomers(userId);
+    
+    const lowercaseQuery = query.toLowerCase();
+    return Array.from(this.customers.values()).filter(customer => 
+      (customer.userId === userId) && (
+        customer.name.toLowerCase().includes(lowercaseQuery) ||
+        (customer.ic && customer.ic.toLowerCase().includes(lowercaseQuery)) ||
+        (customer.dic && customer.dic.toLowerCase().includes(lowercaseQuery)) ||
+        (customer.email && customer.email.toLowerCase().includes(lowercaseQuery))
+      )
+    );
   }
 }
 
