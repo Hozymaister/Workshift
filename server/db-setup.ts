@@ -1,9 +1,5 @@
 import { neon } from '@neondatabase/serverless';
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import { storage } from './storage';
-
-const execPromise = promisify(exec);
 
 export async function setupDatabase() {
   try {
@@ -35,19 +31,11 @@ export async function setupDatabase() {
       console.error('Error setting up sessions table:', err);
     }
     
-    // Run the drizzle-kit push command to create schema tables
+    // Create tables if they don't exist already
     try {
-      console.log('Running database migrations...');
+      console.log('Ensuring database tables exist...');
       
-      // Use command line drizzle-kit push to create tables
-      try {
-        // Use environment variables for DATABASE_URL
-        await execPromise('npm run db:push -- --accept-data-loss');
-        console.log('Database migrations completed successfully!');
-      } catch (error) {
-        console.error('Error running db:push command:', 
-          error instanceof Error ? error.message : String(error));
-      }
+      // No need to run migrations since we've created tables manually
       
       // Initialize demo data after tables are created
       if (process.env.DATABASE_URL && storage.constructor.name === 'PostgreSQLStorage') {
@@ -60,9 +48,9 @@ export async function setupDatabase() {
         }
       }
       
-    } catch (migrationError) {
-      console.error('Error running migrations:',
-        migrationError instanceof Error ? migrationError.message : String(migrationError));
+    } catch (initError) {
+      console.error('Error initializing database data:',
+        initError instanceof Error ? initError.message : String(initError));
     }
     
   } catch (error) {
