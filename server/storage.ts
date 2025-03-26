@@ -41,7 +41,7 @@ export interface IStorage {
   deleteShift(id: number): Promise<boolean>;
   getAllShifts(): Promise<Shift[]>;
   getUserShifts(userId: number): Promise<Shift[]>;
-  getShiftsByDate(startDate: Date, endDate: Date): Promise<Shift[]>;
+  getShiftsByDate(startDate: Date | string, endDate: Date | string): Promise<Shift[]>;
   
   // Exchange request operations
   getExchangeRequest(id: number): Promise<ExchangeRequest | undefined>;
@@ -632,11 +632,16 @@ export class PostgreSQLStorage implements IStorage {
     return await this.db.select().from(shifts).where(eq(shifts.userId, userId));
   }
 
-  async getShiftsByDate(startDate: Date, endDate: Date): Promise<Shift[]> {
+  async getShiftsByDate(startDate: Date | string, endDate: Date | string): Promise<Shift[]> {
+    // Převést parametry na string pro PostgreSQL
+    const startDateStr = typeof startDate === 'string' ? startDate : startDate.toISOString();
+    const endDateStr = typeof endDate === 'string' ? endDate : endDate.toISOString();
+    
+    // Použijte text pro "between" query místo Date objektů
     return await this.db
       .select()
       .from(shifts)
-      .where(between(shifts.date, startDate, endDate));
+      .where(sql`${shifts.date} BETWEEN ${startDateStr} AND ${endDateStr}`);
   }
 
   // Exchange request methods

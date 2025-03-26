@@ -558,6 +558,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Get all shifts for the specified user, month, and year
     const shifts = await storage.getUserShifts(userId);
     const filteredShifts = shifts.filter(shift => {
+      if (!shift.date) return false;
       const shiftDate = new Date(shift.date);
       return shiftDate.getMonth() + 1 === month && shiftDate.getFullYear() === year;
     });
@@ -565,6 +566,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Calculate total hours worked
     let totalHours = 0;
     filteredShifts.forEach(shift => {
+      if (!shift.startTime || !shift.endTime) return;
       const startTime = new Date(shift.startTime);
       const endTime = new Date(shift.endTime);
       totalHours += differenceInHours(endTime, startTime);
@@ -601,6 +603,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     // Current month's shifts
     const currentMonthShifts = allUserShifts.filter(shift => {
+      if (!shift.date) return false;
       const shiftDate = new Date(shift.date);
       return shiftDate >= firstDayOfMonth && shiftDate <= lastDayOfMonth;
     });
@@ -608,6 +611,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Calculate planned hours for current month
     let plannedHours = 0;
     currentMonthShifts.forEach(shift => {
+      if (!shift.startTime || !shift.endTime) return;
       const startTime = new Date(shift.startTime);
       const endTime = new Date(shift.endTime);
       plannedHours += differenceInHours(endTime, startTime);
@@ -616,8 +620,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Calculate worked hours (shifts in the past)
     let workedHours = 0;
     currentMonthShifts.forEach(shift => {
+      if (!shift.date) return;
       const shiftDate = new Date(shift.date);
       if (shiftDate < now) {
+        if (!shift.startTime || !shift.endTime) return;
         const startTime = new Date(shift.startTime);
         const endTime = new Date(shift.endTime);
         workedHours += differenceInHours(endTime, startTime);
@@ -629,6 +635,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     twoWeeksFromNow.setDate(twoWeeksFromNow.getDate() + 14);
     
     const upcomingShifts = allUserShifts.filter(shift => {
+      if (!shift.date) return false;
       const shiftDate = new Date(shift.date);
       return shiftDate >= now && shiftDate <= twoWeeksFromNow;
     }).length;
