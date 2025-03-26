@@ -7,6 +7,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import { Workplace, User } from "@shared/schema";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -78,7 +79,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { getWorkplaceTypeBgClass, cn } from "@/lib/utils";
 
 const formSchema = z.object({
   name: z.string().min(2, "Název musí mít alespoň 2 znaky").max(50, "Název může mít maximálně 50 znaků"),
@@ -271,6 +271,26 @@ export default function WorkplacesPage() {
         return "Neznámý";
     }
   };
+  
+  const getWorkplaceTypeBgClass = (type: string | undefined) => {
+    if (!type) return "bg-slate-100 text-slate-700";
+    
+    switch (type.toLowerCase()) {
+      case "warehouse":
+      case "sklad":
+        return "bg-orange-100 text-orange-700";
+      case "office":
+      case "kancelář":
+        return "bg-blue-100 text-blue-700";
+      case "event":
+        return "bg-green-100 text-green-700";
+      case "club":
+      case "kultura":
+        return "bg-purple-100 text-purple-700";
+      default:
+        return "bg-slate-100 text-slate-700";
+    }
+  };
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-slate-100">
@@ -327,7 +347,7 @@ export default function WorkplacesPage() {
                           <div className="flex items-center">
                             {workplace.name}
                             {workplace.managerId && (
-                              <Badge variant="outline" className="ml-2 text-xs">
+                              <Badge variant="outline" className="ml-2 text-xs text-amber-700 bg-amber-50">
                                 <Crown className="h-3 w-3 mr-1 text-amber-500" />
                                 <span>Správce</span>
                               </Badge>
