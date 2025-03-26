@@ -25,6 +25,7 @@ import {
   ClipboardList,
   Crown,
   UserCircle,
+  Search,
 } from "lucide-react";
 import {
   Card,
