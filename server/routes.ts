@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
@@ -11,7 +11,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
 
   // Middleware to check if user is authenticated
-  const isAuthenticated = (req, res, next) => {
+  const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
     if (req.isAuthenticated()) {
       return next();
     }
@@ -19,8 +19,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   // Middleware to check if user is admin
-  const isAdmin = (req, res, next) => {
-    if (req.isAuthenticated() && req.user.role === "admin") {
+  const isAdmin = (req: Request, res: Response, next: NextFunction) => {
+    if (req.isAuthenticated() && req.user && req.user.role === "admin") {
       return next();
     }
     res.status(403).send("Forbidden: Admin access required");
@@ -201,7 +201,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(404).send("Exchange request not found");
     }
     
-    if (req.user.role !== "admin" && req.user.id !== request.requesteeId) {
+    if (req.user && req.user.role !== "admin" && req.user.id !== request.requesteeId) {
       return res.status(403).send("Forbidden: Not authorized to update this request");
     }
     
@@ -228,7 +228,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     
     // Only allow the requester or admin to delete the request
-    if (req.user.role !== "admin" && req.user.id !== request.requesterId) {
+    if (req.user && req.user.role !== "admin" && req.user.id !== request.requesterId) {
       return res.status(403).send("Forbidden: Not authorized to delete this request");
     }
     
@@ -241,6 +241,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Reports routes
   app.get("/api/reports", isAuthenticated, async (req, res) => {
+    if (!req.user) {
+      return res.status(401).send("Unauthorized");
+    }
+    
     const userId = req.query.userId ? parseInt(req.query.userId as string) : req.user.id;
     
     // Non-admin users can only access their own reports
@@ -253,6 +257,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/reports/generate", isAuthenticated, async (req, res) => {
+    if (!req.user) {
+      return res.status(401).send("Unauthorized");
+    }
+    
     const { userId, month, year } = req.body;
     
     // Non-admin users can only generate their own reports
@@ -289,6 +297,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Dashboard statistics route
   app.get("/api/stats", isAuthenticated, async (req, res) => {
+    if (!req.user) {
+      return res.status(401).send("Unauthorized");
+    }
+    
     const userId = req.user.id;
     const now = new Date();
     
@@ -411,6 +423,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Customers routes - Adresář zákazníků
   app.get("/api/customers", isAuthenticated, async (req, res) => {
     try {
+      if (!req.user) {
+        return res.status(401).send("Unauthorized");
+      }
+      
       const userId = req.user.id;
       const customers = await storage.getUserCustomers(userId);
       res.json(customers);
@@ -422,6 +438,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/customers/search", isAuthenticated, async (req, res) => {
     try {
+      if (!req.user) {
+        return res.status(401).send("Unauthorized");
+      }
+      
       const userId = req.user.id;
       const query = req.query.q as string || "";
       const customers = await storage.searchCustomers(query, userId);
