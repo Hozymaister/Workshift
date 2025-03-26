@@ -9,6 +9,8 @@ import { format, subMonths } from "date-fns";
 import { cs } from "date-fns/locale";
 import jsPDF from "jspdf";
 import { Layout } from "@/components/layout/layout";
+import { CustomerAutocomplete } from "@/components/invoice/customer-autocomplete";
+import { Customer } from "@shared/schema";
 import {
   Form,
   FormControl,
@@ -186,6 +188,7 @@ export default function InvoicePage() {
   const [editingItem, setEditingItem] = useState<string | null>(null);
   const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   
   // Filtr pro historii faktur
   const [yearFilter, setYearFilter] = useState<string>("current");
@@ -436,6 +439,36 @@ export default function InvoicePage() {
       title: "Faktura vytvořena",
       description: "Faktura byla úspěšně vytvořena a stažena ve formátu PDF."
     });
+  };
+  
+  // Funkce pro zpracování výběru zákazníka z našeptávače
+  const handleCustomerSelect = (customerData: Customer | any) => {
+    // Předvyplnění formuláře dle vybraného zákazníka
+    createInvoiceForm.setValue("customerName", customerData.name);
+    createInvoiceForm.setValue("customerAddress", customerData.address);
+    
+    if (customerData.ic) {
+      createInvoiceForm.setValue("customerIC", customerData.ic);
+    }
+    
+    if (customerData.dic) {
+      createInvoiceForm.setValue("customerDIC", customerData.dic);
+    }
+    
+    if (customerData.id) {
+      // Jedná se o existujícího zákazníka z databáze
+      setSelectedCustomer(customerData);
+      toast({
+        title: "Zákazník vybrán",
+        description: `Zákazník ${customerData.name} byl úspěšně vybrán.`
+      });
+    } else {
+      // Jedná se o data z ARES
+      toast({
+        title: "Data z ARES načtena",
+        description: "Informace o firmě byly úspěšně načteny z ARES."
+      });
+    }
   };
   
   // Pokud uživatel není správce, přesměrujeme na dashboard
