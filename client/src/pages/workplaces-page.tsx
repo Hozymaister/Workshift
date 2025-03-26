@@ -2,11 +2,12 @@ import { useState } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { MobileNavigation } from "@/components/layout/mobile-navigation";
+import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { Workplace } from "@shared/schema";
+import { Workplace, User } from "@shared/schema";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -21,6 +22,7 @@ import {
   Loader2,
   MapPin,
   ClipboardList,
+  Crown,
 } from "lucide-react";
 import {
   Card,
@@ -304,8 +306,22 @@ export default function WorkplacesPage() {
                   </TableHeader>
                   <TableBody>
                     {workplaces.map((workplace) => (
-                      <TableRow key={workplace.id}>
-                        <TableCell className="font-medium">{workplace.name}</TableCell>
+                      <TableRow 
+                        key={workplace.id}
+                        className="cursor-pointer hover:bg-slate-50"
+                        onClick={() => navigate(`/workplaces/${workplace.id}`)}
+                      >
+                        <TableCell className="font-medium">
+                          <div className="flex items-center">
+                            {workplace.name}
+                            {workplace.managerId && (
+                              <Badge variant="outline" size="sm" className="ml-2 text-xs">
+                                <Crown className="h-3 w-3 mr-1 text-amber-500" />
+                                <span>Správce</span>
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <Badge className={cn("font-normal", getWorkplaceTypeBgClass(workplace.type))}>
                             <span className="flex items-center">
