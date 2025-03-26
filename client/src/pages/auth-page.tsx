@@ -371,7 +371,7 @@ export default function AuthPage() {
                         name="firstName"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Jméno</FormLabel>
+                            <FormLabel>{t('first_name')}</FormLabel>
                             <FormControl>
                               <Input {...field} />
                             </FormControl>
@@ -385,7 +385,7 @@ export default function AuthPage() {
                         name="lastName"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Příjmení</FormLabel>
+                            <FormLabel>{t('last_name')}</FormLabel>
                             <FormControl>
                               <Input {...field} />
                             </FormControl>
@@ -400,7 +400,7 @@ export default function AuthPage() {
                       name="username"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Uživatelské jméno</FormLabel>
+                          <FormLabel>{t('username')}</FormLabel>
                           <FormControl>
                             <Input {...field} />
                           </FormControl>
