@@ -275,7 +275,11 @@ export default function AuthPage() {
               
               <div className={`${activeTab === "login" ? "block" : "hidden"} p-6`}>
                 <Form {...loginForm}>
-                  <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
+                  <form onSubmit={(e) => {
+                    e.preventDefault();
+                    console.log("Form submit event triggered");
+                    loginForm.handleSubmit(onLoginSubmit)(e);
+                  }} className="space-y-4">
                     <FormField
                       control={loginForm.control}
                       name="email"
@@ -329,13 +333,39 @@ export default function AuthPage() {
                       </button>
                     </div>
                     
-                    <Button 
-                      type="submit" 
-                      className="w-full" 
-                      disabled={loginMutation.isPending}
-                    >
-                      {loginMutation.isPending ? "Přihlašování..." : "Přihlásit se"}
-                    </Button>
+                    <div>
+                      <Button 
+                        type="submit" 
+                        className="w-full" 
+                        disabled={loginMutation.isPending}
+                        onClick={() => {
+                          console.log("Login button clicked");
+                          console.log("Form values:", loginForm.getValues());
+                          console.log("Form errors:", loginForm.formState.errors);
+                        }}
+                      >
+                        {loginMutation.isPending ? "Přihlašování..." : "Přihlásit se"}
+                      </Button>
+                    </div>
+                    
+                    <div className="text-center mt-2">
+                      <Button 
+                        type="button" 
+                        variant="outline"
+                        className="w-full" 
+                        onClick={() => {
+                          console.log("Direct login button clicked");
+                          const values = loginForm.getValues();
+                          if (values.email && values.password) {
+                            onLoginSubmit(values);
+                          } else {
+                            console.error("Email nebo heslo chybí");
+                          }
+                        }}
+                      >
+                        Přihlásit se přímo
+                      </Button>
+                    </div>
                   </form>
                 </Form>
               </div>
