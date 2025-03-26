@@ -101,8 +101,11 @@ export function setupAuth(app: Express) {
     try {
       console.log("Login attempt:", { email: req.body.email });
       
+      // Email je case-insensitive, převedeme na lowercase
+      const emailLowerCase = req.body.email?.toLowerCase();
+      
       // Manuální ověření uživatele (přeskakujeme Passport)
-      const user = await storage.getUserByEmail(req.body.email);
+      const user = await storage.getUserByEmail(emailLowerCase);
       
       if (!user) {
         console.log("User not found");

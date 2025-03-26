@@ -107,10 +107,12 @@ export default function AuthPage() {
   });
 
   const onLoginSubmit = (data: LoginFormValues) => {
-    console.log("Login form submitted:", { email: data.email });
+    // Převést email na lowercase pro konzistenci
+    const normalizedEmail = data.email.toLowerCase();
+    console.log("Login form submitted:", { email: normalizedEmail });
     
     loginMutation.mutate({
-      email: data.email,
+      email: normalizedEmail,
       password: data.password,
     });
   };
