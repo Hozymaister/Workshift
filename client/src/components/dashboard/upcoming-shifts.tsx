@@ -81,8 +81,8 @@ export function UpcomingShifts() {
         <ul className="divide-y divide-slate-200">
           {upcomingShifts?.length ? (
             upcomingShifts.map((shift) => {
-              const startFormatted = formatDateTime(shift.startTime);
-              const endFormatted = { time: format(new Date(shift.endTime), "HH:mm") };
+              const startFormatted = formatDateTime(typeof shift.startTime === 'string' ? shift.startTime : shift.startTime.toISOString());
+              const endFormatted = { time: format(new Date(typeof shift.endTime === 'string' ? shift.endTime : shift.endTime.toISOString()), "HH:mm") };
               
               return (
                 <li key={shift.id} className="p-4 hover:bg-slate-50">
