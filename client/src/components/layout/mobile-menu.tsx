@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { X, LayoutDashboard, Calendar, RefreshCw, Building2, Users, FileText, LogOut } from "lucide-react";
+import { X, LayoutDashboard, Calendar, RefreshCw, Building2, Users, FileText, LogOut, Receipt, Table } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface MobileMenuProps {
@@ -34,14 +34,32 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
     return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
   };
 
-  const navItems = [
+  // Základní navigační položky
+  const commonNavItems = [
     { path: "/", label: "Dashboard", icon: <LayoutDashboard className="mr-3 h-5 w-5" /> },
     { path: "/shifts", label: "Moje směny", icon: <Calendar className="mr-3 h-5 w-5" /> },
+    { path: "/shift-table", label: "Tabulka směn", icon: <Table className="mr-3 h-5 w-5" /> },
     { path: "/exchanges", label: "Výměny směn", icon: <RefreshCw className="mr-3 h-5 w-5" /> },
-    { path: "/workplaces", label: "Pracovní objekty", icon: <Building2 className="mr-3 h-5 w-5" /> },
-    { path: "/workers", label: "Pracovníci", icon: <Users className="mr-3 h-5 w-5" /> },
     { path: "/reports", label: "Výkazy práce", icon: <FileText className="mr-3 h-5 w-5" /> },
   ];
+  
+  // Položky menu pouze pro správce
+  const adminNavItems = [
+    { path: "/workplaces", label: "Pracovní objekty", icon: <Building2 className="mr-3 h-5 w-5" /> },
+    { path: "/workers", label: "Pracovníci", icon: <Users className="mr-3 h-5 w-5" /> },
+  ];
+  
+  // Přidáme položku faktury pouze pro administrátory
+  if (user?.role === "admin") {
+    adminNavItems.push(
+      { path: "/invoice", label: "Fakturace", icon: <Receipt className="mr-3 h-5 w-5" /> }
+    );
+  }
+  
+  // Kombinujeme položky podle role uživatele
+  const navItems = user?.role === "admin" 
+    ? [...commonNavItems, ...adminNavItems] 
+    : commonNavItems;
 
   if (!menuVisible) return null;
 
