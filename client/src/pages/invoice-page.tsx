@@ -363,9 +363,8 @@ export default function InvoicePage() {
     doc.setFontSize(11);
     doc.text("Dodavatel:", 20, 50);
     doc.text(`${user?.firstName} ${user?.lastName}`, 20, 60);
-    if (user?.company) doc.text(user.company, 20, 65);
-    if (user?.address) doc.text(user.address, 20, 70);
-    if (formData.isVatPayer) doc.text("Plátce DPH", 20, 80);
+    // Přidáváme jen základní informace o dodavateli
+    if (formData.isVatPayer) doc.text("Plátce DPH", 20, 70);
     
     doc.text("Odběratel:", 120, 50);
     doc.text(formData.customerName, 120, 60);
@@ -413,10 +412,10 @@ export default function InvoicePage() {
     doc.line(20, yPos, 190, yPos);
     yPos += 10;
     
-    doc.setFont(undefined, "bold");
+    doc.setFont("helvetica", "bold");
     doc.text("Celkem k úhradě:", 140, yPos);
     doc.text(`${totalAmount.toLocaleString()} Kč`, 170, yPos, { align: "right" });
-    doc.setFont(undefined, "normal");
+    doc.setFont("helvetica", "normal");
     
     // Poznámka
     if (formData.notes) {
@@ -1106,8 +1105,6 @@ export default function InvoicePage() {
                     <div>
                       <h3 className="font-bold mb-1">Dodavatel:</h3>
                       <p>{user?.firstName} {user?.lastName}</p>
-                      <p>{user?.company || ""}</p>
-                      <p>{user?.address || ""}</p>
                       {createInvoiceForm.watch("isVatPayer") && 
                         <p className="mt-2">Plátce DPH</p>
                       }
@@ -1191,23 +1188,7 @@ export default function InvoicePage() {
             </Dialog>
           </TabsContent>
           
-          <TabsContent value="record">
-            {/* Obsah pro evidenci faktury */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <div className="lg:col-span-8">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Evidence přijaté faktury</CardTitle>
-                    <CardDescription>Zadejte informace o přijaté faktuře</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {/* Formulář pro evidenci přijaté faktury */}
-                    <p>Zde by byl formulář pro evidenci faktury</p>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </TabsContent>
+
           
           <TabsContent value="record">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
