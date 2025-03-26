@@ -30,21 +30,40 @@ export function PdfDownloadDialog({
 }: PdfDownloadDialogProps) {
   
   const handleDownload = () => {
+    console.log("Tlačítko Stáhnout bylo kliknuto");
     if (pdfUrl) {
+      console.log("PDF URL existuje:", pdfUrl);
       // Vytvoření neviditelného odkazu pro automatické stažení
       const link = document.createElement('a');
       link.href = pdfUrl;
       link.download = fileName;
+      console.log("Link vytvořen:", link.href, link.download);
       document.body.appendChild(link);
-      link.click();
+      try {
+        link.click();
+        console.log("Link kliknut");
+      } catch (error) {
+        console.error("Chyba při kliknutí na odkaz:", error);
+      }
       document.body.removeChild(link);
+    } else {
+      console.error("PDF URL neexistuje");
     }
   };
   
   const handleOpenInNewTab = () => {
+    console.log("Tlačítko Otevřít bylo kliknuto");
     if (pdfUrl) {
+      console.log("PDF URL existuje:", pdfUrl);
       // Otevření PDF v novém okně/záložce
-      window.open(pdfUrl, '_blank');
+      try {
+        window.open(pdfUrl, '_blank');
+        console.log("Okno bylo otevřeno");
+      } catch (error) {
+        console.error("Chyba při otevírání okna:", error);
+      }
+    } else {
+      console.error("PDF URL neexistuje");
     }
   };
   

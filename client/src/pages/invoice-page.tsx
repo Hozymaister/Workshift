@@ -543,12 +543,17 @@ export default function InvoicePage() {
         
         // Vytvoření URL pro náhled a stažení
         const pdfBlob = doc.output('blob');
+        console.log("PDF blob vytvořen:", pdfBlob);
+        
         const pdfUrl = URL.createObjectURL(pdfBlob);
+        console.log("PDF URL vytvořena:", pdfUrl);
         
         // Uložení do state
+        console.log("Nastavuji PDF URL do state:", pdfUrl);
         setGeneratedPdfUrl(pdfUrl);
         setPdfFileName(fileName);
         setPdfDialogOpen(true);
+        console.log("Dialog otevřen, PDF URL:", pdfUrl);
         
         toast({
           title: "PDF úspěšně vytvořeno",
