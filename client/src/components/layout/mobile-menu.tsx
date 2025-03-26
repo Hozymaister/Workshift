@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { X, LayoutDashboard, Calendar, RefreshCw, Building2, Users, FileText, LogOut, Receipt, Table, Book } from "lucide-react";
+import { X, LayoutDashboard, Calendar, RefreshCw, Building2, Users, FileText, LogOut, Receipt, Table, Book, ScanLine } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface MobileMenuProps {
@@ -49,6 +49,7 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
     { path: "/workers", label: "Pracovníci", icon: <Users className="mr-3 h-5 w-5" /> },
     { path: "/invoice", label: "Fakturace", icon: <Receipt className="mr-3 h-5 w-5" /> },
     { path: "/customers", label: "Adresář zákazníků", icon: <Book className="mr-3 h-5 w-5" /> },
+    { path: "/scan", label: "Skenování dokumentů", icon: <ScanLine className="mr-3 h-5 w-5" /> },
   ];
   
   // Kombinujeme položky podle role uživatele

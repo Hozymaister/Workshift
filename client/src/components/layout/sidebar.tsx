@@ -1,6 +1,6 @@
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
-import { LogOut, LayoutDashboard, Calendar, RefreshCw, Building2, Users, FileText, Table, Receipt, Book } from "lucide-react";
+import { LogOut, LayoutDashboard, Calendar, RefreshCw, Building2, Users, FileText, Table, Receipt, Book, ScanLine } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -32,6 +32,7 @@ export function Sidebar() {
     { path: "/workers", label: "Pracovníci", icon: <Users className="mr-3 h-5 w-5" /> },
     { path: "/invoice", label: "Fakturace", icon: <Receipt className="mr-3 h-5 w-5" /> },
     { path: "/customers", label: "Adresář zákazníků", icon: <Book className="mr-3 h-5 w-5" /> },
+    { path: "/scan", label: "Skenování dokumentů", icon: <ScanLine className="mr-3 h-5 w-5" /> },
   ];
   
   // Kombinujeme položky podle role uživatele
