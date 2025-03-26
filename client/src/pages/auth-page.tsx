@@ -349,22 +349,7 @@ export default function AuthPage() {
                     </div>
                     
                     <div className="text-center mt-2">
-                      <Button 
-                        type="button" 
-                        variant="outline"
-                        className="w-full" 
-                        onClick={() => {
-                          console.log("Direct login button clicked");
-                          const values = loginForm.getValues();
-                          if (values.email && values.password) {
-                            onLoginSubmit(values);
-                          } else {
-                            console.error("Email nebo heslo chybí");
-                          }
-                        }}
-                      >
-                        Přihlásit se přímo
-                      </Button>
+
                     </div>
                   </form>
                 </Form>
