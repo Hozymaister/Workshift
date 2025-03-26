@@ -609,6 +609,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint pro hledání informací o firmě v ARES podle IČO
+  app.get("/api/ares", isAuthenticated, async (req, res) => {
+    try {
+      const ico = req.query.ico;
+      
+      if (!ico || typeof ico !== 'string' || !/^\d{8}$/.test(ico)) {
+        return res.status(400).send("Neplatné IČO. Zadejte 8-místné identifikační číslo.");
+      }
+      
+      const aresUrl = `https://wwwinfo.mfcr.cz/cgi-bin/ares/darv_bas.cgi?ico=${ico}`;
+      const response = await fetch(aresUrl);
+      
+      if (!response.ok) {
+        throw new Error(`Chyba při komunikaci s ARES: ${response.statusText}`);
+      }
+      
+      const xmlData = await response.text();
+      const parser = new XMLParser({
+        attributeNamePrefix: "",
+        ignoreAttributes: false,
+      });
+      
+      const result = parser.parse(xmlData);
+      
+      // Extrahování relevantních dat z odpovědi ARES
+      const aresResponse = result["are:Ares_odpovedi"]["are:Odpoved"];
+      const vypisData = aresResponse["D:VBAS"];
+      
+      // Pokud nebyla firma nalezena
+      if (aresResponse["are:Nalezenych_zaznamu"] === "0" || !vypisData) {
+        return res.status(404).send("Firma s tímto IČO nebyla nalezena v registru.");
+      }
+      
+      // Příprava základních údajů o firmě
+      const companyInfo = {
+        name: vypisData["D:OF"],
+        ico: vypisData["D:ICO"],
+        dic: vypisData["D:DIC"] || null,
+        address: ""
+      };
+      
+      // Sestavení adresy
+      const addrData = vypisData["D:AA"];
+      if (addrData) {
+        const parts = [];
+        
+        if (addrData["D:NU"]) parts.push(addrData["D:NU"]);
+        if (addrData["D:CO"]) parts.push(addrData["D:CO"]);
+        
+        let street = "";
+        if (addrData["D:UP"]) street = addrData["D:UP"];
+        if (addrData["D:CD"]) {
+          street = street ? `${street} ${addrData["D:CD"]}` : addrData["D:CD"];
+        }
+        if (addrData["D:CO"]) {
+          street = street ? `${street}/${addrData["D:CO"]}` : addrData["D:CO"];
+        }
+        if (street) parts.push(street);
+        
+        if (addrData["D:N"]) parts.push(addrData["D:N"]);
+        if (addrData["D:NCO"]) parts.push(addrData["D:NCO"]);
+        
+        const city = addrData["D:NMC"] || "";
+        const zip = addrData["D:PSC"] || "";
+        
+        if (zip && city) {
+          parts.push(`${zip} ${city}`);
+        } else {
+          if (zip) parts.push(zip);
+          if (city) parts.push(city);
+        }
+        
+        companyInfo.address = parts.filter(Boolean).join(", ");
+      }
+      
+      res.json(companyInfo);
+    } catch (error) {
+      console.error("Chyba při komunikaci s API ARES:", error);
+      res.status(500).send("Chyba při komunikaci s API ARES");
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -84,7 +84,8 @@ import {
   Pencil,
   FileText,
   ExternalLink,
-  Info
+  Info,
+  Search
 } from "lucide-react";
 import {
   BarChart,
@@ -861,11 +862,37 @@ export default function InvoicePage() {
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel>IČO</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="12345678" {...field} />
-                                </FormControl>
+                                <div className="flex space-x-2">
+                                  <FormControl>
+                                    <Input placeholder="12345678" {...field} />
+                                  </FormControl>
+                                  <Button 
+                                    type="button" 
+                                    variant="outline" 
+                                    onClick={() => {
+                                      const ico = createInvoiceForm.getValues("customerIC");
+                                      if (ico && /^\d{8}$/.test(ico)) {
+                                        fetchCompanyInfo(ico);
+                                      } else {
+                                        toast({
+                                          title: "Neplatné IČO",
+                                          description: "Zadejte platné 8-místné IČO",
+                                          variant: "destructive"
+                                        });
+                                      }
+                                    }}
+                                    disabled={isLoading}
+                                  >
+                                    {isLoading ? (
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <Search className="mr-2 h-4 w-4" />
+                                    )}
+                                    Ověřit
+                                  </Button>
+                                </div>
                                 <FormDescription>
-                                  Zadejte 8-místné identifikační číslo.
+                                  Zadejte 8-místné identifikační číslo a klikněte na "Ověřit" pro načtení údajů z ARES.
                                 </FormDescription>
                                 <FormMessage />
                               </FormItem>
