@@ -36,8 +36,8 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
 
   // Základní navigační položky
   const commonNavItems = [
-    { path: "/", label: "Dashboard", icon: <LayoutDashboard className="mr-3 h-5 w-5" /> },
-    { path: "/shifts", label: "Moje směny", icon: <Calendar className="mr-3 h-5 w-5" /> },
+    { path: "/", label: "Domů", icon: <LayoutDashboard className="mr-3 h-5 w-5" /> },
+    { path: "/shifts", label: "Směny", icon: <Calendar className="mr-3 h-5 w-5" /> },
     { path: "/shift-table", label: "Tabulka směn", icon: <Table className="mr-3 h-5 w-5" /> },
     { path: "/exchanges", label: "Výměny směn", icon: <RefreshCw className="mr-3 h-5 w-5" /> },
     { path: "/reports", label: "Výkazy práce", icon: <FileText className="mr-3 h-5 w-5" /> },
@@ -45,16 +45,10 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
   
   // Položky menu pouze pro správce
   const adminNavItems = [
-    { path: "/workplaces", label: "Pracovní objekty", icon: <Building2 className="mr-3 h-5 w-5" /> },
+    { path: "/workplaces", label: "Pracoviště", icon: <Building2 className="mr-3 h-5 w-5" /> },
     { path: "/workers", label: "Pracovníci", icon: <Users className="mr-3 h-5 w-5" /> },
+    { path: "/invoice", label: "Fakturace", icon: <Receipt className="mr-3 h-5 w-5" /> },
   ];
-  
-  // Přidáme položku faktury pouze pro administrátory
-  if (user?.role === "admin") {
-    adminNavItems.push(
-      { path: "/invoice", label: "Fakturace", icon: <Receipt className="mr-3 h-5 w-5" /> }
-    );
-  }
   
   // Kombinujeme položky podle role uživatele
   const navItems = user?.role === "admin" 
@@ -102,14 +96,16 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
           {navItems.map((item) => (
             <li key={item.path}>
               <Link href={item.path}>
-                <a className={cn(
-                  "flex items-center px-4 py-2 text-slate-300 rounded-md",
-                  location === item.path ? "bg-slate-700" : "hover:bg-slate-700"
-                )}
-                onClick={onClose}>
+                <div 
+                  className={cn(
+                    "flex items-center px-4 py-2 text-slate-300 rounded-md cursor-pointer",
+                    location === item.path ? "bg-slate-700" : "hover:bg-slate-700"
+                  )}
+                  onClick={onClose}
+                >
                   {item.icon}
                   {item.label}
-                </a>
+                </div>
               </Link>
             </li>
           ))}

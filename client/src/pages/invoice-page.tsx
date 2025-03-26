@@ -349,6 +349,11 @@ export default function InvoicePage() {
     window.print();
   };
   
+  // Stav PDF objektu pro náhled
+  const [generatedPdfUrl, setGeneratedPdfUrl] = useState<string | null>(null);
+  const [pdfDialogOpen, setPdfDialogOpen] = useState(false);
+  const [pdfFileName, setPdfFileName] = useState<string>("");
+
   // Funkce pro generování a stažení faktury jako PDF
   const downloadPdf = () => {
     try {
@@ -522,15 +527,23 @@ export default function InvoicePage() {
       doc.text("Faktura byla vygenerována v systému ShiftManager.", 105, 285, { align: "center" });
       doc.text("Strana 1", 195, 285, { align: "right" });
       
-      // Uložení PDF
       try {
+        // Generování názvu souboru
         const fileName = `faktura_${formData.invoiceNumber.replace(/[\/\\:*?"<>|]/g, "-")}.pdf`;
         console.log(`Ukládám PDF jako: ${fileName}`);
-        doc.save(fileName);
+        
+        // Vytvoření URL pro náhled a stažení
+        const pdfBlob = doc.output('blob');
+        const pdfUrl = URL.createObjectURL(pdfBlob);
+        
+        // Uložení do state
+        setGeneratedPdfUrl(pdfUrl);
+        setPdfFileName(fileName);
+        setPdfDialogOpen(true);
         
         toast({
           title: "PDF úspěšně vytvořeno",
-          description: `Faktura byla uložena jako ${fileName}`,
+          description: "Faktura je připravena ke stažení",
           variant: "default",
         });
       } catch (err) {
