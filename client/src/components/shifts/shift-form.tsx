@@ -166,10 +166,12 @@ export function ShiftForm({ open, onClose, shiftToEdit }: ShiftFormProps) {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>{shiftToEdit ? "Upravit směnu" : "Přidat novou směnu"}</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto bg-white">
+        <DialogHeader className="bg-white text-slate-900 pb-4 border-b mb-4">
+          <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+            {shiftToEdit ? "Upravit směnu" : "Přidat novou směnu"}
+          </DialogTitle>
+          <DialogDescription className="text-slate-600 mt-2">
             {shiftToEdit 
               ? "Upravte detaily směny níže" 
               : "Vyplňte formulář pro vytvoření nové směny"}
@@ -177,7 +179,7 @@ export function ShiftForm({ open, onClose, shiftToEdit }: ShiftFormProps) {
         </DialogHeader>
         
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
             <FormField
               control={form.control}
               name="workplaceId"
@@ -189,13 +191,13 @@ export function ShiftForm({ open, onClose, shiftToEdit }: ShiftFormProps) {
                     defaultValue={field.value?.toString()}
                   >
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger className="bg-white border-slate-300 focus:border-primary/70 h-11">
                         <SelectValue placeholder="Vyberte objekt" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
+                    <SelectContent className="max-h-[200px] overflow-y-auto">
                       {workplaces?.map((workplace) => (
-                        <SelectItem key={workplace.id} value={workplace.id.toString()}>
+                        <SelectItem key={workplace.id} value={workplace.id.toString()} className="py-2">
                           {workplace.name}
                         </SelectItem>
                       ))}
@@ -213,7 +215,7 @@ export function ShiftForm({ open, onClose, shiftToEdit }: ShiftFormProps) {
                 <FormItem>
                   <FormLabel>Datum</FormLabel>
                   <FormControl>
-                    <Input type="date" {...field} />
+                    <Input type="date" {...field} className="bg-white border-slate-300 focus:border-primary/70 h-11" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -286,7 +288,7 @@ export function ShiftForm({ open, onClose, shiftToEdit }: ShiftFormProps) {
                 <FormItem>
                   <FormLabel>Poznámky</FormLabel>
                   <FormControl>
-                    <Textarea {...field} rows={3} />
+                    <Textarea {...field} value={field.value || ''} rows={3} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

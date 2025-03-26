@@ -115,42 +115,44 @@ export function ExchangeForm({ open, onClose, shift }: ExchangeFormProps) {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>Žádost o výměnu směny</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto bg-white">
+        <DialogHeader className="bg-white text-slate-900 pb-4 border-b mb-4">
+          <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+            Žádost o výměnu směny
+          </DialogTitle>
+          <DialogDescription className="text-slate-600 mt-2">
             Vytvořte žádost o výměnu vybrané směny. Můžete požádat o převzetí směny jiným pracovníkem nebo nabídnout jednu z vašich směn k výměně.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="bg-slate-50 p-3 rounded-md mb-4">
-          <h3 className="text-sm font-medium text-slate-500 mb-1">Vybraná směna k výměně:</h3>
-          <p className="font-medium">
+        <div className="bg-slate-50 p-4 rounded-md mb-6 border border-slate-200 shadow-sm">
+          <h3 className="text-sm font-semibold text-slate-500 mb-2">Vybraná směna k výměně:</h3>
+          <p className="font-medium text-slate-800 flex items-center">
             {shift ? formatShiftDateTime(shift) : ""}
           </p>
         </div>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
             <FormField
               control={form.control}
               name="offeredShiftId"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Vaše nabízená směna (volitelné)</FormLabel>
+                <FormItem className="bg-white">
+                  <FormLabel className="text-slate-700 font-medium">Vaše nabízená směna (volitelné)</FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
                   >
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger className="bg-white border-slate-300 focus:border-primary/70 h-11">
                         <SelectValue placeholder="Vyberte směnu k nabídnutí (volitelné)" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
-                      <SelectItem value="none">Žádná - pouze žádám o převzetí</SelectItem>
+                    <SelectContent className="max-h-[200px] overflow-y-auto">
+                      <SelectItem value="none" className="font-medium py-2.5">Žádná - pouze žádám o převzetí</SelectItem>
                       {eligibleShifts.map((userShift) => (
-                        <SelectItem key={userShift.id} value={userShift.id.toString()}>
+                        <SelectItem key={userShift.id} value={userShift.id.toString()} className="py-2.5">
                           {formatShiftDateTime(userShift)}
                         </SelectItem>
                       ))}
@@ -161,22 +163,24 @@ export function ExchangeForm({ open, onClose, shift }: ExchangeFormProps) {
               )}
             />
 
-            <DialogFooter className="pt-4 border-t">
+            <div className="pt-4 border-t flex justify-end space-x-3 mt-6">
               <Button
                 variant="outline"
                 type="button"
                 onClick={onClose}
                 disabled={isSubmitting}
+                className="w-1/3"
               >
                 Zrušit
               </Button>
               <Button
                 type="submit"
                 disabled={isSubmitting || createExchangeRequestMutation.isPending}
+                className="w-2/3 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
               >
                 {isSubmitting ? "Odesílám..." : "Vytvořit žádost"}
               </Button>
-            </DialogFooter>
+            </div>
           </form>
         </Form>
       </DialogContent>
