@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Shift, Workplace } from "@shared/schema";
-import { ChevronLeft, ChevronRight, X, Download, Clock, User, MapPin, Info } from "lucide-react";
+import { Shift, Workplace, User as UserType } from "@shared/schema";
+import { ChevronLeft, ChevronRight, X, Download, Clock, UserIcon, MapPin, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { 
   format, 
@@ -22,11 +22,18 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { formatDuration, calculateDuration } from "@/lib/utils";
+
+// Rozšířené rozhraní pro směny s doplněnými vztahy
+interface ShiftWithDetails extends Shift {
+  workplace?: Workplace;
+  user?: UserType;
+}
 
 interface CalendarModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  shifts: Shift[];
+  shifts: ShiftWithDetails[];
   workplaces: Workplace[];
   selectedDate: Date;
   setSelectedDate: (date: Date) => void;
@@ -100,18 +107,6 @@ export function CalendarModal({
       return format(new Date(dateString), "HH:mm");
     } catch (e) {
       return "??:??";
-    }
-  };
-
-  // Výpočet trvání
-  const calculateDuration = (startTime: string, endTime: string) => {
-    try {
-      const start = new Date(startTime);
-      const end = new Date(endTime);
-      const durationHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-      return durationHours.toFixed(1) + " h";
-    } catch (e) {
-      return "? h";
     }
   };
 
@@ -259,12 +254,13 @@ export function CalendarModal({
                                       <span>
                                         {formatTime(shift.startTime)} - {formatTime(shift.endTime)}
                                         <span className="ml-1 text-slate-400">
-                                          ({shift.startTime && shift.endTime ? calculateDuration(shift.startTime, shift.endTime) : "? h"})
+                                          ({shift.startTime && shift.endTime ? 
+                                            formatDuration(calculateDuration(shift.startTime, shift.endTime)) : "0h 0m"})
                                         </span>
                                       </span>
                                     </div>
                                     <div className="text-xs flex items-center gap-2">
-                                      <User className="h-4 w-4" />
+                                      <UserIcon className="h-4 w-4" />
                                       <span>
                                         {shift.user ? `${shift.user.firstName} ${shift.user.lastName}` : "Neobsazeno"}
                                       </span>

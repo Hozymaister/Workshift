@@ -53,9 +53,82 @@ export const formatCurrency = (value: number) => {
 };
 
 export const calculateDuration = (startTime: string, endTime: string) => {
-  const start = new Date(startTime);
-  const end = new Date(endTime);
-  const diffInMilliseconds = end.getTime() - start.getTime();
-  const diffInHours = diffInMilliseconds / (1000 * 60 * 60);
-  return Math.round(diffInHours * 10) / 10; // Round to 1 decimal place
+  try {
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+    const diffInMilliseconds = end.getTime() - start.getTime();
+    const diffInHours = diffInMilliseconds / (1000 * 60 * 60);
+    return Math.round(diffInHours * 10) / 10; // Round to 1 decimal place
+  } catch (e) {
+    return 0;
+  }
+};
+
+// Funkce pro výpočet hodin a minut v textovém formátu
+export const formatDuration = (durationInHours: number) => {
+  if (isNaN(durationInHours)) return "0h 0m";
+  
+  const hours = Math.floor(durationInHours);
+  const minutes = Math.round((durationInHours - hours) * 60);
+  
+  if (minutes === 60) {
+    return `${hours + 1}h 0m`;
+  }
+  
+  return `${hours}h ${minutes}m`;
+};
+
+// Funkce pro výpočet měsíčního součtu hodin
+export const calculateMonthlyHours = (
+  shifts: { startTime: string | null; endTime: string | null; date: string | null }[],
+  year: number,
+  month: number
+) => {
+  // Filtrujeme směny podle daného měsíce
+  const monthlyShifts = shifts.filter((shift) => {
+    if (!shift.date) return false;
+    const shiftDate = new Date(shift.date);
+    return shiftDate.getFullYear() === year && shiftDate.getMonth() === month;
+  });
+
+  // Počítáme celkový počet hodin
+  return monthlyShifts.reduce((total, shift) => {
+    if (!shift.startTime || !shift.endTime) return total;
+    return total + calculateDuration(shift.startTime, shift.endTime);
+  }, 0);
+};
+
+// Funkce pro výpočet celkového počtu hodin
+export const calculateTotalHours = (
+  shifts: { startTime: string | null; endTime: string | null }[]
+) => {
+  return shifts.reduce((total, shift) => {
+    if (!shift.startTime || !shift.endTime) return total;
+    return total + calculateDuration(shift.startTime, shift.endTime);
+  }, 0);
+};
+
+// Funkce pro přehledný výstup počtu hodin
+export const formatTotalHours = (durationInHours: number) => {
+  if (isNaN(durationInHours)) return "0 hodin";
+  
+  const hours = Math.floor(durationInHours);
+  const minutes = Math.round((durationInHours - hours) * 60);
+  
+  let result = "";
+  
+  if (hours > 0) {
+    result += `${hours} ${hours === 1 ? "hodina" : hours >= 2 && hours <= 4 ? "hodiny" : "hodin"}`;
+  }
+  
+  if (minutes > 0) {
+    if (result) result += " ";
+    result += `${minutes} ${minutes === 1 ? "minuta" : minutes >= 2 && minutes <= 4 ? "minuty" : "minut"}`;
+  }
+  
+  if (!result) {
+    return "0 hodin";
+  }
+  
+  return result;
 };
