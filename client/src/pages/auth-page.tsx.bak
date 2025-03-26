@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -36,6 +36,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
+  DialogClose
 } from "@/components/ui/dialog";
 
 // Login schema
@@ -118,10 +120,14 @@ export default function AuthPage() {
       email: data.email,
       password: data.password,
     });
+    // Není potřeba přesměrovat, auth hook se postará o obnovení stavu a 
+    // komponenta ProtectedRoute automaticky přesměruje uživatele
   };
 
   const onRegisterSubmit = (data: RegisterFormValues) => {
     registerMutation.mutate(data);
+    // Není potřeba přesměrovat, auth hook se postará o obnovení stavu a 
+    // komponenta ProtectedRoute automaticky přesměruje uživatele
   };
   
   // Reset password form
@@ -200,6 +206,7 @@ export default function AuthPage() {
   const onNewPasswordSubmit = (data: NewPasswordFormValues) => {
     newPasswordMutation.mutate(data, {
       onSuccess: () => {
+        // Po změně hesla zůstaneme na přihlašovací stránce, jen zavřeme dialog
         setIsNewPasswordDialogOpen(false);
         setActiveTab("login");
       }
@@ -211,9 +218,10 @@ export default function AuthPage() {
     console.log("AuthPage: User already logged in, redirecting to dashboard");
     return <Redirect to="/" />;
   }
+  console.log("AuthPage: No user found, showing login form");
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-slate-100 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-slate-100 flex items-center justify-center p-4">
       <div className="grid md:grid-cols-2 gap-8 w-full max-w-4xl">
         {/* Informační část */}
         <div className="hidden md:flex flex-col justify-center space-y-4 p-6">
@@ -251,118 +259,89 @@ export default function AuthPage() {
               <p className="text-slate-600">Systém pro správu směn a pracovníků</p>
             </div>
           
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid grid-cols-2 w-full rounded-none">
-                <TabsTrigger value="login">Přihlášení</TabsTrigger>
-                <TabsTrigger value="register">Registrace</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="login" className="p-6">
-                <Form {...loginForm}>
-                  <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid grid-cols-2 w-full rounded-none">
+              <TabsTrigger value="login">Přihlášení</TabsTrigger>
+              <TabsTrigger value="register">Registrace</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="login" className="p-6">
+              <Form {...loginForm}>
+                <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
+                  <FormField
+                    control={loginForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input placeholder="email@example.com" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={loginForm.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Heslo</FormLabel>
+                        <FormControl>
+                          <Input type="password" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <div className="flex items-center justify-between">
                     <FormField
                       control={loginForm.control}
-                      name="email"
+                      name="rememberMe"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email</FormLabel>
+                        <FormItem className="flex flex-row items-center space-x-2 space-y-0">
                           <FormControl>
-                            <Input placeholder="email@example.com" {...field} />
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
                           </FormControl>
-                          <FormMessage />
+                          <FormLabel className="text-sm">Zapamatovat si mě</FormLabel>
                         </FormItem>
                       )}
                     />
-                    
-                    <FormField
-                      control={loginForm.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Heslo</FormLabel>
-                          <FormControl>
-                            <Input type="password" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <div className="flex items-center justify-between">
-                      <FormField
-                        control={loginForm.control}
-                        name="rememberMe"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-center space-x-2 space-y-0">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                            <FormLabel className="text-sm">Zapamatovat si mě</FormLabel>
-                          </FormItem>
-                        )}
-                      />
-                      <Button 
-                        variant="link" 
-                        className="text-sm p-0 h-auto" 
-                        onClick={() => setIsResetDialogOpen(true)}
-                      >
-                        Zapomenuté heslo?
-                      </Button>
-                    </div>
-                    
                     <Button 
-                      type="submit" 
-                      className="w-full" 
-                      disabled={loginMutation.isPending}
+                      variant="link" 
+                      className="text-sm p-0 h-auto" 
+                      onClick={() => setIsResetDialogOpen(true)}
                     >
-                      {loginMutation.isPending ? "Přihlašování..." : "Přihlásit se"}
+                      Zapomenuté heslo?
                     </Button>
-                  </form>
-                </Form>
-              </TabsContent>
-              
-              <TabsContent value="register" className="p-6">
-                <Form {...registerForm}>
-                  <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={registerForm.control}
-                        name="firstName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Jméno</FormLabel>
-                            <FormControl>
-                              <Input {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={registerForm.control}
-                        name="lastName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Příjmení</FormLabel>
-                            <FormControl>
-                              <Input {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                    
+                  </div>
+                  
+                  <Button 
+                    type="submit" 
+                    className="w-full" 
+                    disabled={loginMutation.isPending}
+                  >
+                    {loginMutation.isPending ? "Přihlašování..." : "Přihlásit se"}
+                  </Button>
+                </form>
+              </Form>
+            </TabsContent>
+            
+            <TabsContent value="register" className="p-6">
+              <Form {...registerForm}>
+                <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={registerForm.control}
-                      name="username"
+                      name="firstName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Uživatelské jméno</FormLabel>
+                          <FormLabel>Jméno</FormLabel>
                           <FormControl>
                             <Input {...field} />
                           </FormControl>
@@ -373,95 +352,123 @@ export default function AuthPage() {
                     
                     <FormField
                       control={registerForm.control}
-                      name="email"
+                      name="lastName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Email</FormLabel>
+                          <FormLabel>Příjmení</FormLabel>
                           <FormControl>
-                            <Input type="email" {...field} />
+                            <Input {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    
-                    <FormField
-                      control={registerForm.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Heslo</FormLabel>
-                          <FormControl>
-                            <Input type="password" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={registerForm.control}
-                      name="passwordConfirm"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Potvrzení hesla</FormLabel>
-                          <FormControl>
-                            <Input type="password" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={registerForm.control}
-                      name="role"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Role</FormLabel>
-                          <FormControl>
-                            <RadioGroup
-                              onValueChange={field.onChange}
-                              defaultValue={field.value}
-                              className="flex flex-col space-y-1"
-                            >
-                              <FormItem className="flex items-center space-x-3 space-y-0">
-                                <FormControl>
-                                  <RadioGroupItem value="worker" />
-                                </FormControl>
-                                <FormLabel className="font-normal">
-                                  Pracovník
-                                </FormLabel>
-                              </FormItem>
-                              <FormItem className="flex items-center space-x-3 space-y-0">
-                                <FormControl>
-                                  <RadioGroupItem value="admin" />
-                                </FormControl>
-                                <FormLabel className="font-normal">
-                                  Správce
-                                </FormLabel>
-                              </FormItem>
-                            </RadioGroup>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <Button 
-                      type="submit" 
-                      className="w-full" 
-                      disabled={registerMutation.isPending}
-                    >
-                      {registerMutation.isPending ? "Registrace..." : "Registrovat se"}
-                    </Button>
-                  </form>
-                </Form>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
-      </div>
+                  </div>
+                  
+                  <FormField
+                    control={registerForm.control}
+                    name="username"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Uživatelské jméno</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={registerForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input type="email" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={registerForm.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Heslo</FormLabel>
+                        <FormControl>
+                          <Input type="password" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={registerForm.control}
+                    name="passwordConfirm"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Potvrzení hesla</FormLabel>
+                        <FormControl>
+                          <Input type="password" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={registerForm.control}
+                    name="role"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Role</FormLabel>
+                        <FormControl>
+                          <RadioGroup
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                            className="flex flex-col space-y-1"
+                          >
+                            <FormItem className="flex items-center space-x-3 space-y-0">
+                              <FormControl>
+                                <RadioGroupItem value="worker" />
+                              </FormControl>
+                              <FormLabel className="font-normal">
+                                Pracovník
+                              </FormLabel>
+                            </FormItem>
+                            <FormItem className="flex items-center space-x-3 space-y-0">
+                              <FormControl>
+                                <RadioGroupItem value="admin" />
+                              </FormControl>
+                              <FormLabel className="font-normal">
+                                Správce
+                              </FormLabel>
+                            </FormItem>
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <Button 
+                    type="submit" 
+                    className="w-full" 
+                    disabled={registerMutation.isPending}
+                  >
+                    {registerMutation.isPending ? "Registrace..." : "Registrovat se"}
+                  </Button>
+                </form>
+              </Form>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
       
       {/* Reset Password Dialog */}
       <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
