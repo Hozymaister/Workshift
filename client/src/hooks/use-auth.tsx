@@ -64,10 +64,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: (user: SafeUser) => {
       queryClient.setQueryData(["/api/user"], user);
-      toast({
-        title: "Přihlášení úspěšné",
-        description: `Vítejte zpět, ${user.firstName}!`,
-      });
+      // Nebudeme zobrazovat toast aby nedošlo ke zpoždění přesměrování
+      // Pozn: přesměrování bude provedeno automaticky díky ProtectedRoute
     },
     onError: (error: Error) => {
       console.error("Login onError called:", error.message);
@@ -88,10 +86,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: (user: SafeUser) => {
       queryClient.setQueryData(["/api/user"], user);
-      toast({
-        title: "Registrace úspěšná",
-        description: `Vítejte, ${user.firstName}!`,
-      });
+      // Nebudeme zobrazovat toast aby nedošlo ke zpoždění přesměrování
+      // Pozn: přesměrování bude provedeno automaticky díky ProtectedRoute
     },
     onError: (error: Error) => {
       toast({

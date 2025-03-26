@@ -572,14 +572,7 @@ export default function AuthPage() {
         </DialogContent>
       </Dialog>
       
-      {/* Demo přihlašovací údaje pro snazší testování */}
-      <div className="mt-6 text-center text-sm text-slate-500">
-        <p>Pro testování můžete použít demo účet:</p>
-        <div className="p-3 mt-2 bg-slate-50 rounded-md inline-block">
-          <p><strong>Admin:</strong> hozak.tomas@email.cz</p>
-          <p><strong>Heslo:</strong> 123456</p>
-        </div>
-      </div>
+
     </div>
   );
 }
