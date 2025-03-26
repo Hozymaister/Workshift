@@ -204,6 +204,8 @@ export default function ShiftsPage() {
                               variant="ghost"
                               size="icon"
                               className="text-blue-500 hover:text-blue-600"
+                              onClick={() => handleExchangeShift(shift)}
+                              title="Požádat o výměnu směny"
                             >
                               <RefreshCw className="h-4 w-4" />
                             </Button>
@@ -251,6 +253,17 @@ export default function ShiftsPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+        
+        {shiftToExchange && (
+          <ExchangeForm
+            open={isExchangeFormOpen}
+            onClose={() => {
+              setIsExchangeFormOpen(false);
+              setShiftToExchange(undefined);
+            }}
+            shift={shiftToExchange}
+          />
+        )}
         
         <MobileNavigation />
       </main>
