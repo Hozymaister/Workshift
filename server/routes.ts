@@ -29,6 +29,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     res.status(403).send("Forbidden: Admin access required");
   };
+  
+  // Konfigurujeme multer pro nahrávání souborů dokumentů
+  const multerStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      // Nastavíme cílovou složku podle typu souboru
+      let uploadDir = 'uploads/documents';
+      cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+      // Vytvoříme unikátní název souboru
+      const uniqueFilename = `${uuidv4()}${path.extname(file.originalname)}`;
+      cb(null, uniqueFilename);
+    }
+  });
+  
+  // Vytvoříme upload middleware
+  const upload = multer({
+    storage: multerStorage,
+    limits: {
+      fileSize: 10 * 1024 * 1024, // 10MB limit
+    },
+    fileFilter: (req, file, cb) => {
+      // Povolíme pouze obrázky a PDF soubory
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Nepodporovaný formát souboru. Povolené formáty: JPG, PNG, GIF, PDF.'));
+      }
+    }
+  });
 
   // Workplace routes
   app.get("/api/workplaces", isAuthenticated, async (req, res) => {
@@ -663,7 +694,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).send("Internal Server Error");
     }
   });
-
+  
+  // Endpoint pro nahrávání souborů
+  app.post("/api/documents/upload", isAuthenticated, isAdmin, upload.single('file'), async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).send("Unauthorized");
+      }
+      
+      const file = req.file;
+      if (!file) {
+        return res.status(400).send("No file uploaded");
+      }
+      
+      // Určíme typ dokumentu podle MIME typu
+      const isImage = file.mimetype.startsWith('image/');
+      const documentType = isImage ? 'image' : 'pdf';
+      
+      // Vytvoříme náhled pro obrázky
+      let thumbnailPath = null;
+      if (isImage) {
+        // V produkčním prostředí bychom zde vygenerovali náhled
+        // Pro účely dema použijeme stejný soubor jako náhled
+        thumbnailPath = file.path;
+      }
+      
+      // Formátování velikosti souboru
+      const sizeInBytes = file.size;
+      let size: string;
+      if (sizeInBytes < 1024) {
+        size = `${sizeInBytes} B`;
+      } else if (sizeInBytes < 1024 * 1024) {
+        size = `${(sizeInBytes / 1024).toFixed(1)} KB`;
+      } else {
+        size = `${(sizeInBytes / (1024 * 1024)).toFixed(1)} MB`;
+      }
+      
+      // Uložíme záznam o dokumentu do databáze
+      const document = await storage.createDocument({
+        userId: req.user.id,
+        name: req.body.name || file.originalname,
+        type: documentType,
+        path: file.path,
+        thumbnailPath: thumbnailPath,
+        size: size
+      });
+      
+      res.status(201).json(document);
+    } catch (error) {
+      console.error("Error uploading document:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  });
+  
+  // Endpoint pro získání obsahu souboru
+  app.get("/api/documents/file/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).send("Unauthorized");
+      }
+      
+      const documentId = parseInt(req.params.id);
+      const document = await storage.getDocument(documentId);
+      
+      if (!document) {
+        return res.status(404).send("Document not found");
+      }
+      
+      // Ověření, že dokument patří přihlášenému uživateli
+      if (document.userId !== req.user.id) {
+        return res.status(403).send("Forbidden: You don't have access to this document");
+      }
+      
+      // Kontrola existence souboru
+      if (!fs.existsSync(document.path)) {
+        return res.status(404).send("Document file not found");
+      }
+      
+      // Nastavení Content-Type podle typu dokumentu
+      const contentType = document.type === 'image' ? 'image/jpeg' : 'application/pdf';
+      res.setHeader('Content-Type', contentType);
+      
+      // Odešleme soubor jako stream
+      const fileStream = fs.createReadStream(document.path);
+      fileStream.pipe(res);
+    } catch (error) {
+      console.error("Error serving document file:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  });
+  
+  // Standardní CRUD operace pro dokumenty
   app.post("/api/documents", isAuthenticated, isAdmin, async (req, res) => {
     try {
       if (!req.user) {

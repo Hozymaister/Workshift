@@ -36,65 +36,54 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
 import { cs } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
+import { Document } from "@shared/schema";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 
-type DocumentType = {
-  id: string;
-  name: string;
-  createdAt: Date;
+type DocumentWithUrl = Document & {
   thumbnailUrl: string;
-  size: string;
-  type: "image" | "pdf";
 };
 
 export default function ScanPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("camera");
   const [isScanning, setIsScanning] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [scanPreviewUrl, setScanPreviewUrl] = useState<string | null>(null);
-  const [documents, setDocuments] = useState<DocumentType[]>([]);
-  const [selectedDocument, setSelectedDocument] = useState<DocumentType | null>(null);
-  const [documentToDelete, setDocumentToDelete] = useState<string | null>(null);
+  const [selectedDocument, setSelectedDocument] = useState<DocumentWithUrl | null>(null);
+  const [documentToDelete, setDocumentToDelete] = useState<number | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDocumentOpen, setIsDocumentOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const captureCanvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Simulujeme načtení dokumentů
-  useEffect(() => {
-    // Toto by ve skutečné aplikaci načítalo data z API
-    const demoDocuments: DocumentType[] = [
-      {
-        id: "doc1",
-        name: "Faktura za březen 2025",
-        createdAt: new Date(2025, 2, 15),
-        thumbnailUrl: "https://via.placeholder.com/100x150",
-        size: "1.2 MB",
-        type: "pdf",
-      },
-      {
-        id: "doc2",
-        name: "Smlouva s dodavatelem",
-        createdAt: new Date(2025, 2, 10),
-        thumbnailUrl: "https://via.placeholder.com/100x150",
-        size: "850 KB",
-        type: "pdf",
-      },
-      {
-        id: "doc3",
-        name: "Výkaz práce",
-        createdAt: new Date(2025, 2, 5),
-        thumbnailUrl: "https://via.placeholder.com/100x150",
-        size: "732 KB",
-        type: "image",
-      },
-    ];
-    
-    setDocuments(demoDocuments);
-  }, []);
+  // Načtení seznamu dokumentů
+  const { data: documents = [], isLoading: isLoadingDocuments } = useQuery({
+    queryKey: ["/api/documents"],
+    queryFn: async () => {
+      const res = await fetch("/api/documents");
+      if (!res.ok) {
+        throw new Error("Nepodařilo se načíst dokumenty");
+      }
+      const docsData: Document[] = await res.json();
+      
+      // Přidáme URL pro náhled ke každému dokumentu
+      return docsData.map(doc => ({
+        ...doc,
+        thumbnailUrl: doc.thumbnailPath 
+          ? `/api/documents/file/${doc.id}` 
+          : doc.type === 'image' 
+            ? `/api/documents/file/${doc.id}` 
+            : "https://via.placeholder.com/100x150",
+      }));
+    },
+    staleTime: 1000 * 60 * 5, // 5 minut
+  });
 
   // Přístup ke kameře
   useEffect(() => {
@@ -177,35 +166,102 @@ export default function ScanPage() {
     }, 1500); // Simulujeme čas na zpracování
   };
 
-  // Funkce pro potvrzení a uložení naskenovaného dokumentu
-  const handleSaveScan = () => {
-    setIsUploading(true);
-    
-    // Simulujeme nahrávání a zpracování na server
-    setTimeout(() => {
-      // Přidáme nový dokument do seznamu
-      const newDocument: DocumentType = {
-        id: `doc${documents.length + 1}`,
-        name: `Naskenovaný dokument ${format(new Date(), "d.M.yyyy HH:mm")}`,
-        createdAt: new Date(),
-        thumbnailUrl: scanPreviewUrl || "https://via.placeholder.com/100x150",
-        size: "1.1 MB",
-        type: "image",
-      };
+  // Mutace pro nahrávání naskenovaného dokumentu
+  const uploadScanMutation = useMutation({
+    mutationFn: async (dataUrl: string) => {
+      // Převedeme data URL na Blob
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
       
-      setDocuments(prev => [newDocument, ...prev]);
+      // Vytvoříme FormData a přidáme soubor
+      const formData = new FormData();
+      formData.append('file', blob, `scan_${format(new Date(), "yyyyMMdd_HHmmss")}.png`);
+      formData.append('name', `Naskenovaný dokument ${format(new Date(), "d.M.yyyy HH:mm")}`);
+      
+      // Pošleme soubor na server
+      const res = await fetch('/api/documents/upload', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+      
+      if (!res.ok) {
+        throw new Error('Nahrávání se nezdařilo');
+      }
+      
+      return res.json();
+    },
+    onSuccess: () => {
+      // Obnovíme seznam dokumentů
+      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
       
       // Zavřeme náhled a vyčistíme
       setShowPreview(false);
       setScanPreviewUrl(null);
-      setIsUploading(false);
       
       toast({
         title: "Dokument naskenován",
         description: "Dokument byl úspěšně naskenován a uložen.",
       });
-    }, 2000);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Chyba při nahrávání",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+    onSettled: () => {
+      setIsUploading(false);
+    }
+  });
+
+  // Funkce pro potvrzení a uložení naskenovaného dokumentu
+  const handleSaveScan = () => {
+    if (!scanPreviewUrl) return;
+    
+    setIsUploading(true);
+    uploadScanMutation.mutate(scanPreviewUrl);
   };
+
+  // Mutace pro nahrání souboru
+  const uploadFileMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('name', file.name);
+      
+      const res = await fetch('/api/documents/upload', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+      
+      if (!res.ok) {
+        throw new Error('Nahrávání se nezdařilo');
+      }
+      
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
+      
+      toast({
+        title: "Soubor nahrán",
+        description: "Dokument byl úspěšně nahrán.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Chyba při nahrávání",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+    onSettled: () => {
+      setIsUploading(false);
+    }
+  });
 
   // Funkce pro upload souboru
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -213,38 +269,7 @@ export default function ScanPage() {
     if (!file) return;
     
     setIsUploading(true);
-    
-    // V reálné aplikaci by zde byl upload na server
-    setTimeout(() => {
-      // Vytvoříme náhled souboru
-      const reader = new FileReader();
-      reader.onload = () => {
-        const newDocument: DocumentType = {
-          id: `doc${documents.length + 1}`,
-          name: file.name,
-          createdAt: new Date(),
-          thumbnailUrl: file.type.startsWith('image/') 
-            ? reader.result as string 
-            : "https://via.placeholder.com/100x150",
-          size: formatFileSize(file.size),
-          type: file.type.startsWith('image/') ? "image" : "pdf",
-        };
-        
-        setDocuments(prev => [newDocument, ...prev]);
-        setIsUploading(false);
-        
-        toast({
-          title: "Soubor nahrán",
-          description: "Dokument byl úspěšně nahrán.",
-        });
-      };
-      
-      if (file.type.startsWith('image/')) {
-        reader.readAsDataURL(file);
-      } else {
-        reader.readAsText(file); // Jen pro vytvoření události onload
-      }
-    }, 1500);
+    uploadFileMutation.mutate(file);
     
     // Vyčistíme input pro opakované nahrání stejného souboru
     if (fileInputRef.current) {
@@ -252,21 +277,39 @@ export default function ScanPage() {
     }
   };
 
-  // Funkce pro smazání dokumentu
-  const handleDeleteDocument = () => {
-    if (!documentToDelete) return;
-    
-    // Simulujeme mazání ze serveru
-    setTimeout(() => {
-      setDocuments(prev => prev.filter(doc => doc.id !== documentToDelete));
-      setDocumentToDelete(null);
-      setShowDeleteDialog(false);
+  // Mutace pro smazání dokumentu
+  const deleteDocumentMutation = useMutation({
+    mutationFn: async (documentId: number) => {
+      const res = await apiRequest('DELETE', `/api/documents/${documentId}`);
+      if (!res.ok) {
+        throw new Error('Smazání dokumentu se nezdařilo');
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
       
       toast({
         title: "Dokument smazán",
         description: "Dokument byl úspěšně smazán.",
       });
-    }, 500);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Chyba při mazání",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+    onSettled: () => {
+      setDocumentToDelete(null);
+      setShowDeleteDialog(false);
+    }
+  });
+
+  // Funkce pro smazání dokumentu
+  const handleDeleteDocument = () => {
+    if (!documentToDelete) return;
+    deleteDocumentMutation.mutate(documentToDelete);
   };
 
   // Pomocná funkce pro formátování velikosti souboru
