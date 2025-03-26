@@ -311,6 +311,11 @@ export default function ScanPage() {
     if (!documentToDelete) return;
     deleteDocumentMutation.mutate(documentToDelete);
   };
+  
+  // Funkce pro otevření dokumentu v novém okně
+  const openDocumentInNewTab = (documentId: number) => {
+    window.open(`/api/documents/file/${documentId}`, '_blank');
+  };
 
   // Pomocná funkce pro formátování velikosti souboru
   const formatFileSize = (bytes: number): string => {
@@ -322,7 +327,8 @@ export default function ScanPage() {
   };
 
   // Funkce pro formátování data
-  const formatDate = (date: Date): string => {
+  const formatDate = (date: Date | null | undefined): string => {
+    if (!date) return "";
     return format(date, "d. MMMM yyyy, HH:mm", { locale: cs });
   };
 
@@ -606,9 +612,12 @@ export default function ScanPage() {
                 Zavřít
               </Button>
             </DialogClose>
-            <Button className="bg-gradient-to-r from-primary to-primary/80">
+            <Button 
+              className="bg-gradient-to-r from-primary to-primary/80"
+              onClick={() => selectedDocument && openDocumentInNewTab(selectedDocument.id)}
+            >
               <Download className="mr-2 h-4 w-4" />
-              Stáhnout
+              {selectedDocument?.type === "pdf" ? "Otevřít PDF" : "Zobrazit v plné velikosti"}
             </Button>
           </DialogFooter>
         </DialogContent>
