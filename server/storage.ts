@@ -468,7 +468,7 @@ export class PostgreSQLStorage implements IStorage {
       
       if (!adminUser) {
         const hashedPassword = await hashPassword("123456");
-        await this.createUser({
+        const user = await this.createUser({
           firstName: "Hozak",
           lastName: "T",
           username: "hozak.t",
@@ -477,6 +477,39 @@ export class PostgreSQLStorage implements IStorage {
           role: "admin"
         });
         console.log("Demo admin created: hozak.tomas@email.cz / 123456");
+        
+        // Vytvoření ukázkového pracoviště
+        const workplace = await this.createWorkplace({
+          name: "Centrála",
+          type: "warehouse",
+          address: "Pražská 123, Praha",
+          notes: "Hlavní sklad"
+        });
+        
+        // Vytvoření ukázkové směny s platným datem
+        const today = new Date();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(today.getDate() + 1);
+        
+        await this.createShift({
+          workplaceId: workplace.id,
+          userId: user.id,
+          date: today.toISOString(),
+          startTime: new Date(today.setHours(8, 0, 0, 0)).toISOString(),
+          endTime: new Date(today.setHours(16, 0, 0, 0)).toISOString(),
+          notes: "Ranní směna"
+        });
+        
+        await this.createShift({
+          workplaceId: workplace.id,
+          userId: user.id,
+          date: tomorrow.toISOString(),
+          startTime: new Date(tomorrow.setHours(8, 0, 0, 0)).toISOString(),
+          endTime: new Date(tomorrow.setHours(16, 0, 0, 0)).toISOString(),
+          notes: "Další směna"
+        });
+        
+        console.log("Demo pracovní směny vytvořeny");
       }
     } catch (error) {
       console.error("Error creating demo data:", error);
