@@ -44,6 +44,8 @@ const formSchema = insertShiftSchema.extend({
   date: z.string().min(1, "Datum je povinné"),
   startTimeStr: z.string().min(1, "Čas začátku je povinný"),
   endTimeStr: z.string().min(1, "Čas konce je povinný"),
+  userId: z.string().nullable().optional(),
+  workplaceId: z.string().min(1, "Objekt je povinný"),
 }).omit({ startTime: true, endTime: true });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -77,8 +79,8 @@ export function ShiftForm({ open, onClose, shiftToEdit }: ShiftFormProps) {
   useEffect(() => {
     if (shiftToEdit && open) {
       form.reset({
-        workplaceId: shiftToEdit.workplaceId,
-        userId: shiftToEdit.userId,
+        workplaceId: shiftToEdit.workplaceId ? shiftToEdit.workplaceId.toString() : undefined,
+        userId: shiftToEdit.userId ? shiftToEdit.userId.toString() : null,
         date: format(new Date(shiftToEdit.date), "yyyy-MM-dd"),
         startTimeStr: format(new Date(shiftToEdit.startTime), "HH:mm"),
         endTimeStr: format(new Date(shiftToEdit.endTime), "HH:mm"),
@@ -149,8 +151,8 @@ export function ShiftForm({ open, onClose, shiftToEdit }: ShiftFormProps) {
     const endTime = parse(values.endTimeStr, "HH:mm", formDate);
     
     const shiftData = {
-      workplaceId: Number(values.workplaceId),
-      userId: values.userId ? Number(values.userId) : null,
+      workplaceId: values.workplaceId ? Number(values.workplaceId) : null,
+      userId: values.userId === "null" ? null : values.userId ? Number(values.userId) : null,
       date: formDate.toISOString(),
       startTime: startTime.toISOString(),
       endTime: endTime.toISOString(),
