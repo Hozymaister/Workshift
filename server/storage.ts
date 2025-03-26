@@ -50,6 +50,15 @@ export interface IStorage {
   createReport(report: InsertReport): Promise<Report>;
   getUserReports(userId: number): Promise<Report[]>;
   
+  // Customer operations
+  getCustomer(id: number): Promise<Customer | undefined>;
+  createCustomer(customer: InsertCustomer): Promise<Customer>;
+  updateCustomer(id: number, customer: Partial<InsertCustomer>): Promise<Customer | undefined>;
+  deleteCustomer(id: number): Promise<boolean>;
+  getAllCustomers(): Promise<Customer[]>;
+  getUserCustomers(userId: number): Promise<Customer[]>;
+  searchCustomers(query: string, userId: number): Promise<Customer[]>;
+  
   // Session store
   sessionStore: session.SessionStore;
 }
@@ -60,12 +69,14 @@ export class MemStorage implements IStorage {
   private shifts: Map<number, Shift>;
   private exchangeRequests: Map<number, ExchangeRequest>;
   private reports: Map<number, Report>;
+  private customers: Map<number, Customer>;
   sessionStore: session.SessionStore;
   private userIdCounter: number;
   private workplaceIdCounter: number;
   private shiftIdCounter: number;
   private exchangeRequestIdCounter: number;
   private reportIdCounter: number;
+  private customerIdCounter: number;
 
   constructor() {
     this.users = new Map();
@@ -73,11 +84,13 @@ export class MemStorage implements IStorage {
     this.shifts = new Map();
     this.exchangeRequests = new Map();
     this.reports = new Map();
+    this.customers = new Map();
     this.userIdCounter = 1;
     this.workplaceIdCounter = 1;
     this.shiftIdCounter = 1;
     this.exchangeRequestIdCounter = 1;
     this.reportIdCounter = 1;
+    this.customerIdCounter = 1;
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000, // 24 hours
     });
