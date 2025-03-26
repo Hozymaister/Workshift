@@ -546,8 +546,8 @@ export default function WorkplacesPage() {
                       <FormItem>
                         <FormLabel>Správce objektu</FormLabel>
                         <Select
-                          onValueChange={(value) => field.onChange(value ? Number(value) : null)}
-                          value={field.value ? String(field.value) : undefined}
+                          onValueChange={(value) => field.onChange(value !== "none" ? Number(value) : null)}
+                          value={field.value ? String(field.value) : "none"}
                         >
                           <FormControl>
                             <SelectTrigger className="bg-white border-slate-300 h-11">
@@ -555,7 +555,12 @@ export default function WorkplacesPage() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">Žádný správce</SelectItem>
+                            <SelectItem value="none">
+                              <div className="flex items-center">
+                                <UserCircle className="h-4 w-4 mr-2 text-slate-400" />
+                                <span>Žádný správce</span>
+                              </div>
+                            </SelectItem>
                             {users?.map((user) => (
                               <SelectItem key={user.id} value={String(user.id)}>
                                 <div className="flex items-center">
