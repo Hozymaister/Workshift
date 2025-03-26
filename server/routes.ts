@@ -3,6 +3,8 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, hashPassword } from "./auth";
 import { format, parseISO, addHours, differenceInHours } from "date-fns";
+import fetch from "node-fetch";
+import { XMLParser } from "fast-xml-parser";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Sets up /api/register, /api/login, /api/logout, /api/user
@@ -427,6 +429,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error searching customers:", error);
       res.status(500).send("Internal Server Error");
+    }
+  });
+  
+  app.get("/api/ares/company", isAuthenticated, async (req, res) => {
+    try {
+      const ico = req.query.ico as string;
+      
+      if (!ico || !/^\d{8}$/.test(ico)) {
+        return res.status(400).json({ error: "Neplatné IČO. IČO musí obsahovat přesně 8 číslic." });
+      }
+      
+      // URL pro ARES API - základní údaje o ekonomickém subjektu
+      const aresUrl = `https://wwwinfo.mfcr.cz/cgi-bin/ares/darv_bas.cgi?ico=${ico}`;
+      
+      try {
+        const response = await fetch(aresUrl);
+        const xmlData = await response.text();
+        
+        // Parsování XML odpovědi
+        const parser = new XMLParser({
+          ignoreAttributes: false,
+          attributeNamePrefix: "@_"
+        });
+        const data = parser.parse(xmlData);
+        
+        // Navigace k relevantním datům v XML struktuře
+        const odpoved = data?.Ares_odpovedi?.Odpoved;
+        if (!odpoved || odpoved.Error) {
+          return res.status(404).json({ error: "Firma s tímto IČO nebyla nalezena." });
+        }
+        
+        const zaznam = odpoved.Zaznam;
+        if (!zaznam) {
+          return res.status(404).json({ error: "Firma s tímto IČO nebyla nalezena." });
+        }
+        
+        // Extrakce potřebných údajů
+        const companyInfo = {
+          name: zaznam.Obchodni_firma || "",
+          ico: zaznam.ICO || "",
+          dic: zaznam.DIC || "",
+          address: "",
+          city: "",
+          zip: ""
+        };
+        
+        // Extrakce adresy
+        if (zaznam.Identifikace?.Adresa_ARES) {
+          const adresa = zaznam.Identifikace.Adresa_ARES;
+          const street = adresa.Nazev_ulice || "";
+          const houseNumber = adresa.Cislo_domovni || "";
+          const orientationNumber = adresa.Cislo_orientacni ? `/${adresa.Cislo_orientacni}` : "";
+          
+          companyInfo.address = street ? `${street} ${houseNumber}${orientationNumber}` : `${houseNumber}${orientationNumber}`;
+          companyInfo.city = adresa.Nazev_obce || "";
+          companyInfo.zip = adresa.PSC || "";
+        }
+        
+        return res.json(companyInfo);
+      } catch (fetchError) {
+        console.error("Chyba při komunikaci s ARES API:", fetchError);
+        return res.status(500).json({ error: "Nelze kontaktovat ARES API. Zkuste to prosím později." });
+      }
+    } catch (error) {
+      console.error("Error getting company info from ARES:", error);
+      res.status(500).json({ error: "Interní chyba serveru" });
     }
   });
 
