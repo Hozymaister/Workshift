@@ -47,9 +47,10 @@ export const insertUserSchema = createInsertSchema(users).omit({
 export const workplaces = pgTable("workplaces", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
-  type: text("type", { enum: ["warehouse", "event", "club"] }).notNull(),
+  type: text("type", { enum: ["warehouse", "event", "club", "office", "other"] }).notNull(),
   address: text("address"),
   notes: text("notes"),
+  managerId: integer("manager_id"),
 });
 
 export const insertWorkplaceSchema = createInsertSchema(workplaces).omit({
