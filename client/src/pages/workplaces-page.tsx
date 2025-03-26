@@ -23,6 +23,7 @@ import {
   MapPin,
   ClipboardList,
   Crown,
+  UserCircle,
 } from "lucide-react";
 import {
   Card,
@@ -86,6 +87,7 @@ const formSchema = z.object({
   }),
   address: z.string().optional(),
   notes: z.string().optional(),
+  managerId: z.number().nullable().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -93,6 +95,7 @@ type FormValues = z.infer<typeof formSchema>;
 export default function WorkplacesPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [workplaceToEdit, setWorkplaceToEdit] = useState<Workplace | null>(null);
   const [workplaceToDelete, setWorkplaceToDelete] = useState<number | null>(null);
@@ -101,6 +104,11 @@ export default function WorkplacesPage() {
   
   const { data: workplaces, isLoading } = useQuery<Workplace[]>({
     queryKey: ["/api/workplaces"],
+  });
+  
+  const { data: users, isLoading: isLoadingUsers } = useQuery<User[]>({
+    queryKey: ["/api/users"],
+    enabled: isAdmin,
   });
   
   const form = useForm<FormValues>({
@@ -118,9 +126,10 @@ export default function WorkplacesPage() {
     if (workplaceToEdit) {
       form.reset({
         name: workplaceToEdit.name,
-        type: workplaceToEdit.type,
+        type: workplaceToEdit.type as any,
         address: workplaceToEdit.address || "",
         notes: workplaceToEdit.notes || "",
+        managerId: workplaceToEdit.managerId || null,
       });
     } else {
       form.reset({
@@ -128,6 +137,7 @@ export default function WorkplacesPage() {
         type: "warehouse",
         address: "",
         notes: "",
+        managerId: null,
       });
     }
   };
@@ -215,9 +225,10 @@ export default function WorkplacesPage() {
     if (workplace) {
       form.reset({
         name: workplace.name,
-        type: workplace.type,
+        type: workplace.type as any,
         address: workplace.address || "",
         notes: workplace.notes || "",
+        managerId: workplace.managerId || null,
       });
     } else {
       form.reset({
@@ -225,6 +236,7 @@ export default function WorkplacesPage() {
         type: "warehouse",
         address: "",
         notes: "",
+        managerId: null,
       });
     }
   };
@@ -315,7 +327,7 @@ export default function WorkplacesPage() {
                           <div className="flex items-center">
                             {workplace.name}
                             {workplace.managerId && (
-                              <Badge variant="outline" size="sm" className="ml-2 text-xs">
+                              <Badge variant="outline" className="ml-2 text-xs">
                                 <Crown className="h-3 w-3 mr-1 text-amber-500" />
                                 <span>Správce</span>
                               </Badge>
@@ -505,6 +517,43 @@ export default function WorkplacesPage() {
                     </FormItem>
                   )}
                 />
+                
+                {isAdmin && (
+                  <FormField
+                    control={form.control}
+                    name="managerId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Správce objektu</FormLabel>
+                        <Select
+                          onValueChange={(value) => field.onChange(value ? Number(value) : null)}
+                          value={field.value ? String(field.value) : undefined}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="bg-white border-slate-300 h-11">
+                              <SelectValue placeholder="Vyberte správce objektu (nepovinné)" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="">Žádný správce</SelectItem>
+                            {users?.map((user) => (
+                              <SelectItem key={user.id} value={String(user.id)}>
+                                <div className="flex items-center">
+                                  <UserCircle className="h-4 w-4 mr-2" />
+                                  <span>{user.firstName} {user.lastName}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          Správce objektu má speciální oprávnění pro správu tohoto objektu
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
                 
                 <DialogFooter>
                   <Button variant="outline" type="button" onClick={closeDialog}>
