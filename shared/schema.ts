@@ -32,6 +32,11 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
   role: text("role", { enum: ["admin", "worker"] }).notNull().default("worker"),
+  dateOfBirth: timestamp("date_of_birth"),
+  personalId: text("personal_id"), // Rodné číslo
+  phone: text("phone"),
+  hourlyWage: integer("hourly_wage"),
+  notes: text("notes"),
 });
 
 export const insertUserSchema = createInsertSchema(users).omit({

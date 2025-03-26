@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { MobileNavigation } from "@/components/layout/mobile-navigation";
@@ -14,6 +14,10 @@ import {
   ShieldAlert,
   Calendar,
   BarChart,
+  Search,
+  Phone,
+  Edit,
+  PlusCircle,
 } from "lucide-react";
 import {
   Card,
@@ -32,22 +36,60 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils";
 import { Link } from "wouter";
-
-type SafeUser = Omit<User, "password">;
+import { WorkerForm, SafeUser } from "@/components/workers/worker-form";
 
 export default function WorkersPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filteredWorkers, setFilteredWorkers] = useState<SafeUser[]>([]);
+  const [showWorkerForm, setShowWorkerForm] = useState(false);
+  const [workerToEdit, setWorkerToEdit] = useState<SafeUser | undefined>(undefined);
   
   const { data: workers, isLoading } = useQuery<SafeUser[]>({
     queryKey: ["/api/workers"],
   });
 
-  // Filter out current user from the list
-  const filteredWorkers = workers?.filter(worker => worker.id !== user?.id);
+  // Filtrování pracovníků podle vyhledávacího dotazu a odstranění aktuálního uživatele ze seznamu
+  useEffect(() => {
+    if (workers) {
+      const filtered = workers
+        .filter(worker => worker.id !== user?.id)
+        .filter(worker => {
+          if (!searchQuery) return true;
+          
+          const fullName = `${worker.firstName} ${worker.lastName}`.toLowerCase();
+          const query = searchQuery.toLowerCase();
+          
+          return (
+            fullName.includes(query) ||
+            worker.email.toLowerCase().includes(query) ||
+            worker.phone?.toLowerCase().includes(query) ||
+            worker.personalId?.toLowerCase().includes(query)
+          );
+        });
+      
+      setFilteredWorkers(filtered);
+    }
+  }, [workers, searchQuery, user]);
+
+  const handleAddWorker = () => {
+    setWorkerToEdit(undefined);
+    setShowWorkerForm(true);
+  };
+
+  const handleEditWorker = (worker: SafeUser) => {
+    setWorkerToEdit(worker);
+    setShowWorkerForm(true);
+  };
+
+  const handleCall = (phoneNumber: string) => {
+    window.location.href = `tel:${phoneNumber}`;
+  };
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-slate-100">
@@ -62,12 +104,36 @@ export default function WorkersPage() {
               <h2 className="text-2xl font-bold text-slate-900">Pracovníci</h2>
               <p className="mt-1 text-sm text-slate-500">Seznam všech pracovníků v systému</p>
             </div>
+            
+            {isAdmin && (
+              <Button 
+                onClick={handleAddWorker}
+                className="mt-4 md:mt-0 bg-gradient-to-r from-primary to-primary/80"
+              >
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Přidat pracovníka
+              </Button>
+            )}
           </div>
           
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle>Seznam pracovníků</CardTitle>
-              <CardDescription>Přehled všech pracovníků a jejich rolí</CardDescription>
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <CardTitle>Seznam pracovníků</CardTitle>
+                  <CardDescription>Přehled všech pracovníků a jejich rolí</CardDescription>
+                </div>
+                
+                <div className="w-full sm:w-64 relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                  <Input
+                    placeholder="Hledat pracovníky..."
+                    className="pl-9"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               {isLoading ? (
@@ -79,8 +145,9 @@ export default function WorkersPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Jméno</TableHead>
-                      <TableHead>Email</TableHead>
+                      <TableHead>Kontakt</TableHead>
                       <TableHead>Role</TableHead>
+                      <TableHead>Mzda</TableHead>
                       <TableHead className="text-right">Akce</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -94,13 +161,36 @@ export default function WorkersPage() {
                                 {getInitials(worker.firstName, worker.lastName)}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="font-medium">{worker.firstName} {worker.lastName}</span>
+                            <div>
+                              <span className="font-medium block">{worker.firstName} {worker.lastName}</span>
+                              {worker.personalId && (
+                                <span className="text-xs text-slate-500">RČ: {worker.personalId}</span>
+                              )}
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center text-slate-700">
-                            <Mail className="h-4 w-4 mr-2" />
-                            <span>{worker.email}</span>
+                          <div className="space-y-1">
+                            <div className="flex items-center text-slate-700">
+                              <Mail className="h-4 w-4 mr-2" />
+                              <span>{worker.email}</span>
+                            </div>
+                            {worker.phone && (
+                              <div className="flex items-center text-slate-700">
+                                <Phone className="h-4 w-4 mr-2" />
+                                <span>{worker.phone}</span>
+                                {worker.phone && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-6 w-6 text-green-600 ml-2"
+                                    onClick={() => handleCall(worker.phone || "")}
+                                  >
+                                    <Phone className="h-3 w-3" />
+                                  </Button>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -115,8 +205,21 @@ export default function WorkersPage() {
                             </div>
                           </Badge>
                         </TableCell>
+                        <TableCell>
+                          {worker.hourlyWage ? `${worker.hourlyWage} Kč/h` : "-"}
+                        </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end space-x-2">
+                            {isAdmin && (
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="text-slate-500 hover:text-primary"
+                                onClick={() => handleEditWorker(worker)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            )}
                             <Button variant="outline" size="sm" className="text-primary" asChild>
                               <Link href={`/shifts?userId=${worker.id}`}>
                                 <Calendar className="h-4 w-4 mr-1" />
@@ -141,7 +244,11 @@ export default function WorkersPage() {
                 <div className="text-center py-8 text-slate-500">
                   <Users className="mx-auto h-12 w-12 text-slate-300 mb-3" />
                   <h3 className="text-lg font-medium">Žádní pracovníci</h3>
-                  <p className="mt-1">V systému nejsou žádní další pracovníci</p>
+                  <p className="mt-1">
+                    {searchQuery 
+                      ? "Žádný pracovník neodpovídá zadanému vyhledávání"
+                      : "V systému nejsou žádní další pracovníci"}
+                  </p>
                 </div>
               )}
             </CardContent>
@@ -204,6 +311,15 @@ export default function WorkersPage() {
         
         <MobileNavigation />
       </main>
+      
+      {/* Formulář pro přidání/úpravu pracovníka */}
+      {showWorkerForm && (
+        <WorkerForm
+          isOpen={showWorkerForm}
+          onClose={() => setShowWorkerForm(false)}
+          workerToEdit={workerToEdit}
+        />
+      )}
     </div>
   );
 }
