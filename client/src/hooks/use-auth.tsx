@@ -51,24 +51,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
-      try {
-        const res = await apiRequest("POST", "/api/login", credentials);
-        const data = await res.json();
-        // Předběžně nastavíme data, aby přesměrování bylo rychlejší
-        queryClient.setQueryData(["/api/user"], data);
-        return data;
-      } catch (error) {
-        console.error("Login error:", error);
-        throw error;
-      }
+      const res = await apiRequest("POST", "/api/login", credentials);
+      const data = await res.json();
+      return data;
     },
     onSuccess: (user: SafeUser) => {
       queryClient.setQueryData(["/api/user"], user);
-      // Nebudeme zobrazovat toast aby nedošlo ke zpoždění přesměrování
-      // Pozn: přesměrování bude provedeno automaticky díky ProtectedRoute
+      // Přesměrování provede ProtectedRoute
     },
     onError: (error: Error) => {
-      console.error("Login onError called:", error.message);
       toast({
         title: "Přihlášení selhalo",
         description: error.message,
