@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Redirect } from "wouter";
 import { format, subMonths } from "date-fns";
 import { cs } from "date-fns/locale";
+import jsPDF from "jspdf";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { MobileNavigation } from "@/components/layout/mobile-navigation";
@@ -324,6 +325,148 @@ export default function InvoicePage() {
 
   const printInvoice = () => {
     window.print();
+  };
+  
+  // Funkce pro generování a stažení faktury jako PDF
+  const downloadPdf = () => {
+    const doc = new jsPDF();
+    const formData = form.getValues();
+    
+    // Nastavení fontu a barvy
+    doc.setFont("helvetica");
+    doc.setTextColor(50, 50, 50);
+    
+    // Hlavička faktury
+    doc.setFontSize(22);
+    doc.text("FAKTURA", 105, 20, { align: "center" });
+    doc.setFontSize(14);
+    doc.text(`Číslo: ${formData.invoiceNumber}`, 105, 30, { align: "center" });
+    
+    // Informace o dodavateli a odběrateli
+    doc.setFontSize(11);
+    doc.text("Dodavatel:", 20, 50);
+    doc.setFontSize(10);
+    doc.text("ShiftManager s.r.o.", 20, 58);
+    doc.text("Václavské náměstí 123", 20, 63);
+    doc.text("110 00 Praha 1", 20, 68);
+    doc.text("IČ: 12345678", 20, 73);
+    doc.text("DIČ: CZ12345678", 20, 78);
+    
+    // Odběratel
+    doc.setFontSize(11);
+    doc.text("Odběratel:", 120, 50);
+    doc.setFontSize(10);
+    doc.text(formData.customerName, 120, 58);
+    doc.text(formData.customerAddress, 120, 63);
+    if (formData.customerIC) {
+      doc.text(`IČ: ${formData.customerIC}`, 120, 68);
+    }
+    if (formData.customerDIC) {
+      doc.text(`DIČ: ${formData.customerDIC}`, 120, 73);
+    }
+    
+    // Informace o faktuře
+    doc.setFontSize(10);
+    doc.text(`Datum vystavení: ${format(formData.dateIssued, "dd.MM.yyyy")}`, 20, 90);
+    doc.text(`Datum splatnosti: ${format(formData.dateDue, "dd.MM.yyyy")}`, 20, 95);
+    
+    // Způsob platby
+    let paymentMethodText = "";
+    if (formData.paymentMethod === "bank") {
+      paymentMethodText = `Bankovním převodem na účet: ${formData.bankAccount || ""}`;
+    } else if (formData.paymentMethod === "cash") {
+      paymentMethodText = "Hotově";
+    } else {
+      paymentMethodText = "Platební kartou";
+    }
+    doc.text(`Způsob platby: ${paymentMethodText}`, 20, 100);
+    
+    // DPH status
+    doc.text(`Plátce DPH: ${formData.isVatPayer ? "Ano" : "Ne"}`, 20, 105);
+    
+    // Položky faktury
+    doc.setFontSize(11);
+    doc.text("Položky faktury:", 20, 120);
+    
+    // Tabulka položek
+    const tableTop = 125;
+    const tableHeaders = [
+      { title: "Popis", x: 20, width: 80 },
+      { title: "Množství", x: 105, width: 20, align: "right" },
+      { title: "Jedn.", x: 130, width: 15 },
+      { title: "Cena/ks", x: 150, width: 20, align: "right" },
+      { title: "Celkem", x: 175, width: 25, align: "right" }
+    ];
+    
+    // Hlavička tabulky
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    tableHeaders.forEach(header => {
+      doc.text(header.title, header.x, tableTop);
+    });
+    
+    // Řádky tabulky
+    doc.setFont("helvetica", "normal");
+    let y = tableTop + 10;
+    
+    // Horizontální linka pod hlavičkou
+    doc.setDrawColor(200, 200, 200);
+    doc.line(20, tableTop + 3, 195, tableTop + 3);
+    
+    // Vypisujeme položky
+    invoiceItems.forEach((item, index) => {
+      // Zkrácení popisu, pokud je příliš dlouhý
+      let description = item.description;
+      if (description.length > 40) {
+        description = description.substring(0, 37) + "...";
+      }
+      
+      doc.text(description, 20, y);
+      doc.text(item.quantity.toString(), 105, y, { align: "right" });
+      doc.text(item.unit, 130, y);
+      doc.text(`${item.pricePerUnit.toLocaleString()} Kč`, 150, y, { align: "right" });
+      doc.text(`${(item.quantity * item.pricePerUnit).toLocaleString()} Kč`, 175, y, { align: "right" });
+      
+      // Posuneme dolů pro další položku (a přidáme mezeru mezi řádky)
+      y += 7;
+      
+      // Pokud by další položka přesáhla stránku, vytvoříme novou
+      if (y > 270 && index < invoiceItems.length - 1) {
+        doc.addPage();
+        y = 20; // Začínáme znovu od vrchu stránky
+      }
+    });
+    
+    // Horizontální linka na konci položek
+    doc.line(20, y, 195, y);
+    
+    // Celková částka
+    y += 10;
+    doc.setFont("helvetica", "bold");
+    doc.text("Celková částka:", 120, y);
+    doc.text(`${totalAmount.toLocaleString()} Kč`, 175, y, { align: "right" });
+    
+    // Poznámky
+    if (formData.notes) {
+      y += 20;
+      doc.setFont("helvetica", "bold");
+      doc.text("Poznámky:", 20, y);
+      doc.setFont("helvetica", "normal");
+      y += 7;
+      
+      // Rozdělení poznámek na řádky, pokud jsou delší
+      const noteLines = doc.splitTextToSize(formData.notes, 170);
+      doc.text(noteLines, 20, y);
+    }
+    
+    // Patička
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(8);
+    doc.text("Faktura byla vygenerována v systému ShiftManager.", 105, 285, { align: "center" });
+    doc.text("Strana 1", 195, 285, { align: "right" });
+    
+    // Uložení PDF
+    doc.save(`faktura_${formData.invoiceNumber.replace(/\//g, "-")}.pdf`);
   };
   
   // Formulář pro přijaté faktury
@@ -1113,6 +1256,7 @@ export default function InvoicePage() {
                     className="w-full"
                     type="button"
                     disabled={invoiceItems.length === 0}
+                    onClick={downloadPdf}
                   >
                     <FileDown className="mr-2 h-4 w-4" />
                     Stáhnout PDF
