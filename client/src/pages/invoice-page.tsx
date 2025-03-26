@@ -189,6 +189,7 @@ export default function InvoicePage() {
   const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   
   // Filtr pro historii faktur
   const [yearFilter, setYearFilter] = useState<string>("current");
@@ -439,6 +440,42 @@ export default function InvoicePage() {
       title: "Faktura vytvořena",
       description: "Faktura byla úspěšně vytvořena a stažena ve formátu PDF."
     });
+  };
+  
+  // Funkce pro načtení informací o firmě z ARES pomocí IČO
+  const fetchCompanyInfo = async (ico: string) => {
+    try {
+      setIsLoading(true);
+      const response = await fetch(`/api/ares?ico=${ico}`);
+      
+      if (!response.ok) {
+        throw new Error(`Chyba při načítání dat: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      // Předvyplnění formuláře daty z ARES
+      createInvoiceForm.setValue("customerName", data.name);
+      createInvoiceForm.setValue("customerAddress", data.address);
+      createInvoiceForm.setValue("customerIC", data.ico);
+      
+      if (data.dic) {
+        createInvoiceForm.setValue("customerDIC", data.dic);
+      }
+      
+      toast({
+        title: "Data z ARES načtena",
+        description: `Informace o firmě ${data.name} byly úspěšně načteny.`
+      });
+    } catch (error) {
+      toast({
+        title: "Chyba při načítání",
+        description: error instanceof Error ? error.message : "Nastala neznámá chyba při načítání dat",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   // Funkce pro zpracování výběru zákazníka z našeptávače
@@ -751,6 +788,16 @@ export default function InvoicePage() {
                         </div>
                         
                         <div className="grid grid-cols-1 gap-4">
+                          <div className="mb-2">
+                            <Label>Najít zákazníka nebo firmu</Label>
+                            <div className="mt-1">
+                              <CustomerAutocomplete onSelect={handleCustomerSelect} placeholder="Vyhledat zákazníka nebo podle IČO" />
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Vyhledávejte podle názvu nebo zadejte 8-místné IČO pro načtení údajů z ARES
+                            </p>
+                          </div>
+                          
                           <FormField
                             control={createInvoiceForm.control}
                             name="customerName"
