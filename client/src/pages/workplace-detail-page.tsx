@@ -20,6 +20,11 @@ import {
   CardTitle 
 } from "@/components/ui/card";
 import { 
+  ChevronLeft, ChevronRight, Edit, Building, Warehouse, Crown, Music, Info, 
+  MapPin, Clock, Trophy, Download, Calendar, Users, BarChart2, Save, 
+  Phone, Building2, Mail, Loader2, User as UserIcon, UserCircle, DollarSign
+} from "lucide-react";
+import { 
   Table, 
   TableBody, 
   TableCaption, 
@@ -48,31 +53,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { 
-  Trophy, 
-  Download, 
-  Calendar, 
-  ChevronLeft, 
-  ChevronRight, 
-  Clock, 
-  Building,
-  Building2,
-  Users, 
-  User as UserIcon, 
-  UserCircle,
-  DollarSign,
-  Crown,
-  MapPin,
-  Phone,
-  Mail,
-  Info,
-  Edit,
-  Save,
-  Loader2,
-  BarChart2,
-  Warehouse,
-  Music,
-} from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
