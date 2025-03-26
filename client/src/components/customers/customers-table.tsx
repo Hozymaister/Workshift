@@ -162,7 +162,7 @@ export function CustomersTable() {
                 : "Zatím nemáte žádné zákazníky. Přidejte prvního kliknutím na tlačítko výše."}
             </div>
           ) : (
-            <div className="rounded-md border overflow-hidden">
+            <div className="rounded-md border overflow-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
