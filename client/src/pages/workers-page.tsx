@@ -194,14 +194,14 @@ export default function WorkersPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge className={worker.role === "admin" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}>
+                          <Badge className={worker.role === "company" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}>
                             <div className="flex items-center">
-                              {worker.role === "admin" ? (
+                              {worker.role === "company" ? (
                                 <ShieldCheck className="h-3 w-3 mr-1" />
                               ) : (
                                 <ShieldAlert className="h-3 w-3 mr-1" />
                               )}
-                              <span>{worker.role === "admin" ? "Správce" : "Pracovník"}</span>
+                              <span>{worker.role === "company" ? "Firma" : "Pracovník"}</span>
                             </div>
                           </Badge>
                         </TableCell>
@@ -277,14 +277,14 @@ export default function WorkersPage() {
                     <span>{user?.email}</span>
                   </div>
                   <div className="flex items-center mt-1">
-                    <Badge className={user?.role === "admin" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}>
+                    <Badge className={user?.role === "company" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}>
                       <div className="flex items-center">
-                        {user?.role === "admin" ? (
+                        {user?.role === "company" ? (
                           <ShieldCheck className="h-3 w-3 mr-1" />
                         ) : (
                           <ShieldAlert className="h-3 w-3 mr-1" />
                         )}
-                        <span>{user?.role === "admin" ? "Správce" : "Pracovník"}</span>
+                        <span>{user?.role === "company" ? "Firma" : "Pracovník"}</span>
                       </div>
                     </Badge>
                   </div>

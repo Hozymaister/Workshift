@@ -31,7 +31,7 @@ export function MobileNavigation() {
   
   // Vybereme položky podle role a omezíme na 4 položky pro lepší zobrazení
   let navItems;
-  if (user?.role === "admin") {
+  if (user?.role === "company") {
     // Pro admina: Dashboard, Směny, Tabulka a Faktura
     navItems = [...commonNavItems, adminBottomItems[0]];
   } else {

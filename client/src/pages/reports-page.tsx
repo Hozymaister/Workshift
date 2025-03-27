@@ -82,7 +82,7 @@ export default function ReportsPage() {
   const [selectedReportShifts, setSelectedReportShifts] = useState<Shift[]>([]);
   const [isReportDetailsOpen, setIsReportDetailsOpen] = useState(false);
   
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.role === "company";
   
   // Parse userId from URL if present
   const params = new URLSearchParams(location.split("?")[1]);

@@ -294,7 +294,7 @@ export function WorkerForm({ isOpen, onClose, workerToEdit }: WorkerFormProps) {
                           {...field}
                         >
                           <option value="worker">Pracovník</option>
-                          <option value="admin">Správce</option>
+                          <option value="company">Firma</option>
                         </select>
                       </FormControl>
                       <FormMessage />

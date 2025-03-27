@@ -53,7 +53,7 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
   ];
   
   // Kombinujeme položky podle role uživatele
-  const navItems = user?.role === "admin" 
+  const navItems = user?.role === "company" 
     ? [...commonNavItems, ...adminNavItems] 
     : commonNavItems;
 
@@ -88,7 +88,7 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
               </Avatar>
               <div>
                 <p className="font-medium text-white">{`${user.firstName} ${user.lastName}`}</p>
-                <p className="text-sm text-slate-400">{user.role === "admin" ? "Správce" : "Pracovník"}</p>
+                <p className="text-sm text-slate-400">{user.role === "company" ? "Firma" : "Pracovník"}</p>
               </div>
             </div>
           </div>

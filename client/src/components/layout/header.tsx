@@ -66,7 +66,7 @@ export function Header({ title }: { title: string }) {
   ];
   
   // Kombinujeme položky podle role uživatele
-  const navItems = user?.role === "admin" 
+  const navItems = user?.role === "company" 
     ? [...commonNavItems, ...adminNavItems] 
     : commonNavItems;
 

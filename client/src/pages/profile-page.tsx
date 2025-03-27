@@ -67,7 +67,7 @@ export default function ProfilePage() {
                   </AvatarFallback>
                 </Avatar>
                 <CardTitle className="text-center text-xl">{user.firstName} {user.lastName}</CardTitle>
-                <p className="text-center text-sm text-slate-500">{user.role === "admin" ? "Správce" : "Pracovník"}</p>
+                <p className="text-center text-sm text-slate-500">{user.role === "company" ? "Firma" : "Pracovník"}</p>
               </CardHeader>
               <CardContent>
                 <div className="flex flex-col gap-4">

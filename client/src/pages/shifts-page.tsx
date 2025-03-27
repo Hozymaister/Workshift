@@ -268,7 +268,7 @@ export default function ShiftsPage() {
                 Tabulkový přehled
               </Button>
               
-              {user?.role === "admin" && (
+              {user?.role === "company" && (
                 <Button onClick={() => {
                   setShiftToEdit(undefined);
                   setIsShiftFormOpen(true);
