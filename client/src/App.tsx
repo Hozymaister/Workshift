@@ -49,14 +49,14 @@ function Router() {
 function App() {
   return (
     <>
-      <LanguageProvider>
-        <AuthProvider>
+      <AuthProvider>
+        <LanguageProvider>
           <OnboardingProvider>
             <Router />
+            <Toaster />
           </OnboardingProvider>
-        </AuthProvider>
-      </LanguageProvider>
-      <Toaster />
+        </LanguageProvider>
+      </AuthProvider>
     </>
   );
 }
