@@ -161,6 +161,47 @@ export async function setupDatabase() {
         )
       `);
       
+      // Vytvoření tabulky faktur
+      await client(`
+        CREATE TABLE IF NOT EXISTS "invoices" (
+          "id" SERIAL PRIMARY KEY,
+          "user_id" INTEGER NOT NULL,
+          "invoice_number" TEXT NOT NULL,
+          "type" TEXT NOT NULL DEFAULT 'issued',
+          "date" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "date_due" TIMESTAMP NOT NULL,
+          "date_issued" TIMESTAMP,
+          "date_received" TIMESTAMP,
+          "customer_name" TEXT NOT NULL,
+          "customer_address" TEXT NOT NULL,
+          "customer_ic" TEXT,
+          "customer_dic" TEXT,
+          "supplier_name" TEXT,
+          "supplier_address" TEXT,
+          "supplier_ic" TEXT,
+          "supplier_dic" TEXT,
+          "bank_account" TEXT,
+          "payment_method" TEXT NOT NULL DEFAULT 'bank',
+          "is_vat_payer" BOOLEAN DEFAULT TRUE,
+          "amount" INTEGER NOT NULL DEFAULT 0,
+          "notes" TEXT,
+          "is_paid" BOOLEAN DEFAULT FALSE,
+          "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      
+      // Vytvoření tabulky položek faktury
+      await client(`
+        CREATE TABLE IF NOT EXISTS "invoice_items" (
+          "id" SERIAL PRIMARY KEY,
+          "invoice_id" INTEGER NOT NULL,
+          "description" TEXT NOT NULL,
+          "quantity" INTEGER NOT NULL,
+          "unit" TEXT NOT NULL,
+          "price_per_unit" INTEGER NOT NULL DEFAULT 0
+        )
+      `);
+      
       console.log('Všechny tabulky byly úspěšně vytvořeny nebo již existují.');
       
       // Initialize demo data after tables are created
