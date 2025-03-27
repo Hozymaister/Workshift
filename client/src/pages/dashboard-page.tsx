@@ -7,11 +7,14 @@ import { StatsCard } from "@/components/dashboard/stats-card";
 import { ShiftForm } from "@/components/shifts/shift-form";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
-import { Clock, CheckCircle, Calendar, RefreshCw, Plus } from "lucide-react";
+import { Clock, CheckCircle, Calendar, RefreshCw, Plus, Building2, User } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/hooks/use-auth";
+import { Badge } from "@/components/ui/badge";
 
 export default function DashboardPage() {
   const [isShiftFormOpen, setIsShiftFormOpen] = useState(false);
+  const { user } = useAuth();
   
   interface DashboardStats {
     plannedHours: number;
@@ -24,12 +27,36 @@ export default function DashboardPage() {
     queryKey: ["/api/stats"],
   });
 
+  const isCompanyAccount = user?.role === "company";
+
   return (
     <Layout title="Dashboard">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Dashboard</h2>
-          <p className="mt-1 text-sm text-slate-500">Přehled vašich směn a aktivit</p>
+          <div className="flex items-center">
+            <h2 className="text-2xl font-bold text-slate-900">Dashboard</h2>
+            {isCompanyAccount ? (
+              <Badge variant="outline" className="ml-2 bg-blue-50 text-blue-700 hover:bg-blue-50 border-blue-200">
+                <Building2 className="h-3 w-3 mr-1" />
+                Firemní účet
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="ml-2 bg-green-50 text-green-700 hover:bg-green-50 border-green-200">
+                <User className="h-3 w-3 mr-1" />
+                Pracovník
+              </Badge>
+            )}
+          </div>
+          
+          {isCompanyAccount ? (
+            <p className="mt-1 text-sm text-slate-500">
+              <span className="font-medium">{user?.companyName}</span> - Přehled směn a aktivit
+            </p>
+          ) : (
+            <p className="mt-1 text-sm text-slate-500">
+              <span className="font-medium">{user?.firstName} {user?.lastName}</span> - Přehled vašich směn a aktivit
+            </p>
+          )}
         </div>
         <div className="mt-4 md:mt-0 flex space-x-3">
           <Button onClick={() => setIsShiftFormOpen(true)} className="inline-flex items-center">

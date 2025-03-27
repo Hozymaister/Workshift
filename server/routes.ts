@@ -124,7 +124,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(updatedWorkplace);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Chyba při aktualizaci pracoviště:", error);
       res.status(500).json({ error: error.message || "Nepodařilo se aktualizovat pracoviště" });
     }
@@ -368,9 +368,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const shift = await storage.createShift(shiftData);
       console.log("Created shift:", shift);
       res.status(201).json(shift);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Chyba při vytváření směny:", error);
-      res.status(500).json({ error: "Nepodařilo se vytvořit směnu" });
+      res.status(500).json({ error: error.message || "Nepodařilo se vytvořit směnu" });
     }
   });
 
@@ -461,9 +461,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log("Updated shift:", updatedShift);
       res.json(updatedShift);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Chyba při aktualizaci směny:", error);
-      res.status(500).json({ error: "Nepodařilo se aktualizovat směnu" });
+      res.status(500).json({ error: error.message || "Nepodařilo se aktualizovat směnu" });
     }
   });
 
