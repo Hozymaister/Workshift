@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Layout } from "@/components/layout/layout";
+import { Link } from "wouter";
 import {
   Calendar,
   Clock,
@@ -148,6 +149,10 @@ export default function CustomDashboard() {
   const { user } = useAuth();
   const isCompany = user?.role === "company" || user?.role === "admin";
 
+  // Klíče pro localStorage
+  const widgetsStorageKey = isCompany ? 'dashboard_widgets_company' : 'dashboard_widgets_worker';
+  const layoutStorageKey = isCompany ? 'dashboard_layout_company' : 'dashboard_layout_worker';
+
   // Data fetching
   const { data: stats } = useQuery<{
     plannedHours: number;
@@ -218,12 +223,13 @@ export default function CustomDashboard() {
     };
   };
 
+  // Funkce pro generování výchozího layoutu - definovaná zde pro stabilní referenci
+  const generateDefaultLayout = useCallback((widgets: WidgetType[]) => {
+    return widgets.map((widget, index) => getDefaultWidgetLayout(widget, index));
+  }, []);
+
   // Načtení uložených widgetů a jejich layoutu z localStorage podle role uživatele
   useEffect(() => {
-    // Ukládáme widgety a layout pro různé role pod různými klíči
-    const widgetsStorageKey = isCompany ? 'dashboard_widgets_company' : 'dashboard_widgets_worker';
-    const layoutStorageKey = isCompany ? 'dashboard_layout_company' : 'dashboard_layout_worker';
-    
     // Načtení widgetů
     const savedWidgets = localStorage.getItem(widgetsStorageKey);
     let parsedWidgets: WidgetType[] = [];
@@ -254,23 +260,18 @@ export default function CustomDashboard() {
       }
     } else {
       // Pokud není uložený layout, vytvoříme výchozí layout pro widgety
-      const defaultLayout = parsedWidgets.map((widget, index) => 
-        getDefaultWidgetLayout(widget, index)
-      );
+      const defaultLayout = generateDefaultLayout(parsedWidgets);
       setGridLayout(defaultLayout);
     }
-  }, [isCompany]);
+  }, [isCompany, widgetsStorageKey, layoutStorageKey, generateDefaultLayout]);
 
   // Uložení widgetů a jejich layoutu do localStorage při změně s rozlišením podle role
   useEffect(() => {
     if (activeWidgets.length === 0) return;
     
-    const widgetsStorageKey = isCompany ? 'dashboard_widgets_company' : 'dashboard_widgets_worker';
-    const layoutStorageKey = isCompany ? 'dashboard_layout_company' : 'dashboard_layout_worker';
-    
     localStorage.setItem(widgetsStorageKey, JSON.stringify(activeWidgets));
     localStorage.setItem(layoutStorageKey, JSON.stringify(gridLayout));
-  }, [activeWidgets, gridLayout, isCompany]);
+  }, [activeWidgets, gridLayout, widgetsStorageKey, layoutStorageKey]);
 
   // Přidání widgetu a jeho layoutu
   const addWidget = (widgetType: WidgetType) => {
@@ -290,8 +291,19 @@ export default function CustomDashboard() {
 
   // Odstranění widgetu a jeho layoutu
   const removeWidget = (widgetType: WidgetType) => {
-    setActiveWidgets(activeWidgets.filter(w => w !== widgetType));
-    setGridLayout(gridLayout.filter((item: LayoutItem) => item.i !== widgetType));
+    console.log(`Odstraňuji widget: ${widgetType}`);
+    const newWidgets = activeWidgets.filter(w => w !== widgetType);
+    const newLayout = gridLayout.filter((item: LayoutItem) => item.i !== widgetType);
+    
+    setActiveWidgets(newWidgets);
+    setGridLayout(newLayout);
+    
+    // Okamžitě uložíme změny do localStorage pro jistotu
+    localStorage.setItem(widgetsStorageKey, JSON.stringify(newWidgets));
+    localStorage.setItem(layoutStorageKey, JSON.stringify(newLayout));
+    
+    // Pro debugging
+    console.log(`Widget ${widgetType} odstraněn. Počet widgetů: ${newWidgets.length}`);
   };
 
   // Aktualizace layoutu při změně pozice nebo velikosti widgetu
@@ -596,10 +608,14 @@ export default function CustomDashboard() {
               </Button>
             </CardHeader>
             <CardContent>
-              <div className="bg-white p-4 rounded-lg shadow text-center">
-                <FileDigit className="h-8 w-8 text-green-500 mx-auto mb-2" />
-                <p className="text-gray-500">Statistika fakturace bude brzy k dispozici</p>
-                <p className="text-xs text-gray-400 mt-1">Zobrazí přehled vydaných a přijatých faktur</p>
+              <div className="space-y-4">
+                <Link href="/invoice" className="block p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow">
+                  <div className="text-center">
+                    <FileDigit className="h-8 w-8 text-green-500 mx-auto mb-2" />
+                    <p className="text-gray-700 font-medium">Přejít na fakturaci</p>
+                    <p className="text-xs text-gray-400 mt-1">Správa vydaných a přijatých faktur</p>
+                  </div>
+                </Link>
               </div>
             </CardContent>
           </Card>
