@@ -80,6 +80,7 @@ export const shifts = pgTable("shifts", {
   date: timestamp("date", { mode: 'string' }),
   startTime: timestamp("start_time", { mode: 'string' }),
   endTime: timestamp("end_time", { mode: 'string' }),
+  hours: integer("hours"),
   notes: text("notes"),
 });
 

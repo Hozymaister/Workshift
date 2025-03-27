@@ -13,6 +13,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
+  Building,
   Building2,
   Warehouse,
   Calendar,
@@ -26,6 +27,7 @@ import {
   Crown,
   UserCircle,
   Search,
+  ShoppingCart,
 } from "lucide-react";
 import {
   Card,
@@ -84,7 +86,7 @@ import { Badge } from "@/components/ui/badge";
 
 const formSchema = z.object({
   name: z.string().min(2, "Název musí mít alespoň 2 znaky").max(50, "Název může mít maximálně 50 znaků"),
-  type: z.enum(["warehouse", "event", "club"], {
+  type: z.enum(["warehouse", "event", "club", "office", "shop", "other"], {
     errorMap: () => ({ message: "Zvolte typ objektu" }),
   }),
   address: z.string().optional(),
@@ -270,6 +272,12 @@ export default function WorkplacesPage() {
         return <Calendar className="h-4 w-4" />;
       case "club":
         return <Music className="h-4 w-4" />;
+      case "office":
+        return <Building className="h-4 w-4" />;
+      case "shop":
+        return <ShoppingCart className="h-4 w-4" />;
+      case "other":
+        return <Building2 className="h-4 w-4" />;
       default:
         return <Building2 className="h-4 w-4" />;
     }
@@ -283,6 +291,12 @@ export default function WorkplacesPage() {
         return "Event";
       case "club":
         return "Klub";
+      case "office":
+        return "Kancelář";
+      case "shop":
+        return "Prodejna";
+      case "other":
+        return "Jiný";
       default:
         return "Neznámý";
     }
@@ -303,6 +317,12 @@ export default function WorkplacesPage() {
       case "club":
       case "kultura":
         return "bg-purple-100 text-purple-700";
+      case "shop":
+      case "prodejna":
+        return "bg-pink-100 text-pink-700";
+      case "other":
+      case "jiný":
+        return "bg-gray-100 text-gray-700";
       default:
         return "bg-slate-100 text-slate-700";
     }
@@ -592,6 +612,24 @@ export default function WorkplacesPage() {
                             <div className="flex items-center">
                               <Music className="h-4 w-4 mr-2" />
                               <span>Klub</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="office">
+                            <div className="flex items-center">
+                              <Building className="h-4 w-4 mr-2" />
+                              <span>Kancelář</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="shop">
+                            <div className="flex items-center">
+                              <ShoppingCart className="h-4 w-4 mr-2" />
+                              <span>Prodejna</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="other">
+                            <div className="flex items-center">
+                              <Building2 className="h-4 w-4 mr-2" />
+                              <span>Jiný</span>
                             </div>
                           </SelectItem>
                         </SelectContent>
