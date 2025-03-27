@@ -41,3 +41,17 @@
 .dialog-content {
   @apply bg-white border-slate-200;
 }
+
+/* Nastavení pro react-grid-layout drag handle */
+.react-grid-item > .react-resizable-handle {
+  @apply opacity-0 transition-opacity duration-200;
+}
+
+.react-grid-item:hover > .react-resizable-handle {
+  @apply opacity-100;
+}
+
+/* Widget drag handle */
+.drag-handle {
+  @apply cursor-move;
+}

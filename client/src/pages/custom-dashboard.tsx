@@ -313,6 +313,12 @@ export default function CustomDashboard() {
     if (!timeStr) return "";
     return timeStr.substring(0, 5); // Vrátí jen HH:MM část
   };
+  
+  // Funkce pro odstranění widgetu s ošetřením propagace události
+  const handleRemoveWidget = (e: React.MouseEvent<HTMLButtonElement>, widgetType: WidgetType) => {
+    e.stopPropagation(); // Zastavíme propagaci události, aby se nevyvolal onClick z rodiče
+    removeWidget(widgetType);
+  };
 
   // Funkce pro vykreslení obsahu widgetu podle typu
   const renderWidgetContent = (widgetType: WidgetType) => {
@@ -320,7 +326,7 @@ export default function CustomDashboard() {
       case WidgetType.STATS:
         return (
           <Card className="h-full">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 drag-handle">
               <CardTitle className="text-md font-medium flex items-center">
                 <BarChart3 className="h-4 w-4 mr-2 text-blue-600" />
                 Přehled
@@ -329,7 +335,10 @@ export default function CustomDashboard() {
                 variant="ghost" 
                 size="icon" 
                 className="h-8 w-8 rounded-full" 
-                onClick={() => removeWidget(WidgetType.STATS)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  removeWidget(WidgetType.STATS);
+                }}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -360,7 +369,7 @@ export default function CustomDashboard() {
       case WidgetType.UPCOMING_SHIFTS:
         return (
           <Card className="h-full">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 drag-handle">
               <CardTitle className="text-md font-medium flex items-center">
                 <Calendar className="h-4 w-4 mr-2 text-indigo-600" />
                 Nadcházející směny
@@ -369,7 +378,10 @@ export default function CustomDashboard() {
                 variant="ghost" 
                 size="icon" 
                 className="h-8 w-8 rounded-full" 
-                onClick={() => removeWidget(WidgetType.UPCOMING_SHIFTS)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  removeWidget(WidgetType.UPCOMING_SHIFTS);
+                }}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -412,7 +424,7 @@ export default function CustomDashboard() {
       case WidgetType.EXCHANGE_REQUESTS:
         return (
           <Card className="h-full">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 drag-handle">
               <CardTitle className="text-md font-medium flex items-center">
                 <RefreshCw className="h-4 w-4 mr-2 text-amber-600" />
                 Žádosti o výměnu
@@ -421,7 +433,7 @@ export default function CustomDashboard() {
                 variant="ghost" 
                 size="icon" 
                 className="h-8 w-8 rounded-full" 
-                onClick={() => removeWidget(WidgetType.EXCHANGE_REQUESTS)}
+                onClick={(e) => handleRemoveWidget(e, WidgetType.EXCHANGE_REQUESTS)}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -467,7 +479,7 @@ export default function CustomDashboard() {
       case WidgetType.WEEKLY_CALENDAR:
         return (
           <Card className="h-full">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 drag-handle">
               <CardTitle className="text-md font-medium flex items-center">
                 <Calendar className="h-4 w-4 mr-2 text-rose-600" />
                 Týdenní kalendář
@@ -476,7 +488,7 @@ export default function CustomDashboard() {
                 variant="ghost" 
                 size="icon" 
                 className="h-8 w-8 rounded-full" 
-                onClick={() => removeWidget(WidgetType.WEEKLY_CALENDAR)}
+                onClick={(e) => handleRemoveWidget(e, WidgetType.WEEKLY_CALENDAR)}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -494,7 +506,7 @@ export default function CustomDashboard() {
       case WidgetType.WORKPLACE_STATS:
         return (
           <Card className="h-full">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 drag-handle">
               <CardTitle className="text-md font-medium flex items-center">
                 <Building className="h-4 w-4 mr-2 text-blue-600" />
                 Pobočky
@@ -503,7 +515,7 @@ export default function CustomDashboard() {
                 variant="ghost" 
                 size="icon" 
                 className="h-8 w-8 rounded-full" 
-                onClick={() => removeWidget(WidgetType.WORKPLACE_STATS)}
+                onClick={(e) => handleRemoveWidget(e, WidgetType.WORKPLACE_STATS)}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -542,7 +554,7 @@ export default function CustomDashboard() {
       case WidgetType.WORKER_STATS:
         return (
           <Card className="h-full">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 drag-handle">
               <CardTitle className="text-md font-medium flex items-center">
                 <Users className="h-4 w-4 mr-2 text-cyan-600" />
                 Pracovníci
@@ -551,7 +563,7 @@ export default function CustomDashboard() {
                 variant="ghost" 
                 size="icon" 
                 className="h-8 w-8 rounded-full" 
-                onClick={() => removeWidget(WidgetType.WORKER_STATS)}
+                onClick={(e) => handleRemoveWidget(e, WidgetType.WORKER_STATS)}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -569,7 +581,7 @@ export default function CustomDashboard() {
       case WidgetType.INVOICE_STATS:
         return (
           <Card className="h-full">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 drag-handle">
               <CardTitle className="text-md font-medium flex items-center">
                 <FileDigit className="h-4 w-4 mr-2 text-green-600" />
                 Přehled fakturace
@@ -578,7 +590,7 @@ export default function CustomDashboard() {
                 variant="ghost" 
                 size="icon" 
                 className="h-8 w-8 rounded-full" 
-                onClick={() => removeWidget(WidgetType.INVOICE_STATS)}
+                onClick={(e) => handleRemoveWidget(e, WidgetType.INVOICE_STATS)}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -596,7 +608,7 @@ export default function CustomDashboard() {
       case WidgetType.DOCUMENTS_STATS:
         return (
           <Card className="h-full">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 drag-handle">
               <CardTitle className="text-md font-medium flex items-center">
                 <FileText className="h-4 w-4 mr-2 text-orange-500" />
                 Dokumenty
@@ -605,7 +617,7 @@ export default function CustomDashboard() {
                 variant="ghost" 
                 size="icon" 
                 className="h-8 w-8 rounded-full" 
-                onClick={() => removeWidget(WidgetType.DOCUMENTS_STATS)}
+                onClick={(e) => handleRemoveWidget(e, WidgetType.DOCUMENTS_STATS)}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -623,7 +635,7 @@ export default function CustomDashboard() {
       case WidgetType.SCAN_WIDGET:
         return (
           <Card className="h-full">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 drag-handle">
               <CardTitle className="text-md font-medium flex items-center">
                 <Scan className="h-4 w-4 mr-2 text-red-500" />
                 Skenování dokumentů
@@ -632,7 +644,7 @@ export default function CustomDashboard() {
                 variant="ghost" 
                 size="icon" 
                 className="h-8 w-8 rounded-full" 
-                onClick={() => removeWidget(WidgetType.SCAN_WIDGET)}
+                onClick={(e) => handleRemoveWidget(e, WidgetType.SCAN_WIDGET)}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -650,7 +662,7 @@ export default function CustomDashboard() {
       case WidgetType.CUSTOMERS_WIDGET:
         return (
           <Card className="h-full">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 drag-handle">
               <CardTitle className="text-md font-medium flex items-center">
                 <ShoppingCart className="h-4 w-4 mr-2 text-purple-600" />
                 Zákazníci
@@ -659,7 +671,7 @@ export default function CustomDashboard() {
                 variant="ghost" 
                 size="icon" 
                 className="h-8 w-8 rounded-full" 
-                onClick={() => removeWidget(WidgetType.CUSTOMERS_WIDGET)}
+                onClick={(e) => handleRemoveWidget(e, WidgetType.CUSTOMERS_WIDGET)}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -677,7 +689,7 @@ export default function CustomDashboard() {
       case WidgetType.REPORTS_WIDGET:
         return (
           <Card className="h-full">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 drag-handle">
               <CardTitle className="text-md font-medium flex items-center">
                 <FileBarChart className="h-4 w-4 mr-2 text-blue-600" />
                 Reporty a statistiky
@@ -686,7 +698,7 @@ export default function CustomDashboard() {
                 variant="ghost" 
                 size="icon" 
                 className="h-8 w-8 rounded-full" 
-                onClick={() => removeWidget(WidgetType.REPORTS_WIDGET)}
+                onClick={(e) => handleRemoveWidget(e, WidgetType.REPORTS_WIDGET)}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -704,7 +716,7 @@ export default function CustomDashboard() {
       case WidgetType.HOURS_REPORTS:
         return (
           <Card className="h-full">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 drag-handle">
               <CardTitle className="text-md font-medium flex items-center">
                 <Clock className="h-4 w-4 mr-2 text-teal-600" />
                 Odpracované hodiny
@@ -713,7 +725,7 @@ export default function CustomDashboard() {
                 variant="ghost" 
                 size="icon" 
                 className="h-8 w-8 rounded-full" 
-                onClick={() => removeWidget(WidgetType.HOURS_REPORTS)}
+                onClick={(e) => handleRemoveWidget(e, WidgetType.HOURS_REPORTS)}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -731,7 +743,7 @@ export default function CustomDashboard() {
       case WidgetType.SHIFT_REPORTS:
         return (
           <Card className="h-full">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 drag-handle">
               <CardTitle className="text-md font-medium flex items-center">
                 <FileCheck className="h-4 w-4 mr-2 text-indigo-600" />
                 Reporty směn
@@ -740,7 +752,7 @@ export default function CustomDashboard() {
                 variant="ghost" 
                 size="icon" 
                 className="h-8 w-8 rounded-full" 
-                onClick={() => removeWidget(WidgetType.SHIFT_REPORTS)}
+                onClick={(e) => handleRemoveWidget(e, WidgetType.SHIFT_REPORTS)}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -758,7 +770,7 @@ export default function CustomDashboard() {
       case WidgetType.QUICK_ACTIONS:
         return (
           <Card className="h-full">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 drag-handle">
               <CardTitle className="text-md font-medium flex items-center">
                 <Briefcase className="h-4 w-4 mr-2 text-violet-600" />
                 Rychlé akce
@@ -767,7 +779,7 @@ export default function CustomDashboard() {
                 variant="ghost" 
                 size="icon" 
                 className="h-8 w-8 rounded-full" 
-                onClick={() => removeWidget(WidgetType.QUICK_ACTIONS)}
+                onClick={(e) => handleRemoveWidget(e, WidgetType.QUICK_ACTIONS)}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -798,7 +810,7 @@ export default function CustomDashboard() {
       case WidgetType.NOTIFICATIONS:
         return (
           <Card className="h-full">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 drag-handle">
               <CardTitle className="text-md font-medium flex items-center">
                 <Bell className="h-4 w-4 mr-2 text-yellow-600" />
                 Oznámení
@@ -807,7 +819,7 @@ export default function CustomDashboard() {
                 variant="ghost" 
                 size="icon" 
                 className="h-8 w-8 rounded-full" 
-                onClick={() => removeWidget(WidgetType.NOTIFICATIONS)}
+                onClick={(e) => handleRemoveWidget(e, WidgetType.NOTIFICATIONS)}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -1015,9 +1027,7 @@ export default function CustomDashboard() {
           >
             {activeWidgets.map(widgetType => (
               <div key={widgetType} className="bg-white rounded-md shadow overflow-hidden">
-                <div className="drag-handle cursor-move">
-                  {renderWidgetContent(widgetType)}
-                </div>
+                {renderWidgetContent(widgetType)}
               </div>
             ))}
           </ResponsiveReactGridLayout>
