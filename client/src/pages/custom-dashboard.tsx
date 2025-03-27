@@ -211,10 +211,10 @@ export default function CustomDashboard() {
     
     // Výchozí velikosti jednotlivých widgetů pro mobilní zařízení
     const mobileSizes: Record<WidgetType, { w: number, h: number }> = {
-      [WidgetType.STATS]: { w: 2, h: 8 },
+      [WidgetType.STATS]: { w: 2, h: 6 },
       [WidgetType.UPCOMING_SHIFTS]: { w: 2, h: 8 },
       [WidgetType.EXCHANGE_REQUESTS]: { w: 2, h: 8 },
-      [WidgetType.WEEKLY_CALENDAR]: { w: 2, h: 8 },
+      [WidgetType.WEEKLY_CALENDAR]: { w: 2, h: 6 },
       [WidgetType.WORKPLACE_STATS]: { w: 2, h: 8 },
       [WidgetType.WORKER_STATS]: { w: 2, h: 8 },
       [WidgetType.INVOICE_STATS]: { w: 2, h: 8 },
@@ -246,14 +246,18 @@ export default function CustomDashboard() {
       y = Math.floor(index / 2) * 6;
     }
     
+    // Pro mobilní zařízení používáme pevnou hodnotu minW=1
+    const minWidth = isMobile ? 1 : 2;
+    
     return {
       i: widgetType,
       x,
       y,
       w: size.w,
       h: size.h,
-      minW: isMobile ? 1 : 2, // Menší minimální šířka pro mobilní zařízení
-      minH: 2 // Minimální výška zůstává stejná
+      minW: minWidth,
+      minH: 2,
+      isResizable: !isMobile // Vypnutí resize na mobilních zařízeních
     };
   };
 
@@ -351,23 +355,34 @@ export default function CustomDashboard() {
       const wasIsMobile = isMobile;
       const nowIsMobile = window.innerWidth <= 768;
       
-      setIsMobile(nowIsMobile);
-      
-      // Pokud se změnil typ zařízení (desktop <-> mobil), přepočítáme layout
-      if (wasIsMobile !== nowIsMobile && activeWidgets.length > 0) {
-        // Počkáme na změnu stavu isMobile a pak přepočítáme layout
-        setTimeout(() => {
-          const newLayout = generateDefaultLayout(activeWidgets);
-          setGridLayout(newLayout);
-        }, 10);
+      if (wasIsMobile !== nowIsMobile) {
+        setIsMobile(nowIsMobile);
+        
+        // Pokud se změnil typ zařízení (desktop <-> mobil), přepočítáme layout
+        if (activeWidgets.length > 0) {
+          // Smažeme localStorage pro layout aby se vytvořil nový
+          localStorage.removeItem(layoutStorageKey);
+          
+          // Počkáme na změnu stavu isMobile a pak přepočítáme layout
+          setTimeout(() => {
+            const newLayout = generateDefaultLayout(activeWidgets);
+            setGridLayout(newLayout);
+            // Uložíme nový layout do localStorage
+            localStorage.setItem(layoutStorageKey, JSON.stringify(newLayout));
+          }, 50);
+        }
       }
     };
     
+    // Spustíme kontrolu při načtení komponenty
+    handleResize();
+    
+    // Přidáme event listener na resize okna
     window.addEventListener('resize', handleResize);
     return () => {
       window.removeEventListener('resize', handleResize);
     };
-  }, [isMobile, activeWidgets, generateDefaultLayout]);
+  }, [isMobile, activeWidgets, generateDefaultLayout, layoutStorageKey]);
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return "";
@@ -654,7 +669,7 @@ export default function CustomDashboard() {
             <CardHeader className="flex flex-row items-center justify-between pb-2 drag-handle">
               <CardTitle className="text-md font-medium flex items-center">
                 <FileDigit className="h-4 w-4 mr-2 text-green-600" />
-                Přehled fakturace
+                Fakturace
               </CardTitle>
               <Button 
                 variant="ghost" 
@@ -665,16 +680,17 @@ export default function CustomDashboard() {
                 <X className="h-4 w-4" />
               </Button>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <Link href="/invoice" className="block p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow">
-                  <div className="text-center">
-                    <FileDigit className="h-8 w-8 text-green-500 mx-auto mb-2" />
-                    <p className="text-gray-700 font-medium">Přejít na fakturaci</p>
-                    <p className="text-xs text-gray-400 mt-1">Správa vydaných a přijatých faktur</p>
-                  </div>
-                </Link>
-              </div>
+            <CardContent className="p-1 md:p-3">
+              <Link 
+                href="/invoice" 
+                className="flex flex-col justify-center items-center w-full h-full p-3 md:p-5 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow border border-gray-100 min-h-[80px]"
+              >
+                <FileDigit className="h-8 w-8 text-green-500 mb-2" />
+                <Button variant="outline" className="w-full mt-2 mb-1">
+                  <span className="text-center w-full">Přejít na fakturaci</span>
+                </Button>
+                <p className="text-xs text-gray-400 mt-1 text-center">Správa faktur</p>
+              </Link>
             </CardContent>
           </Card>
         );
@@ -712,7 +728,7 @@ export default function CustomDashboard() {
             <CardHeader className="flex flex-row items-center justify-between pb-2 drag-handle">
               <CardTitle className="text-md font-medium flex items-center">
                 <Scan className="h-4 w-4 mr-2 text-red-500" />
-                Skenování dokumentů
+                Skenování
               </CardTitle>
               <Button 
                 variant="ghost" 
@@ -723,12 +739,17 @@ export default function CustomDashboard() {
                 <X className="h-4 w-4" />
               </Button>
             </CardHeader>
-            <CardContent>
-              <div className="bg-white p-4 rounded-lg shadow text-center">
-                <Scan className="h-8 w-8 text-red-400 mx-auto mb-2" />
-                <p className="text-gray-500">Nástroj pro skenování bude brzy k dispozici</p>
-                <p className="text-xs text-gray-400 mt-1">Umožní rychlé skenování a nahrávání dokumentů</p>
-              </div>
+            <CardContent className="p-1 md:p-3">
+              <Link 
+                href="/scan" 
+                className="flex flex-col justify-center items-center w-full h-full p-3 md:p-5 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow border border-gray-100 min-h-[80px]"
+              >
+                <Scan className="h-8 w-8 text-red-500 mb-2" />
+                <Button variant="outline" className="w-full mt-2 mb-1">
+                  <span className="text-center w-full">Spustit skenování</span>
+                </Button>
+                <p className="text-xs text-gray-400 mt-1 text-center">Skenování a nahrávání</p>
+              </Link>
             </CardContent>
           </Card>
         );
@@ -1087,20 +1108,20 @@ export default function CustomDashboard() {
               xxs: gridLayout
             }}
             breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-            cols={{ lg: 12, md: 8, sm: 6, xs: 4, xxs: 2 }}
+            cols={{ lg: 12, md: 8, sm: 6, xs: 2, xxs: 2 }}
             rowHeight={30}
-            containerPadding={[10, 10]}
-            margin={[10, 10]} 
+            containerPadding={[5, 5]}
+            margin={[5, 10]} 
             onLayoutChange={(newLayout) => handleLayoutChange(newLayout)}
-            draggableHandle=".drag-handle" // CSS selector pro oblast pro přetahování
-            resizeHandles={['se']} // pouze bottom-right resize handle
+            draggableHandle=".drag-handle" 
+            resizeHandles={['se']}
             autoSize={true}
             compactType="vertical"
             preventCollision={false}
-            isBounded={true}  // Zabránit widgetům opustit kontejner
-            useCSSTransforms={true} // Lepší výkon
-            isResizable={true} // Povolit změnu velikosti
-            isDraggable={true} // Povolit přetahování
+            isBounded={true}
+            useCSSTransforms={true}
+            isResizable={!isMobile} // Vypnout změnu velikosti na mobilních zařízeních
+            isDraggable={true}
           >
             {activeWidgets.map(widgetType => (
               <div key={widgetType} className="bg-white rounded-md shadow overflow-hidden">

@@ -18,7 +18,7 @@ import InvoicePage from "@/pages/invoice-page";
 import CustomersPage from "@/pages/customers-page";
 import ProfilePage from "@/pages/profile-page";
 import SettingsPage from "@/pages/settings-page";
-import ScanPage from "@/pages/scan-page";
+import ScanPage from "@/pages/scan";
 import { ProtectedRoute } from "./lib/protected-route";
 
 function Router() {
