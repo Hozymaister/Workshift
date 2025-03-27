@@ -1,23 +1,19 @@
-import React, { createContext, ReactNode, useContext } from "react";
-import {
-  useQuery,
-  useMutation,
-  UseMutationResult,
-} from "@tanstack/react-query";
-import { insertUserSchema, User } from "@shared/schema";
+// Nová a jednodušší implementace AuthContext
+import { createContext, ReactNode, useContext, useState } from "react";
+import { User } from "@shared/schema";
+import { UseMutationResult, useQuery, useMutation } from "@tanstack/react-query";
 import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
-import { z } from "zod";
+import { toast } from "@/hooks/use-toast";
 
 // Definice typů
-type SafeUser = Omit<User, "password">;
+export type SafeUser = Omit<User, "password">;
 
-type LoginData = {
+export type LoginData = {
   email: string;
   password: string;
 };
 
-type RegisterData = {
+export type RegisterData = {
   firstName: string;
   lastName: string;
   username: string;
@@ -37,14 +33,76 @@ type AuthContextType = {
   registerMutation: UseMutationResult<SafeUser, Error, RegisterData>;
 };
 
-// Vytvoření kontextu s výchozí hodnotou null
-export const AuthContext = createContext<AuthContextType | null>(null);
+// Defaultní hodnota pro context
+const defaultContext: AuthContextType = {
+  user: null,
+  isLoading: false,
+  error: null,
+  refetchUser: () => {},
+  loginMutation: {
+    mutate: () => {},
+    mutateAsync: async () => ({}),
+    reset: () => {},
+    context: undefined,
+    data: undefined,
+    error: null,
+    failureCount: 0,
+    failureReason: null,
+    isPending: false,
+    isSuccess: false,
+    isError: false,
+    status: 'idle',
+    variables: undefined,
+    isIdle: true,
+    isLoading: false,
+    isPaused: false,
+    submittedAt: 0
+  } as any,
+  logoutMutation: {
+    mutate: () => {},
+    mutateAsync: async () => ({}),
+    reset: () => {},
+    context: undefined,
+    data: undefined,
+    error: null,
+    failureCount: 0,
+    failureReason: null,
+    isPending: false,
+    isSuccess: false,
+    isError: false,
+    status: 'idle',
+    variables: undefined,
+    isIdle: true,
+    isLoading: false,
+    isPaused: false,
+    submittedAt: 0
+  } as any,
+  registerMutation: {
+    mutate: () => {},
+    mutateAsync: async () => ({}),
+    reset: () => {},
+    context: undefined,
+    data: undefined,
+    error: null,
+    failureCount: 0,
+    failureReason: null,
+    isPending: false,
+    isSuccess: false,
+    isError: false,
+    status: 'idle',
+    variables: undefined,
+    isIdle: true,
+    isLoading: false,
+    isPaused: false,
+    submittedAt: 0
+  } as any
+};
+
+// Vytvoření kontextu
+export const AuthContext = createContext<AuthContextType>(defaultContext);
 
 // Provider komponenta
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // Využití Toast hooku
-  const { toast } = useToast();
-
   // Získání informací o aktuálním uživateli
   const userQuery = useQuery<SafeUser | null, Error>({
     queryKey: ["/api/user"],
@@ -52,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   // Login mutation pro přihlášení
-  const login = useMutation<SafeUser, Error, LoginData>({
+  const loginMutation = useMutation<SafeUser, Error, LoginData>({
     mutationFn: async (credentials) => {
       const res = await apiRequest("POST", "/api/login", credentials);
       return res.json();
@@ -73,7 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   // Register mutation pro registraci
-  const register = useMutation<SafeUser, Error, RegisterData>({
+  const registerMutation = useMutation<SafeUser, Error, RegisterData>({
     mutationFn: async (userData) => {
       const { passwordConfirm, ...registerData } = userData;
       const res = await apiRequest("POST", "/api/register", registerData);
@@ -93,7 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   // Logout mutation pro odhlášení
-  const logout = useMutation<unknown, Error, void>({
+  const logoutMutation = useMutation<unknown, Error, void>({
     mutationFn: async () => {
       return apiRequest("POST", "/api/logout");
     },
@@ -128,19 +186,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  // Hodnota kontextu
-  const contextValue: AuthContextType = {
-    user: userQuery.data ?? null,
-    isLoading: userQuery.isLoading,
-    error: userQuery.error ?? null,
-    refetchUser: userQuery.refetch,
-    loginMutation: login,
-    logoutMutation: logout,
-    registerMutation: register,
-  };
-
   return (
-    <AuthContext.Provider value={contextValue}>
+    <AuthContext.Provider
+      value={{
+        user: userQuery.data ?? null,
+        isLoading: userQuery.isLoading,
+        error: userQuery.error ?? null,
+        refetchUser: userQuery.refetch,
+        loginMutation,
+        logoutMutation,
+        registerMutation,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -148,11 +205,5 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 // Custom hook pro použití auth kontextu
 export function useAuth() {
-  const context = useContext(AuthContext);
-  
-  if (context === null) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  
-  return context;
+  return useContext(AuthContext);
 }

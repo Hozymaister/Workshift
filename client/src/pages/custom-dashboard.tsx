@@ -33,12 +33,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import RGL, { WidthProvider } from "react-grid-layout";
+// Importy z react-grid-layout
+import { Responsive, WidthProvider } from 'react-grid-layout';
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 
-// Vytvoření responzivního grid layoutu
-const ReactGridLayout = WidthProvider(RGL);
+// Vytvoření responzivního grid layoutu s automatickou šířkou
+const ResponsiveReactGridLayout = WidthProvider(Responsive);
 
 // Typy dat
 interface Shift {
@@ -987,14 +988,15 @@ export default function CustomDashboard() {
         
         {/* Drag & Drop Dashboard s React Grid Layout */}
         {activeWidgets.length > 0 ? (
-          <ReactGridLayout
+          <ResponsiveReactGridLayout
             className="layout"
-            layout={layout}
-            cols={12}
+            layouts={{ lg: layout }}
+            breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+            cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
             rowHeight={30}
             containerPadding={[0, 0]}
             margin={[16, 16]}
-            onLayoutChange={handleLayoutChange}
+            onLayoutChange={(layout) => handleLayoutChange(layout)}
             draggableHandle=".drag-handle" // CSS selector pro oblast pro přetahování
             resizeHandles={['se']} // pouze bottom-right resize handle
             isBounded={true}  // Zabránit widgetům opustit kontejner
@@ -1006,7 +1008,7 @@ export default function CustomDashboard() {
                 </div>
               </div>
             ))}
-          </ReactGridLayout>
+          </ResponsiveReactGridLayout>
         ) : (
           <div className="text-center py-8 bg-gray-50 rounded-xl border border-dashed border-gray-300">
             <Home className="h-12 w-12 text-gray-400 mx-auto mb-3" />

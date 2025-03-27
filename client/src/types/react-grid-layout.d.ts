@@ -16,6 +16,8 @@ declare module 'react-grid-layout' {
     isResizable?: boolean;
   }
 
+  export type Layouts = {[key: string]: Layout[]};
+
   export interface ReactGridLayoutProps {
     className?: string;
     style?: React.CSSProperties;
@@ -48,5 +50,21 @@ declare module 'react-grid-layout' {
     onResizeStop?: (layout: Layout[], oldItem: Layout, newItem: Layout, placeholder: Layout, event: MouseEvent, element: HTMLElement) => void;
   }
 
+  export interface ResponsiveProps extends ReactGridLayoutProps {
+    breakpoints?: {[key: string]: number};
+    cols?: {[key: string]: number};
+    layouts?: Layouts;
+    width?: number;
+    onBreakpointChange?: (breakpoint: string, cols: number) => void;
+    onLayoutChange?: (layout: Layout[], layouts: Layouts) => void;
+    onWidthChange?: (width: number, margin: [number, number], cols: number, containerPadding: [number, number]) => void;
+  }
+
   export default class ReactGridLayout extends React.Component<ReactGridLayoutProps> {}
+  
+  export class Responsive extends React.Component<ResponsiveProps> {}
+  
+  export function WidthProvider<P>(
+    ComposedComponent: React.ComponentType<P>
+  ): React.ComponentType<P>;
 }
