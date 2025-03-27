@@ -49,7 +49,15 @@ export async function setupDatabase() {
           "personal_id" TEXT,
           "phone" TEXT,
           "hourly_wage" INTEGER,
-          "notes" TEXT
+          "notes" TEXT,
+          "company_name" TEXT,
+          "company_id" TEXT,
+          "company_vat_id" TEXT,
+          "company_address" TEXT,
+          "company_city" TEXT,
+          "company_zip" TEXT,
+          "company_verified" BOOLEAN DEFAULT FALSE,
+          "parent_company_id" INTEGER
         )
       `);
       

@@ -77,29 +77,63 @@ export function setupAuth(app: Express) {
 
   app.post("/api/register", async (req, res, next) => {
     try {
-      const existingUserByEmail = await storage.getUserByEmail(req.body.email);
+      const userData = { ...req.body };
+      
+      // Zkontrolujeme, zda email už existuje
+      const existingUserByEmail = await storage.getUserByEmail(userData.email);
       if (existingUserByEmail) {
-        return res.status(400).send("Email already exists");
+        return res.status(400).send("Email již existuje");
       }
 
-      const existingUserByUsername = await storage.getUserByUsername(req.body.username);
+      // Zkontrolujeme, zda username už existuje
+      const existingUserByUsername = await storage.getUserByUsername(userData.username);
       if (existingUserByUsername) {
-        return res.status(400).send("Username already exists");
+        return res.status(400).send("Uživatelské jméno již existuje");
+      }
+      
+      // Pro firemní účty zkontrolujeme IČO
+      if (userData.role === "company") {
+        // Validace IČO - musí mít přesně 8 číslic
+        if (!userData.companyId || !/^\d{8}$/.test(userData.companyId)) {
+          return res.status(400).send("IČO musí mít přesně 8 číslic");
+        }
+        
+        // Validace DIČ (pokud existuje) - musí začínat CZ a pak 8-10 číslic
+        if (userData.companyVatId && !/^CZ\d{8,10}$/.test(userData.companyVatId)) {
+          return res.status(400).send("DIČ musí být ve formátu 'CZ' následovaném 8-10 číslicemi");
+        }
+        
+        // Validace povinných polí pro firemní účty
+        if (!userData.companyName) {
+          return res.status(400).send("Název firmy je povinný");
+        }
+        if (!userData.companyAddress) {
+          return res.status(400).send("Adresa firmy je povinná");
+        }
+        if (!userData.companyCity) {
+          return res.status(400).send("Město je povinné");
+        }
+        if (!userData.companyZip || !/^\d{5}$/.test(userData.companyZip)) {
+          return res.status(400).send("PSČ musí mít přesně 5 číslic");
+        }
       }
 
+      // Vytvoříme uživatele s hashovaným heslem
       const user = await storage.createUser({
-        ...req.body,
-        password: await hashPassword(req.body.password),
+        ...userData,
+        password: await hashPassword(userData.password),
       });
 
+      // Přihlásíme uživatele
       req.login(user, (err) => {
         if (err) return next(err);
         
-        // Don't expose password hash to client
+        // Neexponujeme hash hesla
         const { password, ...safeUser } = user;
         res.status(201).json(safeUser);
       });
     } catch (error) {
+      console.error("Error during registration:", error);
       next(error);
     }
   });

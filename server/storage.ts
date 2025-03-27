@@ -169,7 +169,16 @@ export class MemStorage implements IStorage {
       personalId: insertUser.personalId ?? null,
       phone: insertUser.phone ?? null,
       hourlyWage: insertUser.hourlyWage ?? null,
-      notes: insertUser.notes ?? null
+      notes: insertUser.notes ?? null,
+      // Firemní údaje
+      companyName: insertUser.companyName ?? null,
+      companyId: insertUser.companyId ?? null,
+      companyVatId: insertUser.companyVatId ?? null,
+      companyAddress: insertUser.companyAddress ?? null,
+      companyCity: insertUser.companyCity ?? null,
+      companyZip: insertUser.companyZip ?? null,
+      companyVerified: insertUser.companyVerified ?? false,
+      parentCompanyId: insertUser.parentCompanyId ?? null
     };
     this.users.set(id, user);
     return user;
@@ -204,7 +213,13 @@ export class MemStorage implements IStorage {
       ...insertWorkplace, 
       id,
       address: insertWorkplace.address ?? null,
-      notes: insertWorkplace.notes ?? null 
+      notes: insertWorkplace.notes ?? null,
+      // Firemní údaje
+      companyName: insertWorkplace.companyName ?? null,
+      companyId: insertWorkplace.companyId ?? null,
+      companyVatId: insertWorkplace.companyVatId ?? null,
+      companyAddress: insertWorkplace.companyAddress ?? null,
+      managerId: insertWorkplace.managerId ?? null
     };
     this.workplaces.set(id, workplace);
     return workplace;

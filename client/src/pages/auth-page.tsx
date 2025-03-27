@@ -56,22 +56,45 @@ const newPasswordSchema = z.object({
   path: ["passwordConfirm"],
 });
 
-// Registration schema
-const registerSchema = z.object({
+// Base registration schema s povinnými poli
+const baseRegisterSchema = z.object({
   firstName: z.string().min(1, "Jméno je povinné"),
   lastName: z.string().min(1, "Příjmení je povinné"),
   username: z.string().min(1, "Uživatelské jméno je povinné"),
   email: z.string().email("Zadejte platný email"),
   password: z.string().min(6, "Heslo musí mít alespoň 6 znaků"),
   passwordConfirm: z.string().min(6, "Potvrzení hesla je povinné"),
-  role: z.enum(["admin", "worker"]),
 }).refine((data) => data.password === data.passwordConfirm, {
   message: "Hesla se neshodují",
   path: ["passwordConfirm"],
 });
 
+// Registration schema pro zaměstnance
+const registerWorkerSchema = baseRegisterSchema.extend({
+  role: z.enum(["worker", "admin"]),
+});
+
+// Registration schema pro firmy
+const registerCompanySchema = baseRegisterSchema.extend({
+  role: z.literal("company"),
+  companyName: z.string().min(1, "Název firmy je povinný"),
+  companyId: z.string().min(8, "IČO musí mít 8 číslic").max(8, "IČO musí mít 8 číslic"),
+  companyVatId: z.string().optional(),
+  companyAddress: z.string().min(1, "Adresa firmy je povinná"),
+  companyCity: z.string().min(1, "Město je povinné"),
+  companyZip: z.string().min(5, "PSČ musí mít 5 číslic").max(5, "PSČ musí mít 5 číslic"),
+});
+
+// Sloučené registrační schéma pro všechny typy uživatelů
+const registerSchema = z.discriminatedUnion("role", [
+  registerWorkerSchema,
+  registerCompanySchema
+]);
+
 type LoginFormValues = z.infer<typeof loginSchema>;
-type RegisterFormValues = z.infer<typeof registerSchema>;
+type RegisterWorkerFormValues = z.infer<typeof registerWorkerSchema>;
+type RegisterCompanyFormValues = z.infer<typeof registerCompanySchema>;
+type RegisterFormValues = z.infer<typeof registerSchema>; // zpětná kompatibilita
 type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
 type NewPasswordFormValues = z.infer<typeof newPasswordSchema>;
 
@@ -83,6 +106,7 @@ export default function AuthPage() {
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [isNewPasswordDialogOpen, setIsNewPasswordDialogOpen] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
+  const [registrationType, setRegistrationType] = useState<"worker"|"company">("worker");
 
   // Login form
   const loginForm = useForm<LoginFormValues>({
@@ -94,9 +118,9 @@ export default function AuthPage() {
     },
   });
 
-  // Registration form
-  const registerForm = useForm<RegisterFormValues>({
-    resolver: zodResolver(registerSchema),
+  // Registration form pro zaměstnance
+  const registerWorkerForm = useForm<RegisterWorkerFormValues>({
+    resolver: zodResolver(registerWorkerSchema),
     defaultValues: {
       firstName: "",
       lastName: "",
@@ -107,6 +131,29 @@ export default function AuthPage() {
       role: "worker",
     },
   });
+  
+  // Registration form pro firmy
+  const registerCompanyForm = useForm<RegisterCompanyFormValues>({
+    resolver: zodResolver(registerCompanySchema),
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      username: "",
+      email: "",
+      password: "",
+      passwordConfirm: "",
+      role: "company",
+      companyName: "",
+      companyId: "",
+      companyVatId: "",
+      companyAddress: "",
+      companyCity: "",
+      companyZip: "",
+    },
+  });
+  
+  // Zpětná kompatibilita
+  const registerForm = registrationType === "worker" ? registerWorkerForm : registerCompanyForm;
 
   const onLoginSubmit = (data: LoginFormValues) => {
     // Převést email na lowercase pro konzistenci

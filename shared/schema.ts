@@ -31,12 +31,21 @@ export const users = pgTable("users", {
   username: text("username").notNull().unique(),
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
-  role: text("role", { enum: ["admin", "worker"] }).notNull().default("worker"),
+  role: text("role", { enum: ["admin", "worker", "company"] }).notNull().default("worker"),
   dateOfBirth: timestamp("date_of_birth"),
-  personalId: text("personal_id"), // Rodné číslo
+  personalId: text("personal_id"), // Rodné číslo pro zaměstnance
   phone: text("phone"),
   hourlyWage: integer("hourly_wage"),
   notes: text("notes"),
+  // Firemní údaje
+  companyName: text("company_name"), // Název firmy
+  companyId: text("company_id"),  // IČO firmy
+  companyVatId: text("company_vat_id"), // DIČ firmy
+  companyAddress: text("company_address"), // Adresa firmy
+  companyCity: text("company_city"), // Město
+  companyZip: text("company_zip"), // PSČ
+  companyVerified: boolean("company_verified").default(false), // Zda byla firma ověřena (např. po kontrole IČO)
+  parentCompanyId: integer("parent_company_id"), // ID nadřazené firmy (pokud je uživatel zaměstnancem)
 });
 
 export const insertUserSchema = createInsertSchema(users).omit({
