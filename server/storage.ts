@@ -762,8 +762,7 @@ export class PostgreSQLStorage implements IStorage {
           eq(customers.userId, userId),
           or(
             like(customers.name, `%${query}%`),
-            like(customers.ic || '', `%${query}%`),
-            like(customers.dic || '', `%${query}%`),
+            // Odstranili jsme podmínky pro sloupce ic a dic které mohou chybět v databázi
             like(customers.email || '', `%${query}%`)
           )
         )
