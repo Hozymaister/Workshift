@@ -210,6 +210,7 @@ export default function CustomDashboard() {
     };
     
     // Výchozí velikosti jednotlivých widgetů pro mobilní zařízení
+    // Na mobilním zařízení je pouze 2 sloupce, takže nastavíme vše na šířku 2
     const mobileSizes: Record<WidgetType, { w: number, h: number }> = {
       [WidgetType.STATS]: { w: 2, h: 6 },
       [WidgetType.UPCOMING_SHIFTS]: { w: 2, h: 8 },
@@ -246,8 +247,10 @@ export default function CustomDashboard() {
       y = Math.floor(index / 2) * 6;
     }
     
-    // Pro mobilní zařízení používáme pevnou hodnotu minW=1
-    const minWidth = isMobile ? 1 : 2;
+    // Pro mobilní zařízení používáme pevnou hodnotu minW=1 (nebo 2 pro celou šířku)
+    // Nastavujeme minWidth na hodnotu nepřesahující aktuální šířku widgetu,
+    // aby nevznikalo varování "minWidth larger than item width/maxWidth"
+    const minWidth = isMobile ? Math.min(1, size.w) : Math.min(2, size.w);
     
     return {
       i: widgetType,
@@ -329,7 +332,19 @@ export default function CustomDashboard() {
 
   // Odstranění widgetu a jeho layoutu
   const removeWidget = (widgetType: WidgetType) => {
+    if (!widgetType) {
+      console.error("Pokus o odstranění nedefinovaného widgetu");
+      return;
+    }
+    
     console.log(`Odstraňuji widget: ${widgetType}`);
+    
+    // Bezpečná kontrola existence widgetu v poli před jeho odstraněním
+    if (!activeWidgets.includes(widgetType)) {
+      console.warn(`Widget ${widgetType} není aktivní, nelze odstranit`);
+      return;
+    }
+    
     const newWidgets = activeWidgets.filter(w => w !== widgetType);
     const newLayout = gridLayout.filter((item: LayoutItem) => item.i !== widgetType);
     
@@ -337,8 +352,12 @@ export default function CustomDashboard() {
     setGridLayout(newLayout);
     
     // Okamžitě uložíme změny do localStorage pro jistotu
-    localStorage.setItem(widgetsStorageKey, JSON.stringify(newWidgets));
-    localStorage.setItem(layoutStorageKey, JSON.stringify(newLayout));
+    try {
+      localStorage.setItem(widgetsStorageKey, JSON.stringify(newWidgets));
+      localStorage.setItem(layoutStorageKey, JSON.stringify(newLayout));
+    } catch (error) {
+      console.error("Chyba při ukládání do localStorage:", error);
+    }
     
     // Pro debugging
     console.log(`Widget ${widgetType} odstraněn. Počet widgetů: ${newWidgets.length}`);
@@ -401,7 +420,16 @@ export default function CustomDashboard() {
   
   // Funkce pro odstranění widgetu s ošetřením propagace události
   const handleRemoveWidget = (e: React.MouseEvent<HTMLButtonElement>, widgetType: WidgetType) => {
+    if (!e || !widgetType) {
+      console.error("Neplatné parametry pro handleRemoveWidget");
+      return;
+    }
+    
     e.stopPropagation(); // Zastavíme propagaci události, aby se nevyvolal onClick z rodiče
+    
+    // Pro debugging
+    console.log(`handleRemoveWidget zavolán pro widget: ${widgetType}`);
+    
     removeWidget(widgetType);
   };
 
@@ -1101,11 +1129,11 @@ export default function CustomDashboard() {
           <ResponsiveReactGridLayout
             className="layout"
             layouts={{ 
-              lg: gridLayout,
-              md: gridLayout,
-              sm: gridLayout,
-              xs: gridLayout,
-              xxs: gridLayout
+              lg: gridLayout.map(item => ({...item, minW: Math.min(item.minW || 1, item.w)})),
+              md: gridLayout.map(item => ({...item, minW: Math.min(item.minW || 1, item.w)})),
+              sm: gridLayout.map(item => ({...item, minW: Math.min(item.minW || 1, item.w)})),
+              xs: gridLayout.map(item => ({...item, minW: 1, w: Math.max(item.w, 1)})),
+              xxs: gridLayout.map(item => ({...item, minW: 1, w: Math.max(item.w, 1)}))
             }}
             breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
             cols={{ lg: 12, md: 8, sm: 6, xs: 2, xxs: 2 }}
