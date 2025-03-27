@@ -12,13 +12,14 @@ export function MobileNavigation() {
   
   // Základní navigační položky pro všechny
   const commonNavItems = [
-    { path: "/", label: "Dashboard", icon: <LayoutGrid className="h-5 w-5" /> },
+    { path: "/dashboard", label: "Dashboard", icon: <LayoutDashboard className="h-5 w-5" /> },
+    { path: "/", label: "Vlastní", icon: <LayoutGrid className="h-5 w-5" /> },
     { path: "/shifts", label: "Směny", icon: <Calendar className="h-5 w-5" /> },
     { path: "/shift-table", label: "Tabulka", icon: <Table className="h-5 w-5" /> },
   ];
   
-  // Administrátorské položky pro dolní navigaci
-  const adminBottomItems = [
+  // Položky pro firmy v dolní navigaci
+  const companyBottomItems = [
     { path: "/invoice", label: "Faktura", icon: <Receipt className="h-5 w-5" /> }
   ];
   
@@ -32,11 +33,11 @@ export function MobileNavigation() {
   // Vybereme položky podle role a omezíme na 4 položky pro lepší zobrazení
   let navItems;
   if (user?.role === "company") {
-    // Pro admina: Dashboard, Směny, Tabulka a Faktura
-    navItems = [...commonNavItems, adminBottomItems[0]];
+    // Pro firemní účet: Dashboard, Vlastní Dashboard, Směny, Tabulka a Faktura
+    navItems = [...commonNavItems.slice(0, 4), companyBottomItems[0]];
   } else {
-    // Pro ostatní: Dashboard, Směny, Tabulka
-    navItems = [...commonNavItems];
+    // Pro pracovníky: Dashboard, Vlastní Dashboard, Směny, Tabulka
+    navItems = [...commonNavItems.slice(0, 4)];
   }
 
   const handleCloseMobileMenu = () => {

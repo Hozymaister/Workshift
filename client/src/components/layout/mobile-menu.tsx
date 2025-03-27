@@ -36,17 +36,17 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
 
   // Základní navigační položky
   const commonNavItems = [
-    { path: "/custom-dashboard", label: "Dashboard", icon: <LayoutDashboard className="mr-3 h-5 w-5" /> },
-    { path: "/", label: "Přehled", icon: <LayoutDashboard className="mr-3 h-5 w-5" /> },
-    { path: "/shifts", label: "Směny", icon: <Calendar className="mr-3 h-5 w-5" /> },
+    { path: "/dashboard", label: "Dashboard", icon: <LayoutDashboard className="mr-3 h-5 w-5" /> },
+    { path: "/", label: "Vlastní dashboard", icon: <LayoutGrid className="mr-3 h-5 w-5" /> },
+    { path: "/shifts", label: "Moje směny", icon: <Calendar className="mr-3 h-5 w-5" /> },
     { path: "/shift-table", label: "Tabulka směn", icon: <Table className="mr-3 h-5 w-5" /> },
     { path: "/exchanges", label: "Výměny směn", icon: <RefreshCw className="mr-3 h-5 w-5" /> },
     { path: "/reports", label: "Výkazy práce", icon: <FileText className="mr-3 h-5 w-5" /> },
   ];
   
-  // Položky menu pouze pro správce
-  const adminNavItems = [
-    { path: "/workplaces", label: "Pracoviště", icon: <Building2 className="mr-3 h-5 w-5" /> },
+  // Položky menu pouze pro firmy
+  const companyNavItems = [
+    { path: "/workplaces", label: "Pracovní objekty", icon: <Building2 className="mr-3 h-5 w-5" /> },
     { path: "/workers", label: "Pracovníci", icon: <Users className="mr-3 h-5 w-5" /> },
     { path: "/invoice", label: "Fakturace", icon: <Receipt className="mr-3 h-5 w-5" /> },
     { path: "/customers", label: "Adresář zákazníků", icon: <Book className="mr-3 h-5 w-5" /> },
@@ -55,7 +55,7 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
   
   // Kombinujeme položky podle role uživatele
   const navItems = user?.role === "company" 
-    ? [...commonNavItems, ...adminNavItems] 
+    ? [...commonNavItems, ...companyNavItems] 
     : commonNavItems;
 
   if (!menuVisible) return null;
