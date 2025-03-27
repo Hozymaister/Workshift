@@ -12,7 +12,7 @@ export function MobileNavigation() {
   
   // Základní navigační položky pro všechny
   const commonNavItems = [
-    { path: "/custom-dashboard", label: "Dashboard", icon: <LayoutGrid className="h-5 w-5" /> },
+    { path: "/", label: "Dashboard", icon: <LayoutGrid className="h-5 w-5" /> },
     { path: "/shifts", label: "Směny", icon: <Calendar className="h-5 w-5" /> },
     { path: "/shift-table", label: "Tabulka", icon: <Table className="h-5 w-5" /> },
   ];
