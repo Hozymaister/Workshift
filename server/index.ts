@@ -58,24 +58,27 @@ app.use((req, res, next) => {
     // Nebudeme dále vyhazovat výjimku, protože to může způsobit pád serveru
   });
 
+  // Nastav NODE_ENV pro správnou detekci prostředí
+  process.env.NODE_ENV = process.env.NODE_ENV || 'development';
+  console.log(`Running in ${process.env.NODE_ENV} environment`);
+  
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
+  if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = 5000;
+  // Použijeme port z proměnné prostředí PORT, nebo 5000 jako výchozí hodnotu
+  // V Replitu nebo jiných prostředích je důležité používat PORT z env proměnné
+  const port = process.env.PORT || 5000;
   server.listen({
-    port,
+    port: Number(port),
     host: "0.0.0.0",
     reusePort: true,
   }, () => {
-    log(`serving on port ${port}`);
+    log(`Server běží na portu ${port}`);
   });
 })();

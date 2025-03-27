@@ -29,8 +29,15 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 export function setupAuth(app: Express) {
+  // Ověříme, zda je SESSION_SECRET k dispozici v produkčním prostředí
+  if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
+    console.error('SESSION_SECRET není nastaven v produkčním prostředí!');
+    // Použijeme náhodný klíč, pokud není SESSION_SECRET nastaven (pro vývoj)
+    process.env.SESSION_SECRET = randomBytes(32).toString('hex');
+  }
+
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET || "shift-manager-secret-key",
+    secret: process.env.SESSION_SECRET || "shift-manager-dev-secret-key",
     resave: false,
     saveUninitialized: false,
     store: storage.sessionStore,

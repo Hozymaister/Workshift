@@ -30,11 +30,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(403).send("Forbidden: Admin access required");
   };
   
+  // Zajistíme, že uploadovací složky existují
+  const uploadDir = 'uploads/documents';
+  if (!fs.existsSync('uploads')) {
+    fs.mkdirSync('uploads', { recursive: true });
+    console.log('Vytvořena složka: uploads');
+  }
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+    console.log('Vytvořena složka:', uploadDir);
+  }
+
   // Konfigurujeme multer pro nahrávání souborů dokumentů
   const multerStorage = multer.diskStorage({
     destination: (req, file, cb) => {
       // Nastavíme cílovou složku podle typu souboru
-      let uploadDir = 'uploads/documents';
       cb(null, uploadDir);
     },
     filename: (req, file, cb) => {
