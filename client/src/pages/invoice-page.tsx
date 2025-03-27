@@ -697,7 +697,7 @@ export default function InvoicePage() {
     return <Redirect to="/auth" />;
   }
   
-  if (user.role !== "admin") {
+  if (user.role !== "admin" && user.role !== "company") {
     return <Redirect to="/" />;
   }
 
