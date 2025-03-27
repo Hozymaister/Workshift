@@ -87,6 +87,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     res.json(updatedWorkplace);
   });
+  
+  // Přidaný PATCH endpoint pro částečnou aktualizaci pracoviště
+  app.patch("/api/workplaces/:id", isAuthenticated, async (req, res) => {
+    try {
+      console.log("PATCH workplace data:", JSON.stringify(req.body, null, 2));
+      const workplaceId = parseInt(req.params.id);
+      
+      // Ujistíme se, že managerId je číslo, pokud je definováno
+      const updateData = { ...req.body };
+      if (updateData.managerId !== null && updateData.managerId !== undefined) {
+        updateData.managerId = Number(updateData.managerId);
+      }
+      
+      const updatedWorkplace = await storage.updateWorkplace(workplaceId, updateData);
+      if (!updatedWorkplace) {
+        return res.status(404).json({ error: "Pracoviště nenalezeno" });
+      }
+      
+      res.json(updatedWorkplace);
+    } catch (error) {
+      console.error("Chyba při aktualizaci pracoviště:", error);
+      res.status(500).json({ error: error.message || "Nepodařilo se aktualizovat pracoviště" });
+    }
+  });
 
   app.delete("/api/workplaces/:id", isAdmin, async (req, res) => {
     const success = await storage.deleteWorkplace(parseInt(req.params.id));
