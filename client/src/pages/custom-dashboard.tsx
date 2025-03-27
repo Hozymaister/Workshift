@@ -213,8 +213,8 @@ export default function CustomDashboard() {
       y,
       w: size.w,
       h: size.h,
-      minW: 3, // Minimální šířka widgetu
-      minH: 3  // Minimální výška widgetu
+      minW: 2, // Snížena minimální šířka pro lepší responzivitu
+      minH: 2  // Snížena minimální výška pro lepší responzivitu
     };
   };
 
@@ -993,7 +993,13 @@ export default function CustomDashboard() {
         {activeWidgets.length > 0 ? (
           <ResponsiveReactGridLayout
             className="layout"
-            layouts={{ lg: gridLayout }}
+            layouts={{ 
+              lg: gridLayout,
+              md: gridLayout,
+              sm: gridLayout,
+              xs: gridLayout,
+              xxs: gridLayout
+            }}
             breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
             cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
             rowHeight={30}
@@ -1002,6 +1008,9 @@ export default function CustomDashboard() {
             onLayoutChange={(newLayout) => handleLayoutChange(newLayout)}
             draggableHandle=".drag-handle" // CSS selector pro oblast pro přetahování
             resizeHandles={['se']} // pouze bottom-right resize handle
+            autoSize={true}
+            compactType="vertical"
+            preventCollision={false}
             isBounded={true}  // Zabránit widgetům opustit kontejner
           >
             {activeWidgets.map(widgetType => (

@@ -1,5 +1,5 @@
 import { useAuth } from "@/hooks/use-auth";
-import { Loader2, AlertTriangle } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Redirect, Route } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect } from "react";
@@ -20,6 +20,20 @@ export function ProtectedRoute({
   // Použití useAuth hooku na vrchní úrovni komponenty pro získání stavu přihlášení
   const { user, isLoading } = useAuth();
   const { toast } = useToast();
+  
+  // Efekt pro zobrazení toastu v případě nedostatečného oprávnění
+  useEffect(() => {
+    // Kontrola, zda má uživatel potřebné oprávnění
+    if (user && requiredRoles && requiredRoles.length > 0) {
+      if (!user.role || !requiredRoles.includes(user.role as Role)) {
+        toast({
+          title: "Přístup odepřen",
+          description: "Pro přístup k této stránce nemáte dostatečná oprávnění.",
+          variant: "destructive",
+        });
+      }
+    }
+  }, [user, requiredRoles, toast]);
 
   // Rendering komponenty na základě stavu přihlášení a role
   return (
@@ -43,15 +57,6 @@ export function ProtectedRoute({
         if (requiredRoles && requiredRoles.length > 0) {
           // Role musí být definovaná a musí být v poli požadovaných rolí
           if (!user.role || !requiredRoles.includes(user.role as Role)) {
-            // Zobrazíme toast s varováním
-            useEffect(() => {
-              toast({
-                title: "Přístup odepřen",
-                description: "Pro přístup k této stránce nemáte dostatečná oprávnění.",
-                variant: "destructive",
-              });
-            }, []);
-            
             // Přesměrování na dashboard
             return <Redirect to="/" />;
           }

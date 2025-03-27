@@ -998,95 +998,256 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Exchange request routes
   app.get("/api/exchange-requests", isAuthenticated, async (req, res) => {
-    const userId = req.query.userId ? parseInt(req.query.userId as string) : undefined;
-    const pending = req.query.pending === "true";
-    
-    let requests;
-    if (userId) {
-      requests = await storage.getUserExchangeRequests(userId);
-    } else if (pending) {
-      requests = await storage.getPendingExchangeRequests();
-    } else {
-      requests = await storage.getAllExchangeRequests();
+    try {
+      const userId = req.query.userId ? parseInt(req.query.userId as string) : undefined;
+      const pending = req.query.pending === "true";
+      
+      // Nejprve získáme všechny požadavky podle zadaných parametrů
+      let allRequests;
+      if (userId) {
+        allRequests = await storage.getUserExchangeRequests(userId);
+      } else if (pending) {
+        allRequests = await storage.getPendingExchangeRequests();
+      } else {
+        allRequests = await storage.getAllExchangeRequests();
+      }
+      
+      // Filtrujeme požadavky podle role a oprávnění
+      let requests = [...allRequests]; // Vytvoříme kopii, abychom mohli filtrovat
+      
+      if (req.user?.role === "admin") {
+        // Admin vidí všechny požadavky na výměnu
+      } else if (req.user?.role === "company") {
+        // Firma vidí pouze požadavky svých zaměstnanců
+        const companyId = req.user.id;
+        
+        // Získáme všechny pracovníky firmy
+        const companyEmployees = (await storage.getAllUsers())
+          .filter(user => user.parentCompanyId === companyId)
+          .map(user => user.id);
+        
+        // Filtrujeme požadavky, kde je žadatelem nebo adresátem zaměstnanec firmy
+        requests = requests.filter(request => 
+          companyEmployees.includes(request.requesterId) || 
+          (request.requesteeId && companyEmployees.includes(request.requesteeId))
+        );
+      } else {
+        // Pracovník vidí pouze svoje požadavky (kde je žadatel nebo adresát)
+        requests = requests.filter(request => 
+          request.requesterId === req.user?.id || 
+          request.requesteeId === req.user?.id
+        );
+      }
+      
+      // Enhance exchange requests with shift, workplace, and user details
+      const enhancedRequests = await Promise.all(requests.map(async (request) => {
+        const requester = await storage.getUser(request.requesterId);
+        const requestee = request.requesteeId ? await storage.getUser(request.requesteeId) : null;
+        const requestShift = await storage.getShift(request.requestShiftId);
+        const offeredShift = await storage.getShift(request.offeredShiftId);
+        
+        // Remove passwords from user objects
+        const safeRequester = requester ? { ...requester, password: undefined } : null;
+        const safeRequestee = requestee ? { ...requestee, password: undefined } : null;
+        
+        // Get workplace info for shifts
+        const requestWorkplace = requestShift && requestShift.workplaceId ? 
+          await storage.getWorkplace(requestShift.workplaceId) : null;
+        const offeredWorkplace = offeredShift && offeredShift.workplaceId ? 
+          await storage.getWorkplace(offeredShift.workplaceId) : null;
+        
+        return {
+          ...request,
+          requester: safeRequester,
+          requestee: safeRequestee,
+          requestShift: requestShift ? { ...requestShift, workplace: requestWorkplace } : null,
+          offeredShift: offeredShift ? { ...offeredShift, workplace: offeredWorkplace } : null,
+        };
+      }));
+      
+      res.json(enhancedRequests);
+    } catch (error: any) {
+      console.error("Chyba při získávání požadavků na výměnu směn:", error);
+      res.status(500).json({ error: error.message || "Nepodařilo se získat požadavky na výměnu směn" });
     }
-    
-    // Enhance exchange requests with shift, workplace, and user details
-    const enhancedRequests = await Promise.all(requests.map(async (request) => {
-      const requester = await storage.getUser(request.requesterId);
-      const requestee = request.requesteeId ? await storage.getUser(request.requesteeId) : null;
-      const requestShift = await storage.getShift(request.requestShiftId);
-      const offeredShift = await storage.getShift(request.offeredShiftId);
-      
-      // Remove passwords from user objects
-      const safeRequester = requester ? { ...requester, password: undefined } : null;
-      const safeRequestee = requestee ? { ...requestee, password: undefined } : null;
-      
-      // Get workplace info for shifts
-      const requestWorkplace = requestShift && requestShift.workplaceId ? 
-        await storage.getWorkplace(requestShift.workplaceId) : null;
-      const offeredWorkplace = offeredShift && offeredShift.workplaceId ? 
-        await storage.getWorkplace(offeredShift.workplaceId) : null;
-      
-      return {
-        ...request,
-        requester: safeRequester,
-        requestee: safeRequestee,
-        requestShift: requestShift ? { ...requestShift, workplace: requestWorkplace } : null,
-        offeredShift: offeredShift ? { ...offeredShift, workplace: offeredWorkplace } : null,
-      };
-    }));
-    
-    res.json(enhancedRequests);
   });
 
   app.post("/api/exchange-requests", isAuthenticated, async (req, res) => {
-    const request = await storage.createExchangeRequest(req.body);
-    res.status(201).json(request);
+    try {
+      if (!req.user) {
+        return res.status(401).send("Unauthorized");
+      }
+      
+      // Zkopírujeme tělo požadavku, abychom ho mohli upravit
+      const requestData = { ...req.body };
+      
+      // Ověříme, že pracovník může vytvořit požadavek na výměnu
+      // 1. Žadatelem musí být přihlášený uživatel (pracovník nemůže vytvořit požadavek za jiného)
+      // 2. Shift, který chce uživatel vyměnit, musí patřit jemu
+      
+      // Pokud není admin nebo společnost, musí být žadatelem
+      if (req.user.role !== "admin" && req.user.role !== "company") {
+        requestData.requesterId = req.user.id;
+        
+        // Ověříme, že směna patří tomuto uživateli
+        const requestShift = await storage.getShift(requestData.requestShiftId);
+        if (!requestShift) {
+          return res.status(404).json({ error: "Požadovaná směna nebyla nalezena" });
+        }
+        
+        if (requestShift.userId !== req.user.id) {
+          return res.status(403).json({ error: "Nemůžete vyměnit směnu, která vám nepatří" });
+        }
+      }
+      
+      // Pokud je společnost, ověříme, že má přístup k oběma směnám
+      if (req.user.role === "company") {
+        const companyId = req.user.id;
+        
+        // Získáme seznam zaměstnanců společnosti
+        const companyEmployees = (await storage.getAllUsers())
+          .filter(user => user.parentCompanyId === companyId)
+          .map(user => user.id);
+          
+        // Získáme obě směny
+        const requestShift = await storage.getShift(requestData.requestShiftId);
+        const offeredShift = await storage.getShift(requestData.offeredShiftId);
+        
+        if (!requestShift || !offeredShift) {
+          return res.status(404).json({ error: "Jedna z požadovaných směn nebyla nalezena" });
+        }
+        
+        // Ověříme, že oba pracovníci patří k této společnosti
+        if (!companyEmployees.includes(requestShift.userId) || !companyEmployees.includes(offeredShift.userId)) {
+          return res.status(403).json({ error: "Nemáte oprávnění vytvářet požadavky na výměnu pro tyto zaměstnance" });
+        }
+      }
+      
+      // Vytvoříme požadavek na výměnu
+      const request = await storage.createExchangeRequest(requestData);
+      res.status(201).json(request);
+    } catch (error: any) {
+      console.error("Chyba při vytváření požadavku na výměnu směn:", error);
+      res.status(500).json({ error: error.message || "Nepodařilo se vytvořit požadavek na výměnu směn" });
+    }
   });
 
   app.put("/api/exchange-requests/:id", isAuthenticated, async (req, res) => {
-    // Only allow the requestee or admin to update the request status
-    const request = await storage.getExchangeRequest(parseInt(req.params.id));
-    if (!request) {
-      return res.status(404).send("Exchange request not found");
-    }
-    
-    if (req.user && req.user.role !== "admin" && req.user.id !== request.requesteeId) {
-      return res.status(403).send("Forbidden: Not authorized to update this request");
-    }
-    
-    const updatedRequest = await storage.updateExchangeRequest(parseInt(req.params.id), req.body);
-    
-    // If approved, swap the shifts' user IDs
-    if (updatedRequest && updatedRequest.status === "approved") {
-      const requestShift = await storage.getShift(updatedRequest.requestShiftId);
-      const offeredShift = await storage.getShift(updatedRequest.offeredShiftId);
-      
-      if (requestShift && offeredShift) {
-        await storage.updateShift(requestShift.id, { userId: offeredShift.userId });
-        await storage.updateShift(offeredShift.id, { userId: requestShift.userId });
+    try {
+      if (!req.user) {
+        return res.status(401).send("Unauthorized");
       }
+      
+      // Načteme požadavek na výměnu
+      const requestId = parseInt(req.params.id);
+      const request = await storage.getExchangeRequest(requestId);
+      
+      if (!request) {
+        return res.status(404).json({ error: "Požadavek na výměnu nebyl nalezen" });
+      }
+      
+      // Ověříme, zda má uživatel oprávnění aktualizovat tento požadavek
+      if (req.user.role === "admin") {
+        // Admin může aktualizovat jakýkoliv požadavek
+      } else if (req.user.role === "company") {
+        // Společnost může aktualizovat požadavky svých zaměstnanců
+        const companyId = req.user.id;
+        
+        // Získáme informace o žadateli a adresátovi
+        const requester = await storage.getUser(request.requesterId);
+        const requestee = request.requesteeId ? await storage.getUser(request.requesteeId) : null;
+        
+        // Ověříme, zda jsou oba uživatelé zaměstnanci této společnosti
+        const isRequesterEmployee = requester && requester.parentCompanyId === companyId;
+        const isRequesteeEmployee = requestee && requestee.parentCompanyId === companyId;
+        
+        if (!isRequesterEmployee && !isRequesteeEmployee) {
+          return res.status(403).json({ error: "Nemáte oprávnění aktualizovat tento požadavek" });
+        }
+      } else {
+        // Běžný uživatel může aktualizovat pouze požadavky, kde je adresátem
+        if (req.user.id !== request.requesteeId) {
+          return res.status(403).json({ error: "Nemáte oprávnění aktualizovat tento požadavek" });
+        }
+      }
+      
+      // Aktualizujeme požadavek
+      const updatedRequest = await storage.updateExchangeRequest(requestId, req.body);
+      if (!updatedRequest) {
+        return res.status(404).json({ error: "Nepodařilo se aktualizovat požadavek" });
+      }
+      
+      // Pokud byl požadavek schválen, provedeme výměnu směn
+      if (updatedRequest.status === "approved") {
+        const requestShift = await storage.getShift(updatedRequest.requestShiftId);
+        const offeredShift = await storage.getShift(updatedRequest.offeredShiftId);
+        
+        if (requestShift && offeredShift) {
+          // Vyměníme uživatele u směn
+          const tempUserId = requestShift.userId;
+          await storage.updateShift(requestShift.id, { userId: offeredShift.userId });
+          await storage.updateShift(offeredShift.id, { userId: tempUserId });
+          
+          console.log(`Směny byly úspěšně vyměněny: ${requestShift.id} <-> ${offeredShift.id}`);
+        } else {
+          console.error("Nepodařilo se najít obě směny pro výměnu");
+        }
+      }
+      
+      res.json(updatedRequest);
+    } catch (error: any) {
+      console.error("Chyba při aktualizaci požadavku na výměnu:", error);
+      res.status(500).json({ error: error.message || "Nepodařilo se aktualizovat požadavek na výměnu" });
     }
-    
-    res.json(updatedRequest);
   });
 
   app.delete("/api/exchange-requests/:id", isAuthenticated, async (req, res) => {
-    const request = await storage.getExchangeRequest(parseInt(req.params.id));
-    if (!request) {
-      return res.status(404).send("Exchange request not found");
+    try {
+      if (!req.user) {
+        return res.status(401).send("Unauthorized");
+      }
+      
+      const requestId = parseInt(req.params.id);
+      const request = await storage.getExchangeRequest(requestId);
+      
+      if (!request) {
+        return res.status(404).json({ error: "Požadavek na výměnu nebyl nalezen" });
+      }
+      
+      // Ověříme, zda má uživatel oprávnění smazat tento požadavek
+      if (req.user.role === "admin") {
+        // Admin může smazat jakýkoliv požadavek
+      } else if (req.user.role === "company") {
+        // Společnost může smazat požadavky svých zaměstnanců
+        const companyId = req.user.id;
+        
+        // Získáme informace o žadateli
+        const requester = await storage.getUser(request.requesterId);
+        
+        // Ověříme, zda je žadatel zaměstnancem této společnosti
+        const isRequesterEmployee = requester && requester.parentCompanyId === companyId;
+        
+        if (!isRequesterEmployee) {
+          return res.status(403).json({ error: "Nemáte oprávnění smazat tento požadavek" });
+        }
+      } else {
+        // Běžný uživatel může smazat pouze požadavky, kde je žadatelem
+        if (req.user.id !== request.requesterId) {
+          return res.status(403).json({ error: "Nemáte oprávnění smazat tento požadavek" });
+        }
+      }
+      
+      // Smažeme požadavek
+      const success = await storage.deleteExchangeRequest(requestId);
+      if (!success) {
+        return res.status(404).json({ error: "Požadavek na výměnu nebyl nalezen" });
+      }
+      
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Chyba při mazání požadavku na výměnu:", error);
+      res.status(500).json({ error: error.message || "Nepodařilo se smazat požadavek na výměnu" });
     }
-    
-    // Only allow the requester or admin to delete the request
-    if (req.user && req.user.role !== "admin" && req.user.id !== request.requesterId) {
-      return res.status(403).send("Forbidden: Not authorized to delete this request");
-    }
-    
-    const success = await storage.deleteExchangeRequest(parseInt(req.params.id));
-    if (!success) {
-      return res.status(404).send("Exchange request not found");
-    }
-    res.status(204).send();
   });
 
   // Reports routes
