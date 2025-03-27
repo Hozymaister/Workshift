@@ -1,0 +1,204 @@
+1. Přehled systému
+
+Cíl:
+Vyvinout systém, který při přihlášení identifikuje uživatele jako správce (admin) nebo pracovníka (worker) a dynamicky zobrazuje příslušné uživatelské rozhraní, přičemž umožňuje přístup k funkcím podle pověření. Systém musí být responzivní, bezpečný a snadno rozšiřitelný o další role v budoucnu.
+
+⸻
+
+2. Funkční požadavky
+
+2.1 Role-based autentizace, registrace a autorizace
+	•	Registrace a přihlášení:
+	•	Při registraci bude každému uživateli přiřazena role (admin/worker).
+	•	Oddělené registrační toky:
+	•	Vytvořit samostatné registrační formuláře pro firmy a běžné pracovníky.
+	•	Registrační formulář pro firmy bude vyžadovat dodatečné údaje (např. IČO, DIČ, oficiální doklady) a bude podléhat dodatečnému ověření (automatickému nebo manuálnímu schválení).
+	•	Registrační formulář pro běžné pracovníky nebude umožňovat zadání firemních údajů.
+	•	Na backendu zajistit, aby nedošlo ke změně role běžného pracovníka na firmu – dodatečné firemní údaje budou validovány a schváleny pouze u správně registrovaných firemních účtů.
+	•	Při přihlášení se načtou uživatelská data včetně role (např. prostřednictvím JWT tokenu nebo session).
+	•	Dynamické vykreslování UI:
+	•	Správce (admin):
+	•	Kompletní dashboard s přístupem ke správě pracovišť, přidávání a úpravám pracovníků.
+	•	Přístup k detailním statistikám, docházce a administrativním funkcím.
+	•	Možnost měnit konfiguraci a rozložení widgetů na dashboardu.
+	•	Pracovník (worker):
+	•	Omezený dashboard se zobrazením pouze vlastních údajů (směny, osobní výkazy, notifikace).
+	•	Nepřístupnost k nastavení či správě ostatních uživatelů.
+
+2.2 Správa pracovišť a pracovníků (pouze pro správce)
+	•	Pracoviště:
+	•	Každé pracoviště má svůj detailní profil, do kterého lze přiřadit pracovníky.
+	•	Evidence pracovníků:
+	•	Správce může přidávat, upravovat či odstraňovat pracovníky.
+	•	Systém eviduje, kteří pracovníci byli přidáni kterým správcem a ke kterému pracovišti.
+	•	Funkce “Přidat pracovníka” v detailu pracoviště:
+	•	Tato funkce je dostupná výhradně pro správce (admin).
+	•	V detailu každého pracoviště musí být funkční tlačítko “Přidat pracovníka”.
+	•	Po kliknutí na tlačítko bude správce schopen přidat nového pracovníka do daného pracoviště.
+	•	Přidaná data se automaticky uloží.
+	•	Správce může přidat neomezený počet pracovníků.
+	•	Každé pracoviště bude evidovat počet přiřazených pracovníků.
+	•	Jeden pracovník může být přiřazen k více pracovištím.
+
+2.3 Přizpůsobitelnost dashboardu
+	•	Drag & drop rozhraní:
+	•	Uživatelé (správci i pracovníci) budou mít možnost přizpůsobit si rozložení dashboardu přesouváním widgetů.
+	•	Doporučená implementace pomocí knihovny (např. react-grid-layout) pro responzivní změnu rozložení.
+	•	Ukládání nastavení:
+	•	Konfigurace dashboardu se uloží podle uživatelské role a preferencí, aby bylo možné nastavení obnovit při příštím přihlášení.
+
+2.4 Responzivita a přístupnost
+	•	Responzivní design:
+	•	UI musí být optimalizované pro mobilní zařízení i desktop.
+	•	Použít flexibilní grid systémy a testovat funkčnost na různých zařízeních.
+	•	Přístupnost:
+	•	Dodržovat standardy přístupnosti (např. WCAG) pro zajištění přívětivosti aplikace pro všechny uživatele.
+
+⸻
+
+3. Technická architektura
+
+3.1 Frontend
+	•	Technologie:
+	•	React.js jako hlavní framework.
+	•	Použití knihovny pro drag & drop (např. react-grid-layout).
+	•	Řízení UI podle role:
+	•	Podmíněné vykreslení komponent na základě hodnoty user.role.
+	•	Příklad:
+
+{user.role === 'admin' ? <AdminDashboard /> : <WorkerDashboard />}
+
+
+	•	Správa stavu:
+	•	Použití state management řešení (např. Redux nebo Context API) pro uchování informací o uživateli a jeho roli.
+
+3.2 Backend
+	•	Technologie:
+	•	REST API postavené na Node.js/Express, Python/Django nebo jiné vhodné platformě.
+	•	Autorizace:
+	•	Každý API endpoint kontroluje roli uživatele pomocí middleware.
+	•	Příklad middleware (pseudo-kód):
+
+function authorizeAdmin(req, res, next) {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: "Přístup odepřen" });
+  }
+  next();
+}
+// Použití middleware:
+app.post('/workplaces/:id/employees', authorizeAdmin, addEmployeeHandler);
+
+
+	•	Databáze:
+	•	Použití relační nebo NoSQL databáze (např. PostgreSQL, MongoDB) s kolekcí/tabulkou uživatelů, kde je uložen atribut role.
+	•	Příklad struktury uživatele:
+
+{
+  "id": "123456",
+  "name": "Petr Novák",
+  "email": "petr@example.com",
+  "role": "admin"
+}
+
+
+
+3.3 Bezpečnost
+	•	Ověření uživatele:
+	•	Implementace bezpečnostních standardů (hashování hesel, HTTPS apod.).
+	•	Role-based kontrola přístupu:
+	•	Všechny citlivé operace jsou dostupné pouze uživatelům s odpovídající rolí.
+	•	Validace vstupů:
+	•	Použití robustní validace vstupních dat na straně klienta i serveru.
+
+⸻
+
+4. Seznam API endpointů
+
+4.1 Autentizace a uživatelé
+	•	POST /auth/login:
+	•	Přihlášení uživatele, vrací token a informace o roli.
+	•	GET /user/profile:
+	•	Načtení profilu přihlášeného uživatele, včetně role.
+
+4.2 Správa pracovišť (pouze pro admin)
+	•	GET /workplaces:
+	•	Načtení seznamu všech pracovišť.
+	•	POST /workplaces:
+	•	Vytvoření nového pracoviště.
+	•	PUT /workplaces/:id:
+	•	Aktualizace informací pracoviště.
+	•	DELETE /workplaces/:id:
+	•	Odstranění pracoviště.
+
+4.3 Správa pracovníků (pouze pro admin)
+	•	GET /workplaces/:id/employees:
+	•	Načtení seznamu pracovníků v daném pracovišti.
+	•	POST /workplaces/:id/employees:
+	•	Přidání nového pracovníka do pracoviště – operace spuštěná pomocí tlačítka “Přidat pracovníka”, které je dostupné výhradně pro správce.
+	•	PUT /workplaces/:id/employees/:workerId:
+	•	Aktualizace údajů o pracovníkovi.
+	•	DELETE /workplaces/:id/employees/:workerId:
+	•	Odebrání pracovníka.
+
+⸻
+
+5. Uživatelské rozhraní
+
+5.1 Dashboard pro správce (AdminDashboard)
+	•	Komponenty:
+	•	Seznam pracovišť s možností rozkliknutí do detailu.
+	•	Detail pracoviště:
+	•	Musí obsahovat funkční tlačítko “Přidat pracovníka” (dostupné pouze pro správce).
+	•	Po kliknutí na tlačítko bude správce moci přidat nového pracovníka do daného pracoviště.
+	•	Data se automaticky uloží a pracoviště bude evidovat počet přiřazených pracovníků.
+	•	Správce může přidat neomezený počet pracovníků; jeden pracovník může být přiřazen k více pracovištím.
+	•	Widgety pro přehled docházky, výkazy a statistiky.
+	•	Ovládací prvky pro přidávání/úpravu pracovníků.
+	•	Možnost přizpůsobení rozložení pomocí drag & drop.
+
+5.2 Dashboard pro pracovníka (WorkerDashboard)
+	•	Komponenty:
+	•	Přehled vlastních směn a docházky.
+	•	Oznámení a osobní výkazy.
+	•	Jednoduché uživatelské nastavení (změna hesla, kontaktní údaje).
+
+⸻
+
+6. Testování a nasazení
+
+6.1 Testování
+	•	Jednotkové testy:
+	•	Testování funkčnosti autentizace, autorizace a API endpointů.
+	•	Integrační testy:
+	•	Ověření, že role-based přístup funguje na úrovni celého systému.
+	•	UI testování:
+	•	Testování responzivního designu, funkčnosti drag & drop rozhraní a tlačítka “Přidat pracovníka” (dostupného pouze pro správce).
+
+6.2 Nasazení
+	•	Dev/Staging/Production:
+	•	Nasazení do oddělených prostředí s automatizovaným deploymentem.
+	•	Monitoring a logování:
+	•	Implementace nástrojů pro sledování chyb a monitorování provozu.
+
+⸻
+
+7. Shrnutí
+
+Tento systém:
+	•	Rozlišuje role uživatelů a přizpůsobuje UI a dostupné funkce podle jejich pověření.
+	•	Zajišťuje bezpečnost pomocí role-based autorizace na frontendu i backendu.
+	•	Je plně responzivní a rozšiřitelný pro budoucí požadavky.
+	•	Umožňuje správci efektivně spravovat pracoviště a pracovníky. V detailu každého pracoviště je k dispozici tlačítko “Přidat pracovníka” (dostupné pouze pro správce), díky němuž lze přidat neomezený počet pracovníků, přičemž jeden pracovník může být přiřazen k více pracovištím.
+	•	Oddělené registrační toky: Běžní pracovníci se nemohou registrovat jako firma. Pro firmy existuje samostatný registrační formulář s dodatečnými ověřovacími mechanismy (automatické či manuální schválení) a validací na backendu, která zabrání přechodu z role “worker” na firemní účet.
+
+⸻
+
+Instrukce pro vývojáře
+	1.	Postupujte systematicky a kontrolujte všechny kroky:
+	•	Každou část implementujte a otestujte před přechodem na další úsek.
+	•	Ověřte, že všechny funkce (autentizace, dynamické vykreslování UI, API endpointy, drag & drop, tlačítko “Přidat pracovníka” – dostupné pouze pro správce –, oddělené registrační toky a responzivita) fungují správně.
+	2.	Pracujte precizně a bez dalších dotazů:
+	•	Pokud narazíte na nejasnosti, rozhodněte se na základě vlastního uvážení v rámci definované architektury.
+	•	Pokračujte v práci dle tohoto zadání bez dalších otázek či odklonů od specifikací.
+	3.	Kontrola a testování:
+	•	Provádějte jednotkové i integrační testy před nasazením do produkce, aby byl výsledný systém kompletní a plně funkční.

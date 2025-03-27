@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
-import { Layout } from "@/components/layout/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Layout } from "@/components/layout/layout";
 import {
   Calendar,
   Clock,
@@ -124,7 +124,7 @@ enum WidgetType {
   NOTIFICATIONS = "notifications"
 }
 
-// Typ pro grid layout
+// Definice typu layoutu
 interface LayoutItem {
   i: string;
   x: number;
@@ -133,13 +133,16 @@ interface LayoutItem {
   h: number;
   minW?: number;
   minH?: number;
+  isDraggable?: boolean;
+  isResizable?: boolean;
+  static?: boolean;
 }
 
 export default function CustomDashboard() {
   // State pro sledování aktivních widgetů - defaultně prázdný dashboard
   const [activeWidgets, setActiveWidgets] = useState<WidgetType[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [layout, setLayout] = useState<LayoutItem[]>([]);
+  const [gridLayout, setGridLayout] = useState<LayoutItem[]>([]);
   
   // Get user info and role
   const { user } = useAuth();
@@ -245,7 +248,7 @@ export default function CustomDashboard() {
     const savedLayout = localStorage.getItem(layoutStorageKey);
     if (savedLayout) {
       try {
-        setLayout(JSON.parse(savedLayout));
+        setGridLayout(JSON.parse(savedLayout));
       } catch (e) {
         console.error('Chyba při načítání layoutu dashboardu:', e);
       }
@@ -254,7 +257,7 @@ export default function CustomDashboard() {
       const defaultLayout = parsedWidgets.map((widget, index) => 
         getDefaultWidgetLayout(widget, index)
       );
-      setLayout(defaultLayout);
+      setGridLayout(defaultLayout);
     }
   }, [isCompany]);
 
@@ -266,8 +269,8 @@ export default function CustomDashboard() {
     const layoutStorageKey = isCompany ? 'dashboard_layout_company' : 'dashboard_layout_worker';
     
     localStorage.setItem(widgetsStorageKey, JSON.stringify(activeWidgets));
-    localStorage.setItem(layoutStorageKey, JSON.stringify(layout));
-  }, [activeWidgets, layout, isCompany]);
+    localStorage.setItem(layoutStorageKey, JSON.stringify(gridLayout));
+  }, [activeWidgets, gridLayout, isCompany]);
 
   // Přidání widgetu a jeho layoutu
   const addWidget = (widgetType: WidgetType) => {
@@ -277,10 +280,10 @@ export default function CustomDashboard() {
       
       // Přidání nového layoutu pro widget
       const newLayout = [
-        ...layout,
+        ...gridLayout,
         getDefaultWidgetLayout(widgetType, newWidgets.length - 1)
       ];
-      setLayout(newLayout);
+      setGridLayout(newLayout);
     }
     setIsDialogOpen(false);
   };
@@ -288,12 +291,12 @@ export default function CustomDashboard() {
   // Odstranění widgetu a jeho layoutu
   const removeWidget = (widgetType: WidgetType) => {
     setActiveWidgets(activeWidgets.filter(w => w !== widgetType));
-    setLayout(layout.filter(item => item.i !== widgetType));
+    setGridLayout(gridLayout.filter((item: LayoutItem) => item.i !== widgetType));
   };
 
   // Aktualizace layoutu při změně pozice nebo velikosti widgetu
   const handleLayoutChange = (newLayout: LayoutItem[]) => {
-    setLayout(newLayout);
+    setGridLayout(newLayout);
   };
 
   const formatDate = (dateStr: string) => {
@@ -990,13 +993,13 @@ export default function CustomDashboard() {
         {activeWidgets.length > 0 ? (
           <ResponsiveReactGridLayout
             className="layout"
-            layouts={{ lg: layout }}
+            layouts={{ lg: gridLayout }}
             breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
             cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
             rowHeight={30}
             containerPadding={[0, 0]}
             margin={[16, 16]}
-            onLayoutChange={(layout) => handleLayoutChange(layout)}
+            onLayoutChange={(newLayout) => handleLayoutChange(newLayout)}
             draggableHandle=".drag-handle" // CSS selector pro oblast pro přetahování
             resizeHandles={['se']} // pouze bottom-right resize handle
             isBounded={true}  // Zabránit widgetům opustit kontejner
