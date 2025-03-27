@@ -1,14 +1,33 @@
 import { useEffect, useState } from "react";
 import { useParams, useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { MobileNavigation } from "@/components/layout/mobile-navigation";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 import { Workplace, User, Shift } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Card,
   CardContent,
@@ -44,6 +63,13 @@ import {
   ArrowUpRight,
   Loader2,
   ClipboardList,
+  Plus,
+  Search,
+  UserPlus,
+  Download,
+  Save,
+  Check,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -51,9 +77,17 @@ export default function WorkplaceDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
   const { user } = useAuth();
+  const { toast } = useToast();
   
   // Převedení ID na číslo
   const workplaceId = parseInt(id);
+  
+  // Stavy pro dialogy a správu
+  const [assignWorkersOpen, setAssignWorkersOpen] = useState(false);
+  const [addShiftOpen, setAddShiftOpen] = useState(false);
+  const [shiftToEdit, setShiftToEdit] = useState<Shift | null>(null);
+  const [selectedWorkers, setSelectedWorkers] = useState<number[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
   
   // Získání dat o pracovišti
   const { data: workplace, isLoading: isLoadingWorkplace } = useQuery<Workplace>({
@@ -69,7 +103,7 @@ export default function WorkplaceDetailPage() {
   
   // Získání směn pro pracoviště
   const { data: shifts, isLoading: isLoadingShifts } = useQuery<Shift[]>({
-    queryKey: ["/api/shifts"],
+    queryKey: ["/api/shifts", workplaceId],
     queryFn: async () => {
       const response = await fetch(`/api/shifts?workplaceId=${workplaceId}`);
       if (!response.ok) {
@@ -89,6 +123,132 @@ export default function WorkplaceDetailPage() {
   // Statistika pracovníků podle odpracovaných hodin
   const [topWorker, setTopWorker] = useState<{user: User, hours: number} | null>(null);
   const [workerStats, setWorkerStats] = useState<{user: User, hours: number}[]>([]);
+  
+  // Mutace pro přidání směny
+  const addShiftMutation = useMutation<any, Error, any>({
+    mutationFn: async (shiftData: any) => {
+      return apiRequest(
+        shiftToEdit ? 'PATCH' : 'POST',
+        `/api/shifts${shiftToEdit ? `/${shiftToEdit.id}` : ''}`,
+        shiftData
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/shifts", workplaceId] });
+      setAddShiftOpen(false);
+      setShiftToEdit(null);
+      toast({
+        title: shiftToEdit ? "Směna byla upravena" : "Směna byla přidána",
+        description: shiftToEdit 
+          ? "Změny byly úspěšně uloženy" 
+          : "Nová směna byla úspěšně přidána do systému",
+        variant: "default",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Chyba",
+        description: "Nepodařilo se přidat nebo upravit směnu. Zkuste to prosím znovu.",
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Mutace pro odstranění směny
+  const deleteShiftMutation = useMutation<any, Error, number>({
+    mutationFn: async (shiftId: number) => {
+      return apiRequest(
+        'DELETE',
+        `/api/shifts/${shiftId}`
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/shifts", workplaceId] });
+      toast({
+        title: "Směna byla odstraněna",
+        description: "Směna byla úspěšně odstraněna ze systému",
+        variant: "default",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Chyba",
+        description: "Nepodařilo se odstranit směnu. Zkuste to prosím znovu.",
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Mutace pro přiřazení pracovníků
+  const assignWorkersMutation = useMutation<any, Error, number[]>({
+    mutationFn: async (userIds: number[]) => {
+      return apiRequest(
+        'POST',
+        `/api/workplaces/${workplaceId}/assign-workers`,
+        { userIds }
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/shifts", workplaceId] });
+      setAssignWorkersOpen(false);
+      setSelectedWorkers([]);
+      toast({
+        title: "Pracovníci přiřazeni",
+        description: "Vybraní pracovníci byli úspěšně přiřazeni k pracovišti",
+        variant: "default",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Chyba",
+        description: "Nepodařilo se přiřadit pracovníky k pracovišti. Zkuste to prosím znovu.",
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Funkce pro export směn do CSV
+  const exportShiftsToCSV = () => {
+    if (!shifts || shifts.length === 0) return;
+    
+    const headers = ['Datum', 'Pracovník', 'Začátek', 'Konec', 'Hodin'];
+    
+    const rows = shifts.map(shift => {
+      const shiftUser = users?.find(u => u.id === shift.userId);
+      const userName = shiftUser 
+        ? `${shiftUser.firstName} ${shiftUser.lastName}` 
+        : "Neznámý pracovník";
+      
+      return [
+        shift.date ? safeDate(shift.date)?.toLocaleDateString('cs-CZ') || 'Bez data' : 'Bez data',
+        userName,
+        shift.startTime || '',
+        shift.endTime || '',
+        shift.hours?.toString() || "0"
+      ];
+    });
+    
+    // Vytvoření CSV obsahu
+    let csvContent = headers.join(',') + '\n';
+    rows.forEach(row => {
+      csvContent += row.map(cell => `"${cell}"`).join(',') + '\n';
+    });
+    
+    // Vytvoření a stažení souboru
+    const encodedUri = encodeURI('data:text/csv;charset=utf-8,' + csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `směny-${workplace?.name.replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast({
+      title: "Export dokončen",
+      description: "Seznam směn byl úspěšně exportován do CSV souboru",
+      variant: "default",
+    });
+  };
   
   // Výpočet statistik pracovníků
   useEffect(() => {
@@ -386,9 +546,17 @@ export default function WorkplaceDetailPage() {
                     
                     <TabsContent value="workers" className="mt-4">
                       <Card>
-                        <CardHeader className="pb-3">
-                          <CardTitle>Pracovníci na pracovišti</CardTitle>
-                          <CardDescription>Seznam pracovníků seřazený podle odpracovaných hodin</CardDescription>
+                        <CardHeader className="pb-3 flex flex-row items-center justify-between">
+                          <div>
+                            <CardTitle>Pracovníci na pracovišti</CardTitle>
+                            <CardDescription>Seznam pracovníků seřazený podle odpracovaných hodin</CardDescription>
+                          </div>
+                          {(user?.role === "admin" || user?.role === "company") && (
+                            <Button onClick={() => setAssignWorkersOpen(true)} variant="outline" size="sm" className="ml-auto">
+                              <UserPlus className="h-4 w-4 mr-2" />
+                              Přidat pracovníky
+                            </Button>
+                          )}
                         </CardHeader>
                         <CardContent>
                           {isLoadingShifts || isLoadingUsers ? (
@@ -452,9 +620,25 @@ export default function WorkplaceDetailPage() {
                     
                     <TabsContent value="shifts" className="mt-4">
                       <Card>
-                        <CardHeader className="pb-3">
-                          <CardTitle>Historie směn</CardTitle>
-                          <CardDescription>Přehled všech směn na tomto pracovišti</CardDescription>
+                        <CardHeader className="pb-3 flex flex-row items-center justify-between">
+                          <div>
+                            <CardTitle>Historie směn</CardTitle>
+                            <CardDescription>Přehled všech směn na tomto pracovišti</CardDescription>
+                          </div>
+                          <div className="flex space-x-2">
+                            {shifts && shifts.length > 0 && (
+                              <Button onClick={() => exportShiftsToCSV()} variant="outline" size="sm">
+                                <Download className="h-4 w-4 mr-2" />
+                                Exportovat
+                              </Button>
+                            )}
+                            {(user?.role === "admin" || user?.role === "company") && (
+                              <Button onClick={() => setAddShiftOpen(true)} variant="default" size="sm">
+                                <Plus className="h-4 w-4 mr-2" />
+                                Přidat směnu
+                              </Button>
+                            )}
+                          </div>
                         </CardHeader>
                         <CardContent>
                           {isLoadingShifts ? (
@@ -469,6 +653,9 @@ export default function WorkplaceDetailPage() {
                                   <TableHead>Pracovník</TableHead>
                                   <TableHead>Čas od-do</TableHead>
                                   <TableHead className="text-right">Hodin</TableHead>
+                                  {(user?.role === "admin" || user?.role === "company") && (
+                                    <TableHead className="text-right">Akce</TableHead>
+                                  )}
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
@@ -509,6 +696,34 @@ export default function WorkplaceDetailPage() {
                                         <TableCell className="text-right font-medium">
                                           {shift.hours?.toLocaleString('cs-CZ', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) || "0.0"}
                                         </TableCell>
+                                        {(user?.role === "admin" || user?.role === "company") && (
+                                          <TableCell className="text-right">
+                                            <div className="flex items-center justify-end space-x-2">
+                                              <Button 
+                                                variant="ghost" 
+                                                size="sm"
+                                                onClick={() => {
+                                                  setShiftToEdit(shift);
+                                                  setAddShiftOpen(true);
+                                                }}
+                                              >
+                                                Upravit
+                                              </Button>
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                onClick={() => {
+                                                  if (confirm('Opravdu chcete odstranit tuto směnu?')) {
+                                                    deleteShiftMutation.mutate(shift.id);
+                                                  }
+                                                }}
+                                              >
+                                                <Trash2 className="h-4 w-4" />
+                                              </Button>
+                                            </div>
+                                          </TableCell>
+                                        )}
                                       </TableRow>
                                     );
                                   })}
