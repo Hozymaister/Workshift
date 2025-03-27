@@ -5,7 +5,9 @@ import {
   exchangeRequests, type ExchangeRequest, type InsertExchangeRequest,
   reports, type Report, type InsertReport,
   customers, type Customer, type InsertCustomer,
-  documents, type Document, type InsertDocument
+  documents, type Document, type InsertDocument,
+  invoices, type Invoice, type InsertInvoice,
+  invoiceItems, type InvoiceItem, type InsertInvoiceItem
 } from "@shared/schema";
 import session from "express-session";
 import createMemoryStore from "memorystore";
@@ -73,6 +75,22 @@ export interface IStorage {
   deleteDocument(id: number): Promise<boolean>;
   getAllDocuments(): Promise<Document[]>;
   getUserDocuments(userId: number): Promise<Document[]>;
+  
+  // Invoice operations
+  getInvoice(id: number): Promise<Invoice | undefined>;
+  createInvoice(invoice: InsertInvoice): Promise<Invoice>;
+  updateInvoice(id: number, invoice: Partial<InsertInvoice>): Promise<Invoice | undefined>;
+  deleteInvoice(id: number): Promise<boolean>;
+  getAllInvoices(): Promise<Invoice[]>;
+  getUserInvoices(userId: number): Promise<Invoice[]>;
+  getInvoicesByType(userId: number, type: "issued" | "received"): Promise<Invoice[]>;
+  
+  // Invoice Item operations
+  getInvoiceItem(id: number): Promise<InvoiceItem | undefined>;
+  createInvoiceItem(item: InsertInvoiceItem): Promise<InvoiceItem>;
+  updateInvoiceItem(id: number, item: Partial<InsertInvoiceItem>): Promise<InvoiceItem | undefined>;
+  deleteInvoiceItem(id: number): Promise<boolean>;
+  getInvoiceItems(invoiceId: number): Promise<InvoiceItem[]>;
   
   // Session store
   sessionStore: any; // Using any to avoid SessionStore type issues
@@ -456,6 +474,122 @@ export class MemStorage implements IStorage {
   async getUserDocuments(userId: number): Promise<Document[]> {
     return Array.from(this.documents.values()).filter(document => document.userId === userId);
   }
+
+  // Maps for invoices
+  private invoices: Map<number, Invoice> = new Map();
+  private invoiceItems: Map<number, InvoiceItem> = new Map();
+  private invoiceIdCounter: number = 1;
+  private invoiceItemIdCounter: number = 1;
+
+  // Invoice methods
+  async getInvoice(id: number): Promise<Invoice | undefined> {
+    return this.invoices.get(id);
+  }
+
+  async createInvoice(insertInvoice: InsertInvoice): Promise<Invoice> {
+    const id = this.invoiceIdCounter++;
+    const today = new Date();
+    const dueDate = new Date();
+    dueDate.setDate(today.getDate() + 14); // Standardně faktura splatná za 14 dní
+    
+    const invoice: Invoice = {
+      id,
+      userId: insertInvoice.userId,
+      invoiceNumber: insertInvoice.invoiceNumber,
+      type: insertInvoice.type,
+      date: insertInvoice.date || today,
+      dateDue: insertInvoice.dateDue || dueDate,
+      dateIssued: insertInvoice.dateIssued || null,
+      dateReceived: insertInvoice.dateReceived || null,
+      customerName: insertInvoice.customerName,
+      customerAddress: insertInvoice.customerAddress,
+      customerIC: insertInvoice.customerIC || null,
+      customerDIC: insertInvoice.customerDIC || null,
+      supplierName: insertInvoice.supplierName || null,
+      supplierAddress: insertInvoice.supplierAddress || null,
+      supplierIC: insertInvoice.supplierIC || null,
+      supplierDIC: insertInvoice.supplierDIC || null,
+      bankAccount: insertInvoice.bankAccount || null,
+      paymentMethod: insertInvoice.paymentMethod || "bank",
+      isVatPayer: insertInvoice.isVatPayer === undefined ? true : insertInvoice.isVatPayer,
+      amount: insertInvoice.amount || 0,
+      notes: insertInvoice.notes || null,
+      isPaid: insertInvoice.isPaid === undefined ? false : insertInvoice.isPaid,
+      createdAt: new Date()
+    };
+    this.invoices.set(id, invoice);
+    return invoice;
+  }
+
+  async updateInvoice(id: number, invoiceData: Partial<InsertInvoice>): Promise<Invoice | undefined> {
+    const existingInvoice = this.invoices.get(id);
+    if (!existingInvoice) return undefined;
+    
+    const updatedInvoice = { ...existingInvoice, ...invoiceData };
+    this.invoices.set(id, updatedInvoice);
+    return updatedInvoice;
+  }
+
+  async deleteInvoice(id: number): Promise<boolean> {
+    // Také smažeme všechny položky faktury
+    const itemsToDelete = await this.getInvoiceItems(id);
+    itemsToDelete.forEach(item => {
+      this.invoiceItems.delete(item.id);
+    });
+    
+    return this.invoices.delete(id);
+  }
+
+  async getAllInvoices(): Promise<Invoice[]> {
+    return Array.from(this.invoices.values());
+  }
+
+  async getUserInvoices(userId: number): Promise<Invoice[]> {
+    return Array.from(this.invoices.values())
+      .filter(invoice => invoice.userId === userId);
+  }
+
+  async getInvoicesByType(userId: number, type: "issued" | "received"): Promise<Invoice[]> {
+    return Array.from(this.invoices.values())
+      .filter(invoice => invoice.userId === userId && invoice.type === type);
+  }
+
+  // Invoice Item methods
+  async getInvoiceItem(id: number): Promise<InvoiceItem | undefined> {
+    return this.invoiceItems.get(id);
+  }
+
+  async createInvoiceItem(insertItem: InsertInvoiceItem): Promise<InvoiceItem> {
+    const id = this.invoiceItemIdCounter++;
+    const item: InvoiceItem = {
+      id,
+      invoiceId: insertItem.invoiceId,
+      description: insertItem.description,
+      quantity: insertItem.quantity,
+      unit: insertItem.unit,
+      pricePerUnit: insertItem.pricePerUnit || 0
+    };
+    this.invoiceItems.set(id, item);
+    return item;
+  }
+
+  async updateInvoiceItem(id: number, itemData: Partial<InsertInvoiceItem>): Promise<InvoiceItem | undefined> {
+    const existingItem = this.invoiceItems.get(id);
+    if (!existingItem) return undefined;
+    
+    const updatedItem = { ...existingItem, ...itemData };
+    this.invoiceItems.set(id, updatedItem);
+    return updatedItem;
+  }
+
+  async deleteInvoiceItem(id: number): Promise<boolean> {
+    return this.invoiceItems.delete(id);
+  }
+
+  async getInvoiceItems(invoiceId: number): Promise<InvoiceItem[]> {
+    return Array.from(this.invoiceItems.values())
+      .filter(item => item.invoiceId === invoiceId);
+  }
 }
 
 // PostgreSQL storage implementation
@@ -822,6 +956,89 @@ export class PostgreSQLStorage implements IStorage {
 
   async getUserDocuments(userId: number): Promise<Document[]> {
     return await this.db.select().from(documents).where(eq(documents.userId, userId));
+  }
+
+  // Invoice methods
+  async getInvoice(id: number): Promise<Invoice | undefined> {
+    const result = await this.db.select().from(invoices).where(eq(invoices.id, id));
+    return result[0];
+  }
+
+  async createInvoice(invoice: InsertInvoice): Promise<Invoice> {
+    const result = await this.db.insert(invoices).values(invoice).returning();
+    return result[0];
+  }
+
+  async updateInvoice(id: number, invoice: Partial<InsertInvoice>): Promise<Invoice | undefined> {
+    const result = await this.db
+      .update(invoices)
+      .set(invoice)
+      .where(eq(invoices.id, id))
+      .returning();
+    
+    return result[0];
+  }
+
+  async deleteInvoice(id: number): Promise<boolean> {
+    // Také smažeme všechny položky faktury
+    const itemsToDelete = await this.getInvoiceItems(id);
+    for (const item of itemsToDelete) {
+      await this.deleteInvoiceItem(item.id);
+    }
+    
+    const result = await this.db.delete(invoices).where(eq(invoices.id, id));
+    return !!result;
+  }
+
+  async getAllInvoices(): Promise<Invoice[]> {
+    return await this.db.select().from(invoices);
+  }
+
+  async getUserInvoices(userId: number): Promise<Invoice[]> {
+    return await this.db.select().from(invoices).where(eq(invoices.userId, userId));
+  }
+
+  async getInvoicesByType(userId: number, type: "issued" | "received"): Promise<Invoice[]> {
+    return await this.db
+      .select()
+      .from(invoices)
+      .where(and(
+        eq(invoices.userId, userId),
+        eq(invoices.type, type)
+      ));
+  }
+
+  // Invoice Item methods
+  async getInvoiceItem(id: number): Promise<InvoiceItem | undefined> {
+    const result = await this.db.select().from(invoiceItems).where(eq(invoiceItems.id, id));
+    return result[0];
+  }
+
+  async createInvoiceItem(item: InsertInvoiceItem): Promise<InvoiceItem> {
+    const result = await this.db.insert(invoiceItems).values(item).returning();
+    return result[0];
+  }
+
+  async updateInvoiceItem(id: number, item: Partial<InsertInvoiceItem>): Promise<InvoiceItem | undefined> {
+    const result = await this.db
+      .update(invoiceItems)
+      .set(item)
+      .where(eq(invoiceItems.id, id))
+      .returning();
+    
+    return result[0];
+  }
+
+  async deleteInvoiceItem(id: number): Promise<boolean> {
+    const result = await this.db.delete(invoiceItems).where(eq(invoiceItems.id, id));
+    return !!result;
+  }
+
+  async getInvoiceItems(invoiceId: number): Promise<InvoiceItem[]> {
+    return await this.db
+      .select()
+      .from(invoiceItems)
+      .where(eq(invoiceItems.invoiceId, invoiceId));
   }
 }
 

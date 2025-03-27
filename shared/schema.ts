@@ -153,5 +153,56 @@ export type Report = typeof reports.$inferSelect;
 export type InsertCustomer = z.infer<typeof insertCustomerSchema>;
 export type Customer = typeof customers.$inferSelect;
 
+// Invoice schema - pro faktury vydané i přijaté
+export const invoices = pgTable("invoices", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(), // Vlastník faktury
+  invoiceNumber: text("invoice_number").notNull(),
+  type: text("type", { enum: ["issued", "received"] }).notNull().default("issued"),
+  date: timestamp("date").notNull().defaultNow(),
+  dateDue: timestamp("date_due").notNull(),
+  dateIssued: timestamp("date_issued"),
+  dateReceived: timestamp("date_received"),
+  customerName: text("customer_name").notNull(),
+  customerAddress: text("customer_address").notNull(),
+  customerIC: text("customer_ic"),
+  customerDIC: text("customer_dic"),
+  supplierName: text("supplier_name"),
+  supplierAddress: text("supplier_address"),
+  supplierIC: text("supplier_ic"),
+  supplierDIC: text("supplier_dic"),
+  bankAccount: text("bank_account"),
+  paymentMethod: text("payment_method", { enum: ["bank", "cash", "card"] }).notNull().default("bank"),
+  isVatPayer: boolean("is_vat_payer").default(true),
+  amount: integer("amount").notNull().default(0),
+  notes: text("notes"),
+  isPaid: boolean("is_paid").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const invoiceItems = pgTable("invoice_items", {
+  id: serial("id").primaryKey(),
+  invoiceId: integer("invoice_id").notNull(),
+  description: text("description").notNull(),
+  quantity: integer("quantity").notNull(),
+  unit: text("unit").notNull(),
+  pricePerUnit: integer("price_per_unit").notNull().default(0),
+});
+
+export const insertInvoiceSchema = createInsertSchema(invoices).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertInvoiceItemSchema = createInsertSchema(invoiceItems).omit({
+  id: true,
+});
+
 export type InsertDocument = z.infer<typeof insertDocumentSchema>;
 export type Document = typeof documents.$inferSelect;
+
+export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
+export type Invoice = typeof invoices.$inferSelect;
+
+export type InsertInvoiceItem = z.infer<typeof insertInvoiceItemSchema>;
+export type InvoiceItem = typeof invoiceItems.$inferSelect;
