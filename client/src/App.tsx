@@ -5,6 +5,8 @@ import { LanguageProvider } from "@/hooks/use-language";
 import { OnboardingProvider } from "@/hooks/use-onboarding";
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
+import DashboardPage from "@/pages/dashboard-page";
+import VlastniDashboard from "@/pages/vlastni-dashboard";
 import CustomDashboard from "@/pages/custom-dashboard";
 import ShiftsPage from "@/pages/shifts-page";
 import ShiftTablePage from "@/pages/shift-table-page";
@@ -24,7 +26,8 @@ function Router() {
   return (
     <Switch>
       <Route path="/auth" component={AuthPage} />
-      {/* Odstraňujeme duplicitní Dashboard a VlastniDashboard */}
+      <ProtectedRoute path="/dashboard" component={DashboardPage} />
+      <ProtectedRoute path="/vlastni-dashboard" component={VlastniDashboard} />
       <ProtectedRoute path="/shifts" component={ShiftsPage} />
       <ProtectedRoute path="/shift-table" component={ShiftTablePage} />
       <ProtectedRoute path="/exchanges" component={ExchangesPage} />
