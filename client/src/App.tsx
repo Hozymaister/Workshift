@@ -5,7 +5,7 @@ import { LanguageProvider } from "@/hooks/use-language";
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
 import DashboardPage from "@/pages/dashboard-page";
-import CustomDashboard from "@/pages/custom-dashboard";
+import VlastniDashboard from "@/pages/vlastni-dashboard";
 import ShiftsPage from "@/pages/shifts-page";
 import ShiftTablePage from "@/pages/shift-table-page";
 import ExchangesPage from "@/pages/exchanges-page";
@@ -24,13 +24,13 @@ function Router() {
   return (
     <Switch>
       <Route path="/auth" component={AuthPage} />
-      <ProtectedRoute path="/" component={DashboardPage} />
+      <ProtectedRoute path="/vlastnidashboard" component={VlastniDashboard} />
       <ProtectedRoute path="/custom-dashboard" component={CustomDashboard} />
       <ProtectedRoute path="/shifts" component={ShiftsPage} />
       <ProtectedRoute path="/shift-table" component={ShiftTablePage} />
       <ProtectedRoute path="/exchanges" component={ExchangesPage} />
-      <ProtectedRoute path="/workplaces" component={WorkplacesPage} />
       <ProtectedRoute path="/workplaces/:id" component={WorkplaceDetailPage} />
+      <ProtectedRoute path="/workplaces" component={WorkplacesPage} />
       <ProtectedRoute path="/workers" component={WorkersPage} />
       <ProtectedRoute path="/reports" component={ReportsPage} />
       <ProtectedRoute path="/invoice" component={InvoicePage} />
@@ -38,6 +38,7 @@ function Router() {
       <ProtectedRoute path="/scan" component={ScanPage} />
       <ProtectedRoute path="/profile" component={ProfilePage} />
       <ProtectedRoute path="/settings" component={SettingsPage} />
+      <ProtectedRoute path="/" component={DashboardPage} />
       <Route component={NotFound} />
     </Switch>
   );
