@@ -184,10 +184,14 @@ export default function CustomDashboard() {
     queryKey: ["/api/workplaces"]
   });
 
+  // Detekce mobilního zařízení s použitím useState pro reaktivitu
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  
+  
   // Funkce pro generování výchozího layout nastavení pro widget
   const getDefaultWidgetLayout = (widgetType: WidgetType, index: number): LayoutItem => {
-    // Výchozí velikosti jednotlivých widgetů
-    const widgetSizes: Record<WidgetType, { w: number, h: number }> = {
+    // Výchozí velikosti jednotlivých widgetů pro desktop
+    const desktopSizes: Record<WidgetType, { w: number, h: number }> = {
       [WidgetType.STATS]: { w: 12, h: 4 },
       [WidgetType.UPCOMING_SHIFTS]: { w: 6, h: 8 },
       [WidgetType.EXCHANGE_REQUESTS]: { w: 6, h: 8 },
@@ -204,13 +208,43 @@ export default function CustomDashboard() {
       [WidgetType.QUICK_ACTIONS]: { w: 6, h: 6 },
       [WidgetType.NOTIFICATIONS]: { w: 6, h: 6 }
     };
-
-    const size = widgetSizes[widgetType] || { w: 6, h: 6 };
     
-    // Výpočet pozice na základě indexu
-    // Pro sudé indexy, x = 0, pro liché x = 6
-    const x = index % 2 === 0 ? 0 : 6;
-    const y = Math.floor(index / 2) * 6;
+    // Výchozí velikosti jednotlivých widgetů pro mobilní zařízení
+    const mobileSizes: Record<WidgetType, { w: number, h: number }> = {
+      [WidgetType.STATS]: { w: 2, h: 8 },
+      [WidgetType.UPCOMING_SHIFTS]: { w: 2, h: 8 },
+      [WidgetType.EXCHANGE_REQUESTS]: { w: 2, h: 8 },
+      [WidgetType.WEEKLY_CALENDAR]: { w: 2, h: 8 },
+      [WidgetType.WORKPLACE_STATS]: { w: 2, h: 8 },
+      [WidgetType.WORKER_STATS]: { w: 2, h: 8 },
+      [WidgetType.INVOICE_STATS]: { w: 2, h: 8 },
+      [WidgetType.DOCUMENTS_STATS]: { w: 2, h: 8 },
+      [WidgetType.SCAN_WIDGET]: { w: 2, h: 8 },
+      [WidgetType.CUSTOMERS_WIDGET]: { w: 2, h: 8 },
+      [WidgetType.REPORTS_WIDGET]: { w: 2, h: 8 },
+      [WidgetType.HOURS_REPORTS]: { w: 2, h: 8 },
+      [WidgetType.SHIFT_REPORTS]: { w: 2, h: 8 },
+      [WidgetType.QUICK_ACTIONS]: { w: 2, h: 6 },
+      [WidgetType.NOTIFICATIONS]: { w: 2, h: 6 }
+    };
+
+    // Použijeme správné velikosti podle typu zařízení
+    const widgetSizes = isMobile ? mobileSizes : desktopSizes;
+    const size = widgetSizes[widgetType] || (isMobile ? { w: 2, h: 6 } : { w: 6, h: 6 });
+    
+    // Výpočet pozice na základě indexu - mobilní zobrazení pod sebou, desktop vedle sebe
+    let x = 0;
+    let y = 0;
+    
+    if (isMobile) {
+      // Pro mobil všechny pod sebou
+      x = 0;
+      y = index * 6;
+    } else {
+      // Pro desktop sudé vlevo, liché vpravo
+      x = index % 2 === 0 ? 0 : 6;
+      y = Math.floor(index / 2) * 6;
+    }
     
     return {
       i: widgetType,
@@ -218,15 +252,15 @@ export default function CustomDashboard() {
       y,
       w: size.w,
       h: size.h,
-      minW: 2, // Snížena minimální šířka pro lepší responzivitu
-      minH: 2  // Snížena minimální výška pro lepší responzivitu
+      minW: isMobile ? 1 : 2, // Menší minimální šířka pro mobilní zařízení
+      minH: 2 // Minimální výška zůstává stejná
     };
   };
 
   // Funkce pro generování výchozího layoutu - definovaná zde pro stabilní referenci
   const generateDefaultLayout = useCallback((widgets: WidgetType[]) => {
     return widgets.map((widget, index) => getDefaultWidgetLayout(widget, index));
-  }, []);
+  }, [isMobile]); // Přidána závislost na isMobile, aby došlo k přepočítání při změně typu zařízení
 
   // Načtení uložených widgetů a jejich layoutu z localStorage podle role uživatele
   useEffect(() => {
@@ -310,6 +344,30 @@ export default function CustomDashboard() {
   const handleLayoutChange = (newLayout: LayoutItem[]) => {
     setGridLayout(newLayout);
   };
+  
+  // Přidání event listeneru pro změnu velikosti okna a přepočítání layoutu
+  useEffect(() => {
+    const handleResize = () => {
+      const wasIsMobile = isMobile;
+      const nowIsMobile = window.innerWidth <= 768;
+      
+      setIsMobile(nowIsMobile);
+      
+      // Pokud se změnil typ zařízení (desktop <-> mobil), přepočítáme layout
+      if (wasIsMobile !== nowIsMobile && activeWidgets.length > 0) {
+        // Počkáme na změnu stavu isMobile a pak přepočítáme layout
+        setTimeout(() => {
+          const newLayout = generateDefaultLayout(activeWidgets);
+          setGridLayout(newLayout);
+        }, 10);
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [isMobile, activeWidgets, generateDefaultLayout]);
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return "";
@@ -1029,10 +1087,10 @@ export default function CustomDashboard() {
               xxs: gridLayout
             }}
             breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-            cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
+            cols={{ lg: 12, md: 8, sm: 6, xs: 4, xxs: 2 }}
             rowHeight={30}
-            containerPadding={[0, 0]}
-            margin={[16, 16]}
+            containerPadding={[10, 10]}
+            margin={[10, 10]} 
             onLayoutChange={(newLayout) => handleLayoutChange(newLayout)}
             draggableHandle=".drag-handle" // CSS selector pro oblast pro přetahování
             resizeHandles={['se']} // pouze bottom-right resize handle
@@ -1040,6 +1098,9 @@ export default function CustomDashboard() {
             compactType="vertical"
             preventCollision={false}
             isBounded={true}  // Zabránit widgetům opustit kontejner
+            useCSSTransforms={true} // Lepší výkon
+            isResizable={true} // Povolit změnu velikosti
+            isDraggable={true} // Povolit přetahování
           >
             {activeWidgets.map(widgetType => (
               <div key={widgetType} className="bg-white rounded-md shadow overflow-hidden">
