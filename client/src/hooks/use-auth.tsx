@@ -107,16 +107,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
+      console.log("Attempting to logout...");
       await apiRequest("POST", "/api/logout");
     },
     onSuccess: () => {
+      console.log("Logout successful. Clearing user data from cache.");
       queryClient.setQueryData(["/api/user"], null);
+      // Ensure the query is invalidated to force a refetch when needed
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      
       toast({
         title: "Odhlášení úspěšné",
         description: "Byli jste úspěšně odhlášeni",
       });
+      
+      // Přesměrování na přihlašovací stránku
+      window.location.href = "/auth";
     },
     onError: (error: Error) => {
+      console.error("Logout error:", error);
       toast({
         title: "Odhlášení selhalo",
         description: error.message,

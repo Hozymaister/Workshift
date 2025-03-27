@@ -67,7 +67,7 @@ const registerWorkerSchema = z.object({
   email: z.string().email("Zadejte platný email"),
   password: z.string().min(6, "Heslo musí mít alespoň 6 znaků"),
   passwordConfirm: z.string().min(6, "Potvrzení hesla je povinné"),
-  role: z.enum(["worker", "admin"]),
+  role: z.literal("worker"),
 }).refine(passwordsMatch, {
   message: "Hesla se neshodují",
   path: ["passwordConfirm"],
@@ -101,7 +101,7 @@ type RegisterFormValues = {
   email: string;
   password: string;
   passwordConfirm: string;
-  role: "worker" | "admin" | "company";
+  role: "worker" | "company";
   // Firemní údaje (pouze pro role="company")
   companyName?: string;
   companyId?: string;

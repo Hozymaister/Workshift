@@ -26,8 +26,8 @@ export function Sidebar() {
     { path: "/reports", label: "Výkazy práce", icon: <FileText className="mr-3 h-5 w-5" /> },
   ];
   
-  // Položky menu pouze pro správce
-  const adminNavItems = [
+  // Položky menu pouze pro firmy
+  const companyNavItems = [
     { path: "/workplaces", label: "Pracovní objekty", icon: <Building2 className="mr-3 h-5 w-5" /> },
     { path: "/workers", label: "Pracovníci", icon: <Users className="mr-3 h-5 w-5" /> },
     { path: "/invoice", label: "Fakturace", icon: <Receipt className="mr-3 h-5 w-5" /> },
@@ -36,8 +36,8 @@ export function Sidebar() {
   ];
   
   // Kombinujeme položky podle role uživatele
-  const navItems = user?.role === "admin" 
-    ? [...commonNavItems, ...adminNavItems] 
+  const navItems = user?.role === "company"
+    ? [...commonNavItems, ...companyNavItems]
     : commonNavItems;
 
   return (
@@ -61,7 +61,7 @@ export function Sidebar() {
                 </Avatar>
                 <div>
                   <p className="font-medium">{`${user.firstName} ${user.lastName}`}</p>
-                  <p className="text-sm text-slate-400">{user.role === "admin" ? "Správce" : "Pracovník"}</p>
+                  <p className="text-sm text-slate-400">{user.role === "company" ? "Firma" : "Pracovník"}</p>
                 </div>
               </div>
             )}
