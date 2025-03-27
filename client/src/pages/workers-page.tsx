@@ -44,7 +44,7 @@ import { WorkerForm, SafeUser } from "@/components/workers/worker-form";
 
 export default function WorkersPage() {
   const { user } = useAuth();
-  const isAdmin = user?.role === "company";
+  const isAdmin = user?.role === "admin";
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredWorkers, setFilteredWorkers] = useState<SafeUser[]>([]);
   const [showWorkerForm, setShowWorkerForm] = useState(false);

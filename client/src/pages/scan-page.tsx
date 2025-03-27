@@ -332,8 +332,8 @@ export default function ScanPage() {
     return format(date, "d. MMMM yyyy, HH:mm", { locale: cs });
   };
 
-  // Pokud není uživatel firma, přesměrujeme
-  if (user && user.role !== "company") {
+  // Pokud není uživatel admin, přesměrujeme
+  if (user && user.role !== "admin") {
     return <Redirect to="/" />;
   }
 
