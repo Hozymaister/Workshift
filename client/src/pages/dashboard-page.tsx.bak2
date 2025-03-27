@@ -129,13 +129,7 @@ export default function DashboardPage() {
   const [isEditMode, setIsEditMode] = useState(false);
   
   // State pro sledování aktivních widgetů a jejich layoutu
-  // Defaultní widgety podle role
-  const defaultWidgets = user?.role === "company" || user?.role === "admin" 
-    ? [WidgetType.STATS, WidgetType.WORKPLACE_STATS, WidgetType.WORKER_STATS] 
-    : [WidgetType.STATS, WidgetType.UPCOMING_SHIFTS, WidgetType.WEEKLY_CALENDAR];
-  
-  // Iniciujeme state s výchozími hodnotami, aby nebyl nikdy null
-  const [activeWidgets, setActiveWidgets] = useState<WidgetType[]>(defaultWidgets);
+  const [activeWidgets, setActiveWidgets] = useState<WidgetType[]>([]);
   const [gridLayout, setGridLayout] = useState<LayoutItem[]>([]);
   
   // Detekce mobilního zařízení
@@ -260,14 +254,6 @@ export default function DashboardPage() {
   const generateDefaultLayout = useCallback((widgets: WidgetType[]) => {
     return widgets.map((widget, index) => getDefaultWidgetLayout(widget, index));
   }, [isMobile]); // Přidána závislost na isMobile, aby došlo k přepočítání při změně typu zařízení
-
-  // Inicializace layoutu pro výchozí widgety hned při první renderování
-  useEffect(() => {
-    if (gridLayout.length === 0 && activeWidgets.length > 0) {
-      const initialLayout = generateDefaultLayout(activeWidgets);
-      setGridLayout(initialLayout);
-    }
-  }, [activeWidgets, gridLayout.length, generateDefaultLayout]);
 
   // Načtení uložených widgetů a jejich layoutu z localStorage podle role uživatele
   useEffect(() => {
@@ -1108,32 +1094,26 @@ export default function DashboardPage() {
       
       {/* Grid Layout pro widgety */}
       <div className="mb-8">
-        {gridLayout.length > 0 && activeWidgets.length > 0 ? (
-          <ResponsiveReactGridLayout
-            className="layout"
-            layouts={{ lg: gridLayout, md: gridLayout, sm: gridLayout }}
-            breakpoints={{ lg: 1200, md: 768, sm: 0 }}
-            cols={{ lg: 12, md: 12, sm: 2 }}
-            rowHeight={50}
-            // V desktop módu je možnost přetahovat a měnit velikost widgetů pouze v edit módu
-            // V mobilním módu (isMobile) je to povoleno vždy
-            isDraggable={isMobile || isEditMode}
-            isResizable={isMobile || isEditMode}
-            onLayoutChange={handleLayoutChange}
-            draggableHandle=".drag-handle" // Nastavení třídy pro drag rukojeť (headery karet)
-            margin={[16, 16]} // [horizontal, vertical]
-          >
-            {activeWidgets.map((widgetType) => (
-              <div key={widgetType} className={`overflow-hidden ${(isMobile || isEditMode) ? 'widget-edit-mode' : ''}`}>
-                {renderWidgetContent(widgetType)}
-              </div>
-            ))}
-          </ResponsiveReactGridLayout>
-        ) : (
-          <div className="flex items-center justify-center h-64">
-            <p className="text-gray-500">Načítání dashboardu...</p>
-          </div>
-        )}
+        <ResponsiveReactGridLayout
+          className="layout"
+          layouts={{ lg: gridLayout, md: gridLayout, sm: gridLayout }}
+          breakpoints={{ lg: 1200, md: 768, sm: 0 }}
+          cols={{ lg: 12, md: 12, sm: 2 }}
+          rowHeight={50}
+          // V desktop módu je možnost přetahovat a měnit velikost widgetů pouze v edit módu
+          // V mobilním módu (isMobile) je to povoleno vždy
+          isDraggable={isMobile || isEditMode}
+          isResizable={isMobile || isEditMode}
+          onLayoutChange={handleLayoutChange}
+          draggableHandle=".drag-handle" // Nastavení třídy pro drag rukojeť (headery karet)
+          margin={[16, 16]} // [horizontal, vertical]
+        >
+          {activeWidgets.map((widgetType) => (
+            <div key={widgetType} className={`overflow-hidden ${(isMobile || isEditMode) ? 'widget-edit-mode' : ''}`}>
+              {renderWidgetContent(widgetType)}
+            </div>
+          ))}
+        </ResponsiveReactGridLayout>
         
         {/* Informace o prázdném dashboardu a možnosti přidat widget */}
         {activeWidgets.length === 0 && (

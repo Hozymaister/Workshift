@@ -107,6 +107,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const userQuery = useQuery<SafeUser | null, Error>({
     queryKey: ["/api/user"],
     queryFn: getQueryFn({ on401: "returnNull" }),
+    staleTime: 5 * 60 * 1000, // 5 minut cache
+    retry: false,
   });
 
   // Login mutation pro přihlášení
