@@ -56,26 +56,31 @@ const newPasswordSchema = z.object({
   path: ["passwordConfirm"],
 });
 
-// Base registration schema s povinnými poli
-const baseRegisterSchema = z.object({
+// Common password validation function
+const passwordsMatch = (data: any) => data.password === data.passwordConfirm;
+
+// Registration schema pro zaměstnance
+const registerWorkerSchema = z.object({
   firstName: z.string().min(1, "Jméno je povinné"),
   lastName: z.string().min(1, "Příjmení je povinné"),
   username: z.string().min(1, "Uživatelské jméno je povinné"),
   email: z.string().email("Zadejte platný email"),
   password: z.string().min(6, "Heslo musí mít alespoň 6 znaků"),
   passwordConfirm: z.string().min(6, "Potvrzení hesla je povinné"),
-}).refine((data) => data.password === data.passwordConfirm, {
+  role: z.enum(["worker", "admin"]),
+}).refine(passwordsMatch, {
   message: "Hesla se neshodují",
   path: ["passwordConfirm"],
 });
 
-// Registration schema pro zaměstnance
-const registerWorkerSchema = baseRegisterSchema.extend({
-  role: z.enum(["worker", "admin"]),
-});
-
 // Registration schema pro firmy
-const registerCompanySchema = baseRegisterSchema.extend({
+const registerCompanySchema = z.object({
+  firstName: z.string().min(1, "Jméno je povinné"),
+  lastName: z.string().min(1, "Příjmení je povinné"),
+  username: z.string().min(1, "Uživatelské jméno je povinné"),
+  email: z.string().email("Zadejte platný email"),
+  password: z.string().min(6, "Heslo musí mít alespoň 6 znaků"),
+  passwordConfirm: z.string().min(6, "Potvrzení hesla je povinné"),
   role: z.literal("company"),
   companyName: z.string().min(1, "Název firmy je povinný"),
   companyId: z.string().min(8, "IČO musí mít 8 číslic").max(8, "IČO musí mít 8 číslic"),
@@ -83,18 +88,32 @@ const registerCompanySchema = baseRegisterSchema.extend({
   companyAddress: z.string().min(1, "Adresa firmy je povinná"),
   companyCity: z.string().min(1, "Město je povinné"),
   companyZip: z.string().min(5, "PSČ musí mít 5 číslic").max(5, "PSČ musí mít 5 číslic"),
+}).refine(passwordsMatch, {
+  message: "Hesla se neshodují",
+  path: ["passwordConfirm"],
 });
 
-// Sloučené registrační schéma pro všechny typy uživatelů
-const registerSchema = z.discriminatedUnion("role", [
-  registerWorkerSchema,
-  registerCompanySchema
-]);
+// Společný registrační typ (pro typovou kontrolu)
+type RegisterFormValues = {
+  firstName: string;
+  lastName: string;
+  username: string;
+  email: string;
+  password: string;
+  passwordConfirm: string;
+  role: "worker" | "admin" | "company";
+  // Firemní údaje (pouze pro role="company")
+  companyName?: string;
+  companyId?: string;
+  companyVatId?: string;
+  companyAddress?: string;
+  companyCity?: string;
+  companyZip?: string;
+};
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 type RegisterWorkerFormValues = z.infer<typeof registerWorkerSchema>;
 type RegisterCompanyFormValues = z.infer<typeof registerCompanySchema>;
-type RegisterFormValues = z.infer<typeof registerSchema>; // zpětná kompatibilita
 type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
 type NewPasswordFormValues = z.infer<typeof newPasswordSchema>;
 
@@ -178,7 +197,7 @@ export default function AuthPage() {
     });
   };
 
-  const onRegisterSubmit = (data: RegisterFormValues) => {
+  const onRegisterSubmit = (data: any) => {
     registerMutation.mutate(data);
   };
   
@@ -655,15 +674,83 @@ export default function AuthPage() {
               </div>
               
               <div className={`${activeTab === "register" ? "block" : "hidden"} p-6`}>
-                <Form {...registerForm}>
-                  <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                {/* Výběr typu účtu */}
+                <div className="mb-6">
+                  <h3 className="font-medium text-gray-700 mb-2">Vyberte typ účtu:</h3>
+                  <div className="flex space-x-4">
+                    <button
+                      type="button"
+                      onClick={() => setRegistrationType("worker")}
+                      className={`flex-1 p-3 border rounded-lg text-center ${
+                        registrationType === "worker" 
+                          ? "border-primary bg-primary/10 text-primary" 
+                          : "border-gray-200 hover:border-gray-300"
+                      }`}
+                    >
+                      <div className="flex justify-center mb-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+                      </div>
+                      <h4 className="font-medium">Pracovník</h4>
+                      <p className="text-xs text-gray-500">Pro zaměstnance</p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRegistrationType("company")}
+                      className={`flex-1 p-3 border rounded-lg text-center ${
+                        registrationType === "company" 
+                          ? "border-primary bg-primary/10 text-primary" 
+                          : "border-gray-200 hover:border-gray-300"
+                      }`}
+                    >
+                      <div className="flex justify-center mb-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                      </div>
+                      <h4 className="font-medium">Firma</h4>
+                      <p className="text-xs text-gray-500">Pro společnosti</p>
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Formulář pro zaměstnance */}
+                {registrationType === "worker" && (
+                  <Form {...registerWorkerForm}>
+                    <form onSubmit={registerWorkerForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={registerWorkerForm.control}
+                          name="firstName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>{t('first_name')}</FormLabel>
+                              <FormControl>
+                                <Input {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={registerWorkerForm.control}
+                          name="lastName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>{t('last_name')}</FormLabel>
+                              <FormControl>
+                                <Input {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      
                       <FormField
-                        control={registerForm.control}
-                        name="firstName"
+                        control={registerWorkerForm.control}
+                        name="username"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>{t('first_name')}</FormLabel>
+                            <FormLabel>{t('username')}</FormLabel>
                             <FormControl>
                               <Input {...field} />
                             </FormControl>
@@ -673,11 +760,100 @@ export default function AuthPage() {
                       />
                       
                       <FormField
-                        control={registerForm.control}
-                        name="lastName"
+                        control={registerWorkerForm.control}
+                        name="email"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>{t('last_name')}</FormLabel>
+                            <FormLabel>Email</FormLabel>
+                            <FormControl>
+                              <Input type="email" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={registerWorkerForm.control}
+                          name="password"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Heslo</FormLabel>
+                              <FormControl>
+                                <Input type="password" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={registerWorkerForm.control}
+                          name="passwordConfirm"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Potvrzení hesla</FormLabel>
+                              <FormControl>
+                                <Input type="password" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      
+                      <Button 
+                        type="submit" 
+                        className="w-full" 
+                        disabled={registerMutation.isPending}
+                      >
+                        {registerMutation.isPending ? "Registrace..." : "Registrovat se"}
+                      </Button>
+                    </form>
+                  </Form>
+                )}
+                
+                {/* Formulář pro firmy */}
+                {registrationType === "company" && (
+                  <Form {...registerCompanyForm}>
+                    <form onSubmit={registerCompanyForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={registerCompanyForm.control}
+                          name="firstName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>{t('first_name')}</FormLabel>
+                              <FormControl>
+                                <Input {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={registerCompanyForm.control}
+                          name="lastName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>{t('last_name')}</FormLabel>
+                              <FormControl>
+                                <Input {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      
+                      <FormField
+                        control={registerCompanyForm.control}
+                        name="username"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{t('username')}</FormLabel>
                             <FormControl>
                               <Input {...field} />
                             </FormControl>
@@ -685,108 +861,153 @@ export default function AuthPage() {
                           </FormItem>
                         )}
                       />
-                    </div>
-                    
-                    <FormField
-                      control={registerForm.control}
-                      name="username"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t('username')}</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={registerForm.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email</FormLabel>
-                          <FormControl>
-                            <Input type="email" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={registerForm.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Heslo</FormLabel>
-                          <FormControl>
-                            <Input type="password" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={registerForm.control}
-                      name="passwordConfirm"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Potvrzení hesla</FormLabel>
-                          <FormControl>
-                            <Input type="password" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={registerForm.control}
-                      name="role"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Role</FormLabel>
-                          <FormControl>
-                            <RadioGroup
-                              onValueChange={field.onChange}
-                              defaultValue={field.value}
-                              className="flex flex-col space-y-1"
-                            >
-                              <FormItem className="flex items-center space-x-3 space-y-0">
+                      
+                      <FormField
+                        control={registerCompanyForm.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email</FormLabel>
+                            <FormControl>
+                              <Input type="email" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={registerCompanyForm.control}
+                          name="password"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Heslo</FormLabel>
+                              <FormControl>
+                                <Input type="password" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={registerCompanyForm.control}
+                          name="passwordConfirm"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Potvrzení hesla</FormLabel>
+                              <FormControl>
+                                <Input type="password" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      
+                      <div className="border-t pt-4 mt-4">
+                        <h3 className="font-medium text-gray-700 mb-3">Firemní údaje</h3>
+                        
+                        <FormField
+                          control={registerCompanyForm.control}
+                          name="companyName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Název firmy</FormLabel>
+                              <FormControl>
+                                <Input {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <div className="grid grid-cols-2 gap-4 mt-4">
+                          <FormField
+                            control={registerCompanyForm.control}
+                            name="companyId"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>IČO</FormLabel>
                                 <FormControl>
-                                  <RadioGroupItem value="worker" />
+                                  <Input {...field} maxLength={8} />
                                 </FormControl>
-                                <FormLabel className="font-normal">
-                                  Pracovník
-                                </FormLabel>
+                                <FormMessage />
                               </FormItem>
-                              <FormItem className="flex items-center space-x-3 space-y-0">
+                            )}
+                          />
+                          
+                          <FormField
+                            control={registerCompanyForm.control}
+                            name="companyVatId"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>DIČ (nepovinné)</FormLabel>
                                 <FormControl>
-                                  <RadioGroupItem value="admin" />
+                                  <Input {...field} placeholder="CZ12345678" />
                                 </FormControl>
-                                <FormLabel className="font-normal">
-                                  Správce
-                                </FormLabel>
+                                <FormMessage />
                               </FormItem>
-                            </RadioGroup>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <Button 
-                      type="submit" 
-                      className="w-full" 
-                      disabled={registerMutation.isPending}
-                    >
-                      {registerMutation.isPending ? "Registrace..." : "Registrovat se"}
-                    </Button>
-                  </form>
-                </Form>
+                            )}
+                          />
+                        </div>
+                        
+                        <FormField
+                          control={registerCompanyForm.control}
+                          name="companyAddress"
+                          render={({ field }) => (
+                            <FormItem className="mt-4">
+                              <FormLabel>Adresa firmy</FormLabel>
+                              <FormControl>
+                                <Input {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <div className="grid grid-cols-2 gap-4 mt-4">
+                          <FormField
+                            control={registerCompanyForm.control}
+                            name="companyCity"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Město</FormLabel>
+                                <FormControl>
+                                  <Input {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={registerCompanyForm.control}
+                            name="companyZip"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>PSČ</FormLabel>
+                                <FormControl>
+                                  <Input {...field} maxLength={5} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </div>
+                      
+                      <Button 
+                        type="submit" 
+                        className="w-full mt-6" 
+                        disabled={registerMutation.isPending}
+                      >
+                        {registerMutation.isPending ? "Registrace..." : "Registrovat se"}
+                      </Button>
+                    </form>
+                  </Form>
+                )}
               </div>
             </div>
           </CardContent>

@@ -30,6 +30,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(403).send("Forbidden: Admin access required");
   };
   
+  // Middleware pro firemní účty - pouze firemní účty mohou přistupovat k fakturám a skenování
+  const isCompany = (req: Request, res: Response, next: NextFunction) => {
+    if (req.isAuthenticated() && req.user && (req.user.role === "company" || req.user.role === "admin")) {
+      return next();
+    }
+    res.status(403).send("Forbidden: Company access required");
+  };
+  
   // Zajistíme, že uploadovací složky existují
   const uploadDir = 'uploads/documents';
   if (!fs.existsSync('uploads')) {
@@ -974,7 +982,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // API endpointy pro dokumenty
-  app.get("/api/documents", isAuthenticated, isAdmin, async (req, res) => {
+  app.get("/api/documents", isAuthenticated, isCompany, async (req, res) => {
     try {
       if (!req.user) {
         return res.status(401).send("Unauthorized");
@@ -989,7 +997,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Endpoint pro nahrávání souborů
-  app.post("/api/documents/upload", isAuthenticated, isAdmin, upload.single('file'), async (req, res) => {
+  app.post("/api/documents/upload", isAuthenticated, isCompany, upload.single('file'), async (req, res) => {
     try {
       if (!req.user) {
         return res.status(401).send("Unauthorized");
@@ -1041,7 +1049,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Endpoint pro získání obsahu souboru
-  app.get("/api/documents/file/:id", isAuthenticated, isAdmin, async (req, res) => {
+  app.get("/api/documents/file/:id", isAuthenticated, isCompany, async (req, res) => {
     try {
       if (!req.user) {
         return res.status(401).send("Unauthorized");
@@ -1078,7 +1086,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Standardní CRUD operace pro dokumenty
-  app.post("/api/documents", isAuthenticated, isAdmin, async (req, res) => {
+  app.post("/api/documents", isAuthenticated, isCompany, async (req, res) => {
     try {
       if (!req.user) {
         return res.status(401).send("Unauthorized");
@@ -1104,7 +1112,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/documents/:id", isAuthenticated, isAdmin, async (req, res) => {
+  app.get("/api/documents/:id", isAuthenticated, isCompany, async (req, res) => {
     try {
       if (!req.user) {
         return res.status(401).send("Unauthorized");
@@ -1129,7 +1137,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/documents/:id", isAuthenticated, isAdmin, async (req, res) => {
+  app.delete("/api/documents/:id", isAuthenticated, isCompany, async (req, res) => {
     try {
       if (!req.user) {
         return res.status(401).send("Unauthorized");
@@ -1301,6 +1309,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({
         error: "Chyba při zpracování požadavku. Zkuste to prosím později nebo zadejte údaje ručně."
       });
+    }
+  });
+
+  // Endpoint pro získání seznamu faktur - pouze pro firemní účty
+  app.get("/api/invoices", isAuthenticated, isCompany, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).send("Unauthorized");
+      }
+      
+      // V budoucí implementaci by zde bylo načtení faktur z databáze
+      // Pro demonstraci vracíme prázdné pole
+      res.json([]);
+    } catch (error) {
+      console.error("Chyba při načítání faktur:", error);
+      res.status(500).json({ error: "Nepodařilo se načíst faktury" });
+    }
+  });
+  
+  // Endpoint pro generování a ukládání faktur - pouze pro firemní účty
+  app.post("/api/invoices", isAuthenticated, isCompany, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).send("Unauthorized");
+      }
+      
+      const invoiceData = req.body;
+      
+      // Zde by byla logika pro vytváření faktury
+      // a ukládání do databáze
+
+      // Simulujeme vytvoření faktury - v budoucí implementaci
+      // by zde bylo skutečné vytvoření PDF faktury a uložení do DB 
+      const invoice = {
+        id: Math.floor(Math.random() * 100000).toString(),
+        number: `FV${new Date().getFullYear()}${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`,
+        date: new Date(),
+        dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // splatnost 14 dní
+        clientOrSupplier: invoiceData.clientName || "Neznámý klient",
+        amount: invoiceData.amount || 0,
+        isPaid: false,
+        userId: req.user.id,
+        items: invoiceData.items || [],
+        type: invoiceData.type || "issued"
+      };
+      
+      res.status(201).json(invoice);
+    } catch (error) {
+      console.error("Chyba při vytváření faktury:", error);
+      res.status(500).json({ error: "Nepodařilo se vytvořit fakturu" });
+    }
+  });
+
+  // Endpoint pro generování PDF faktury - pouze pro firemní účty
+  app.get("/api/invoices/generate-pdf/:id", isAuthenticated, isCompany, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).send("Unauthorized");
+      }
+      
+      const invoiceId = req.params.id;
+      
+      // Zde by byla logika pro načtení faktury z DB a generování PDF
+      
+      // Pro demonstraci pouze vracíme úspěch
+      res.json({ 
+        success: true, 
+        message: "PDF bylo vygenerováno", 
+        pdfUrl: `/api/invoices/pdf/${invoiceId}` 
+      });
+    } catch (error) {
+      console.error("Chyba při generování PDF faktury:", error);
+      res.status(500).json({ error: "Nepodařilo se vygenerovat PDF faktury" });
     }
   });
 
