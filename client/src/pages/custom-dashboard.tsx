@@ -33,6 +33,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import RGL, { WidthProvider } from "react-grid-layout";
+import "react-grid-layout/css/styles.css";
+import "react-resizable/css/styles.css";
+
+// Vytvoření responzivního grid layoutu
+const ReactGridLayout = WidthProvider(RGL);
 
 // Typy dat
 interface Shift {
@@ -87,6 +93,7 @@ interface ExchangeRequest {
   };
 }
 
+// Typy widgetů
 enum WidgetType {
   // Přehledové widgety
   STATS = "stats",
@@ -116,10 +123,22 @@ enum WidgetType {
   NOTIFICATIONS = "notifications"
 }
 
+// Typ pro grid layout
+interface LayoutItem {
+  i: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  minW?: number;
+  minH?: number;
+}
+
 export default function CustomDashboard() {
   // State pro sledování aktivních widgetů - defaultně prázdný dashboard
   const [activeWidgets, setActiveWidgets] = useState<WidgetType[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [layout, setLayout] = useState<LayoutItem[]>([]);
   
   // Get user info and role
   const { user } = useAuth();
@@ -156,73 +175,150 @@ export default function CustomDashboard() {
     queryKey: ["/api/workplaces"]
   });
 
-  // Načtení uložených widgetů z localStorage podle role uživatele
+  // Funkce pro generování výchozího layout nastavení pro widget
+  const getDefaultWidgetLayout = (widgetType: WidgetType, index: number): LayoutItem => {
+    // Výchozí velikosti jednotlivých widgetů
+    const widgetSizes: Record<WidgetType, { w: number, h: number }> = {
+      [WidgetType.STATS]: { w: 12, h: 4 },
+      [WidgetType.UPCOMING_SHIFTS]: { w: 6, h: 8 },
+      [WidgetType.EXCHANGE_REQUESTS]: { w: 6, h: 8 },
+      [WidgetType.WEEKLY_CALENDAR]: { w: 12, h: 8 },
+      [WidgetType.WORKPLACE_STATS]: { w: 6, h: 8 },
+      [WidgetType.WORKER_STATS]: { w: 6, h: 8 },
+      [WidgetType.INVOICE_STATS]: { w: 6, h: 8 },
+      [WidgetType.DOCUMENTS_STATS]: { w: 6, h: 8 },
+      [WidgetType.SCAN_WIDGET]: { w: 6, h: 8 },
+      [WidgetType.CUSTOMERS_WIDGET]: { w: 6, h: 8 },
+      [WidgetType.REPORTS_WIDGET]: { w: 6, h: 8 },
+      [WidgetType.HOURS_REPORTS]: { w: 6, h: 8 },
+      [WidgetType.SHIFT_REPORTS]: { w: 6, h: 8 },
+      [WidgetType.QUICK_ACTIONS]: { w: 6, h: 6 },
+      [WidgetType.NOTIFICATIONS]: { w: 6, h: 6 }
+    };
+
+    const size = widgetSizes[widgetType] || { w: 6, h: 6 };
+    
+    // Výpočet pozice na základě indexu
+    // Pro sudé indexy, x = 0, pro liché x = 6
+    const x = index % 2 === 0 ? 0 : 6;
+    const y = Math.floor(index / 2) * 6;
+    
+    return {
+      i: widgetType,
+      x,
+      y,
+      w: size.w,
+      h: size.h,
+      minW: 3, // Minimální šířka widgetu
+      minH: 3  // Minimální výška widgetu
+    };
+  };
+
+  // Načtení uložených widgetů a jejich layoutu z localStorage podle role uživatele
   useEffect(() => {
-    // Ukládáme widgety pro různé role pod různými klíči
-    const storageKey = isCompany ? 'dashboard_widgets_company' : 'dashboard_widgets_worker';
-    const savedWidgets = localStorage.getItem(storageKey);
+    // Ukládáme widgety a layout pro různé role pod různými klíči
+    const widgetsStorageKey = isCompany ? 'dashboard_widgets_company' : 'dashboard_widgets_worker';
+    const layoutStorageKey = isCompany ? 'dashboard_layout_company' : 'dashboard_layout_worker';
+    
+    // Načtení widgetů
+    const savedWidgets = localStorage.getItem(widgetsStorageKey);
+    let parsedWidgets: WidgetType[] = [];
     
     if (savedWidgets) {
       try {
-        const parsedWidgets = JSON.parse(savedWidgets) as WidgetType[];
+        parsedWidgets = JSON.parse(savedWidgets) as WidgetType[];
         setActiveWidgets(parsedWidgets);
       } catch (e) {
         console.error('Chyba při načítání konfigurace dashboardu:', e);
       }
     } else {
       // Pokud nejsou žádné uložené widgety, nastavíme některé výchozí podle role
-      const defaultWidgets = isCompany 
+      parsedWidgets = isCompany 
         ? [WidgetType.STATS, WidgetType.WORKPLACE_STATS, WidgetType.WORKER_STATS] 
         : [WidgetType.STATS, WidgetType.UPCOMING_SHIFTS, WidgetType.WEEKLY_CALENDAR];
       
-      setActiveWidgets(defaultWidgets);
+      setActiveWidgets(parsedWidgets);
+    }
+    
+    // Načtení layoutu
+    const savedLayout = localStorage.getItem(layoutStorageKey);
+    if (savedLayout) {
+      try {
+        setLayout(JSON.parse(savedLayout));
+      } catch (e) {
+        console.error('Chyba při načítání layoutu dashboardu:', e);
+      }
+    } else {
+      // Pokud není uložený layout, vytvoříme výchozí layout pro widgety
+      const defaultLayout = parsedWidgets.map((widget, index) => 
+        getDefaultWidgetLayout(widget, index)
+      );
+      setLayout(defaultLayout);
     }
   }, [isCompany]);
 
-  // Uložení widgetů do localStorage při změně s rozlišením podle role
+  // Uložení widgetů a jejich layoutu do localStorage při změně s rozlišením podle role
   useEffect(() => {
-    const storageKey = isCompany ? 'dashboard_widgets_company' : 'dashboard_widgets_worker';
-    localStorage.setItem(storageKey, JSON.stringify(activeWidgets));
-  }, [activeWidgets, isCompany]);
+    if (activeWidgets.length === 0) return;
+    
+    const widgetsStorageKey = isCompany ? 'dashboard_widgets_company' : 'dashboard_widgets_worker';
+    const layoutStorageKey = isCompany ? 'dashboard_layout_company' : 'dashboard_layout_worker';
+    
+    localStorage.setItem(widgetsStorageKey, JSON.stringify(activeWidgets));
+    localStorage.setItem(layoutStorageKey, JSON.stringify(layout));
+  }, [activeWidgets, layout, isCompany]);
 
+  // Přidání widgetu a jeho layoutu
   const addWidget = (widgetType: WidgetType) => {
     if (!activeWidgets.includes(widgetType)) {
-      setActiveWidgets([...activeWidgets, widgetType]);
+      const newWidgets = [...activeWidgets, widgetType];
+      setActiveWidgets(newWidgets);
+      
+      // Přidání nového layoutu pro widget
+      const newLayout = [
+        ...layout,
+        getDefaultWidgetLayout(widgetType, newWidgets.length - 1)
+      ];
+      setLayout(newLayout);
     }
     setIsDialogOpen(false);
   };
 
+  // Odstranění widgetu a jeho layoutu
   const removeWidget = (widgetType: WidgetType) => {
     setActiveWidgets(activeWidgets.filter(w => w !== widgetType));
+    setLayout(layout.filter(item => item.i !== widgetType));
+  };
+
+  // Aktualizace layoutu při změně pozice nebo velikosti widgetu
+  const handleLayoutChange = (newLayout: LayoutItem[]) => {
+    setLayout(newLayout);
   };
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return "";
-    try {
-      return new Date(dateStr).toLocaleDateString('cs-CZ');
-    } catch (e) {
-      return dateStr;
-    }
+    const date = new Date(dateStr);
+    return new Intl.DateTimeFormat('cs-CZ', { 
+      day: '2-digit', 
+      month: '2-digit',
+      year: 'numeric' 
+    }).format(date);
   };
 
   const formatTime = (timeStr: string) => {
-    if (!timeStr) return "??:??";
-    try {
-      return timeStr.substring(0, 5); // Předpokládáme formát "HH:MM"
-    } catch (e) {
-      return timeStr;
-    }
+    if (!timeStr) return "";
+    return timeStr.substring(0, 5); // Vrátí jen HH:MM část
   };
 
-  // Rendering jednotlivých widgetů
+  // Funkce pro vykreslení obsahu widgetu podle typu
   const renderWidgetContent = (widgetType: WidgetType) => {
     switch (widgetType) {
       case WidgetType.STATS:
         return (
-          <Card className="mb-6">
+          <Card className="h-full">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-md font-medium flex items-center">
-                <BarChart3 className="h-4 w-4 mr-2 text-blue-500" />
+                <BarChart3 className="h-4 w-4 mr-2 text-blue-600" />
                 Přehled
               </CardTitle>
               <Button 
@@ -235,46 +331,34 @@ export default function CustomDashboard() {
               </Button>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="bg-white p-4 rounded-lg shadow">
-                  <div className="flex items-center">
-                    <Clock className="h-5 w-5 text-teal-500 mr-2" />
-                    <p className="text-sm text-gray-500">Plánované hodiny</p>
-                  </div>
-                  <p className="text-2xl font-bold">{stats?.plannedHours || 0}</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <div className="text-blue-600 font-medium">{stats?.plannedHours || 0}</div>
+                  <div className="text-xs text-gray-500">Plánované hodiny</div>
                 </div>
-                <div className="bg-white p-4 rounded-lg shadow">
-                  <div className="flex items-center">
-                    <BarChart3 className="h-5 w-5 text-blue-500 mr-2" />
-                    <p className="text-sm text-gray-500">Odpracováno</p>
-                  </div>
-                  <p className="text-2xl font-bold">{stats?.workedHours || 0}</p>
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <div className="text-green-600 font-medium">{stats?.workedHours || 0}</div>
+                  <div className="text-xs text-gray-500">Odpracované hodiny</div>
                 </div>
-                <div className="bg-white p-4 rounded-lg shadow">
-                  <div className="flex items-center">
-                    <Calendar className="h-5 w-5 text-indigo-500 mr-2" />
-                    <p className="text-sm text-gray-500">Nadcházející směny</p>
-                  </div>
-                  <p className="text-2xl font-bold">{stats?.upcomingShifts || 0}</p>
+                <div className="bg-purple-50 p-4 rounded-lg">
+                  <div className="text-purple-600 font-medium">{stats?.upcomingShifts || 0}</div>
+                  <div className="text-xs text-gray-500">Nadcházející směny</div>
                 </div>
-                <div className="bg-white p-4 rounded-lg shadow">
-                  <div className="flex items-center">
-                    <RefreshCw className="h-5 w-5 text-amber-500 mr-2" />
-                    <p className="text-sm text-gray-500">Žádosti o výměnu</p>
-                  </div>
-                  <p className="text-2xl font-bold">{stats?.exchangeRequests || 0}</p>
+                <div className="bg-amber-50 p-4 rounded-lg">
+                  <div className="text-amber-600 font-medium">{stats?.exchangeRequests || 0}</div>
+                  <div className="text-xs text-gray-500">Žádosti o výměnu</div>
                 </div>
               </div>
             </CardContent>
           </Card>
         );
-
+        
       case WidgetType.UPCOMING_SHIFTS:
         return (
-          <Card className="mb-6">
+          <Card className="h-full">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-md font-medium flex items-center">
-                <Calendar className="h-4 w-4 mr-2 text-indigo-500" />
+                <Calendar className="h-4 w-4 mr-2 text-indigo-600" />
                 Nadcházející směny
               </CardTitle>
               <Button 
@@ -287,42 +371,47 @@ export default function CustomDashboard() {
               </Button>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {shifts && shifts.length > 0 ? (
-                  shifts.map((shift) => (
-                    <div key={shift.id} className="bg-white p-3 rounded-lg shadow flex items-center">
-                      <div className="bg-indigo-100 p-2 rounded-full mr-3">
-                        <Calendar className="h-5 w-5 text-indigo-600" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium">{formatDate(shift.date)}</p>
-                        <div className="flex justify-between items-center">
-                          <p className="text-sm text-gray-500">
-                            {formatTime(shift.startTime)} - {formatTime(shift.endTime)}
-                          </p>
-                          <Badge variant="outline">{shift.workplace?.name || 'Neznámé pracoviště'}</Badge>
+              {shifts && shifts.length > 0 ? (
+                <div className="space-y-3">
+                  {shifts.map(shift => (
+                    <div key={shift.id} className="flex justify-between items-center border-b pb-2 last:border-0">
+                      <div>
+                        <div className="font-medium">{formatDate(shift.date)}</div>
+                        <div className="text-sm text-gray-500">
+                          {formatTime(shift.startTime)} - {formatTime(shift.endTime)}
                         </div>
                       </div>
+                      <div className="text-right">
+                        <Badge 
+                          className={`${
+                            shift.workplace?.type === 'warehouse' ? 'bg-blue-100 text-blue-800' : 
+                            shift.workplace?.type === 'office' ? 'bg-green-100 text-green-800' : 
+                            shift.workplace?.type === 'shop' ? 'bg-purple-100 text-purple-800' : 
+                            'bg-gray-100 text-gray-800'
+                          }`}
+                        >
+                          {shift.workplace?.name || "Neznámé místo"}
+                        </Badge>
+                      </div>
                     </div>
-                  ))
-                ) : (
-                  <div className="bg-white p-6 rounded-lg shadow text-center">
-                    <Calendar className="h-8 w-8 text-indigo-400 mx-auto mb-2" />
-                    <p className="text-gray-500">Nemáte žádné nadcházející směny</p>
-                  </div>
-                )}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-4 text-gray-500">
+                  Nemáte žádné nadcházející směny
+                </div>
+              )}
             </CardContent>
           </Card>
         );
-
+      
       case WidgetType.EXCHANGE_REQUESTS:
         return (
-          <Card className="mb-6">
+          <Card className="h-full">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-md font-medium flex items-center">
-                <RefreshCw className="h-4 w-4 mr-2 text-amber-500" />
-                Žádosti o výměnu směn
+                <RefreshCw className="h-4 w-4 mr-2 text-amber-600" />
+                Žádosti o výměnu
               </CardTitle>
               <Button 
                 variant="ghost" 
@@ -334,48 +423,49 @@ export default function CustomDashboard() {
               </Button>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {exchangeRequests && exchangeRequests.length > 0 ? (
-                  exchangeRequests.map((request) => (
-                    <div key={request.id} className="bg-white p-3 rounded-lg shadow">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center">
-                          <RefreshCw className="h-4 w-4 text-amber-600 mr-2" />
-                          <p className="font-medium">Žádost o výměnu směny</p>
+              {exchangeRequests && exchangeRequests.length > 0 ? (
+                <div className="space-y-3">
+                  {exchangeRequests.map(request => (
+                    <div key={request.id} className="flex justify-between items-center border-b pb-2 last:border-0">
+                      <div>
+                        <div className="font-medium">Výměna směny</div>
+                        <div className="text-sm text-gray-500">
+                          {request.requestShift ? formatDate(request.requestShift.date) : "N/A"}
+                          &nbsp;↔&nbsp;
+                          {request.offeredShift ? formatDate(request.offeredShift.date) : "N/A"}
                         </div>
-                        <Badge variant={request.status === 'pending' ? 'outline' : (request.status === 'approved' ? 'success' : 'destructive')}>
-                          {request.status === 'pending' ? 'Čeká' : (request.status === 'approved' ? 'Schváleno' : 'Zamítnuto')}
+                      </div>
+                      <div className="text-right">
+                        <Badge 
+                          className={`${
+                            request.status === 'pending' ? 'bg-amber-100 text-amber-800' : 
+                            request.status === 'approved' ? 'bg-green-100 text-green-800' : 
+                            'bg-red-100 text-red-800'
+                          }`}
+                        >
+                          {request.status === 'pending' ? 'Čeká' : 
+                           request.status === 'approved' ? 'Schváleno' : 
+                           'Zamítnuto'}
                         </Badge>
                       </div>
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div>
-                          <p className="text-gray-500">Požadovaná směna:</p>
-                          <p>{request.requestShift ? formatDate(request.requestShift.date) : 'Neznámé'}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-500">Nabízená směna:</p>
-                          <p>{request.offeredShift ? formatDate(request.offeredShift.date) : 'Neznámé'}</p>
-                        </div>
-                      </div>
                     </div>
-                  ))
-                ) : (
-                  <div className="bg-white p-6 rounded-lg shadow text-center">
-                    <RefreshCw className="h-8 w-8 text-amber-400 mx-auto mb-2" />
-                    <p className="text-gray-500">Žádné aktivní žádosti o výměnu</p>
-                  </div>
-                )}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-4 text-gray-500">
+                  Nemáte žádné žádosti o výměnu
+                </div>
+              )}
             </CardContent>
           </Card>
         );
-
+        
       case WidgetType.WEEKLY_CALENDAR:
         return (
-          <Card className="mb-6">
+          <Card className="h-full">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-md font-medium flex items-center">
-                <Calendar className="h-4 w-4 mr-2 text-purple-500" />
+                <Calendar className="h-4 w-4 mr-2 text-rose-600" />
                 Týdenní kalendář
               </CardTitle>
               <Button 
@@ -388,59 +478,22 @@ export default function CustomDashboard() {
               </Button>
             </CardHeader>
             <CardContent>
-              <div className="bg-white p-4 rounded-lg shadow">
-                <div className="grid grid-cols-7 gap-1">
-                  {['Po', 'Út', 'St', 'Čt', 'Pá', 'So', 'Ne'].map((day, index) => (
-                    <div key={index} className="text-center font-medium text-sm p-2">
-                      {day}
-                    </div>
-                  ))}
-                  
-                  {/* Týdenní kalendář - ukázkový */}
-                  {Array.from({ length: 7 }, (_, i) => {
-                    // Současný den v týdnu (0 = neděle, 1 = pondělí, ...)
-                    const today = new Date();
-                    const currentDay = (today.getDay() || 7) - 1; // převádíme na 0 = pondělí, ... 6 = neděle
-                    
-                    // Vypočítáme datum pro konkrétní den v týdnu
-                    const dayDate = new Date(today);
-                    dayDate.setDate(today.getDate() - currentDay + i);
-                    
-                    // Zjistíme, jestli máme na tento den směnu (zjednodušený demo výpočet)
-                    const hasShift = shifts?.some(shift => new Date(shift.date).toDateString() === dayDate.toDateString());
-                    const isCurrentDay = i === currentDay;
-                    
-                    return (
-                      <div 
-                        key={i} 
-                        className={`
-                          border rounded-md p-1 min-h-[80px] text-xs
-                          ${i > 4 ? 'bg-gray-50' : 'bg-white'}
-                          ${isCurrentDay ? 'border-purple-400 border-2' : 'border-gray-200'}
-                        `}
-                      >
-                        <div className="text-right mb-1">{dayDate.getDate()}</div>
-                        {hasShift && (
-                          <div className="bg-purple-100 text-purple-800 rounded px-1 py-0.5 mb-1">
-                            Směna
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+              <div className="bg-white p-4 rounded-lg shadow text-center">
+                <Calendar className="h-8 w-8 text-rose-500 mx-auto mb-2" />
+                <p className="text-gray-500">Přehled směn v týdnu již brzo</p>
+                <p className="text-xs text-gray-400 mt-1">Zobrazí rozložení směn v celém týdnu</p>
               </div>
             </CardContent>
           </Card>
         );
-
+        
       case WidgetType.WORKPLACE_STATS:
         return (
-          <Card className="mb-6">
+          <Card className="h-full">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-md font-medium flex items-center">
-                <Building className="h-4 w-4 mr-2 text-emerald-500" />
-                Přehled pracovišť
+                <Building className="h-4 w-4 mr-2 text-blue-600" />
+                Pobočky
               </CardTitle>
               <Button 
                 variant="ghost" 
@@ -452,34 +505,43 @@ export default function CustomDashboard() {
               </Button>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {workplaces && workplaces.length > 0 ? (
-                  workplaces.slice(0, 5).map((workplace) => (
-                    <div key={workplace.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                      <div className="flex items-center">
-                        <Building className="h-4 w-4 text-emerald-500 mr-2" />
-                        <span>{workplace.name}</span>
-                      </div>
-                      <Badge variant="outline" className="ml-2">
-                        {workplace.type}
+              {workplaces && workplaces.length > 0 ? (
+                <div className="space-y-3">
+                  {workplaces.map(workplace => (
+                    <div key={workplace.id} className="flex justify-between items-center border-b pb-2 last:border-0">
+                      <div className="font-medium">{workplace.name}</div>
+                      <Badge 
+                        className={`${
+                          workplace.type === 'warehouse' ? 'bg-blue-100 text-blue-800' : 
+                          workplace.type === 'office' ? 'bg-green-100 text-green-800' : 
+                          workplace.type === 'shop' ? 'bg-purple-100 text-purple-800' : 
+                          'bg-gray-100 text-gray-800'
+                        }`}
+                      >
+                        {workplace.type === 'warehouse' ? 'Sklad' : 
+                         workplace.type === 'office' ? 'Kancelář' : 
+                         workplace.type === 'shop' ? 'Prodejna' : 
+                         workplace.type}
                       </Badge>
                     </div>
-                  ))
-                ) : (
-                  <p className="text-gray-500 text-center">Žádná pracoviště k zobrazení</p>
-                )}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-4 text-gray-500">
+                  Nemáte žádné pobočky
+                </div>
+              )}
             </CardContent>
           </Card>
         );
-
+        
       case WidgetType.WORKER_STATS:
         return (
-          <Card className="mb-6">
+          <Card className="h-full">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-md font-medium flex items-center">
-                <Users className="h-4 w-4 mr-2 text-cyan-500" />
-                Nejaktivnější pracovníci
+                <Users className="h-4 w-4 mr-2 text-cyan-600" />
+                Pracovníci
               </CardTitle>
               <Button 
                 variant="ghost" 
@@ -502,7 +564,7 @@ export default function CustomDashboard() {
 
       case WidgetType.INVOICE_STATS:
         return (
-          <Card className="mb-6">
+          <Card className="h-full">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-md font-medium flex items-center">
                 <FileDigit className="h-4 w-4 mr-2 text-green-600" />
@@ -529,7 +591,7 @@ export default function CustomDashboard() {
         
       case WidgetType.DOCUMENTS_STATS:
         return (
-          <Card className="mb-6">
+          <Card className="h-full">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-md font-medium flex items-center">
                 <FileText className="h-4 w-4 mr-2 text-orange-500" />
@@ -556,7 +618,7 @@ export default function CustomDashboard() {
         
       case WidgetType.SCAN_WIDGET:
         return (
-          <Card className="mb-6">
+          <Card className="h-full">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-md font-medium flex items-center">
                 <Scan className="h-4 w-4 mr-2 text-red-500" />
@@ -583,7 +645,7 @@ export default function CustomDashboard() {
         
       case WidgetType.CUSTOMERS_WIDGET:
         return (
-          <Card className="mb-6">
+          <Card className="h-full">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-md font-medium flex items-center">
                 <ShoppingCart className="h-4 w-4 mr-2 text-purple-600" />
@@ -600,7 +662,7 @@ export default function CustomDashboard() {
             </CardHeader>
             <CardContent>
               <div className="bg-white p-4 rounded-lg shadow text-center">
-                <ShoppingCart className="h-8 w-8 text-purple-500 mx-auto mb-2" />
+                <ShoppingCart className="h-8 w-8 text-purple-400 mx-auto mb-2" />
                 <p className="text-gray-500">Přehled zákazníků bude brzy k dispozici</p>
                 <p className="text-xs text-gray-400 mt-1">Zobrazí seznam zákazníků a jejich aktivitu</p>
               </div>
@@ -610,11 +672,11 @@ export default function CustomDashboard() {
         
       case WidgetType.REPORTS_WIDGET:
         return (
-          <Card className="mb-6">
+          <Card className="h-full">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-md font-medium flex items-center">
                 <FileBarChart className="h-4 w-4 mr-2 text-blue-600" />
-                Reporty
+                Reporty a statistiky
               </CardTitle>
               <Button 
                 variant="ghost" 
@@ -627,9 +689,9 @@ export default function CustomDashboard() {
             </CardHeader>
             <CardContent>
               <div className="bg-white p-4 rounded-lg shadow text-center">
-                <FileBarChart className="h-8 w-8 text-blue-500 mx-auto mb-2" />
-                <p className="text-gray-500">Přehled reportů bude brzy k dispozici</p>
-                <p className="text-xs text-gray-400 mt-1">Zobrazí poslední vygenerované reporty</p>
+                <FileBarChart className="h-8 w-8 text-blue-400 mx-auto mb-2" />
+                <p className="text-gray-500">Reporty budou brzy k dispozici</p>
+                <p className="text-xs text-gray-400 mt-1">Zobrazí podrobné reporty a analýzy</p>
               </div>
             </CardContent>
           </Card>
@@ -637,11 +699,11 @@ export default function CustomDashboard() {
         
       case WidgetType.HOURS_REPORTS:
         return (
-          <Card className="mb-6">
+          <Card className="h-full">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-md font-medium flex items-center">
-                <Clock className="h-4 w-4 mr-2 text-teal-500" />
-                Přehled hodin
+                <Clock className="h-4 w-4 mr-2 text-teal-600" />
+                Odpracované hodiny
               </CardTitle>
               <Button 
                 variant="ghost" 
@@ -656,7 +718,7 @@ export default function CustomDashboard() {
               <div className="bg-white p-4 rounded-lg shadow text-center">
                 <Clock className="h-8 w-8 text-teal-400 mx-auto mb-2" />
                 <p className="text-gray-500">Přehled odpracovaných hodin bude brzy k dispozici</p>
-                <p className="text-xs text-gray-400 mt-1">Zobrazí statistiky odpracovaných hodin</p>
+                <p className="text-xs text-gray-400 mt-1">Zobrazí detailní rozpis odpracovaných hodin</p>
               </div>
             </CardContent>
           </Card>
@@ -664,11 +726,11 @@ export default function CustomDashboard() {
         
       case WidgetType.SHIFT_REPORTS:
         return (
-          <Card className="mb-6">
+          <Card className="h-full">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-md font-medium flex items-center">
-                <ClipboardList className="h-4 w-4 mr-2 text-sky-500" />
-                Přehled směn
+                <FileCheck className="h-4 w-4 mr-2 text-indigo-600" />
+                Reporty směn
               </CardTitle>
               <Button 
                 variant="ghost" 
@@ -681,9 +743,9 @@ export default function CustomDashboard() {
             </CardHeader>
             <CardContent>
               <div className="bg-white p-4 rounded-lg shadow text-center">
-                <ClipboardList className="h-8 w-8 text-sky-400 mx-auto mb-2" />
-                <p className="text-gray-500">Přehled odpracovaných směn bude brzy k dispozici</p>
-                <p className="text-xs text-gray-400 mt-1">Zobrazí statistiky směn podle pracovišť</p>
+                <FileCheck className="h-8 w-8 text-indigo-400 mx-auto mb-2" />
+                <p className="text-gray-500">Reporty směn budou brzy k dispozici</p>
+                <p className="text-xs text-gray-400 mt-1">Zobrazí detailní přehled směn s analýzou</p>
               </div>
             </CardContent>
           </Card>
@@ -691,10 +753,10 @@ export default function CustomDashboard() {
         
       case WidgetType.QUICK_ACTIONS:
         return (
-          <Card className="mb-6">
+          <Card className="h-full">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-md font-medium flex items-center">
-                <Briefcase className="h-4 w-4 mr-2 text-indigo-600" />
+                <Briefcase className="h-4 w-4 mr-2 text-violet-600" />
                 Rychlé akce
               </CardTitle>
               <Button 
@@ -708,21 +770,21 @@ export default function CustomDashboard() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-2">
-                <Button variant="outline" className="w-full justify-start">
-                  <Calendar className="mr-2 h-4 w-4 text-indigo-500" />
-                  <span>Nová směna</span>
+                <Button variant="outline" className="w-full justify-start" size="sm">
+                  <Calendar className="mr-2 h-4 w-4" />
+                  <span>Přidat směnu</span>
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  <Users className="mr-2 h-4 w-4 text-cyan-500" />
-                  <span>Nový pracovník</span>
+                <Button variant="outline" className="w-full justify-start" size="sm">
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  <span>Výměna směny</span>
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  <Building className="mr-2 h-4 w-4 text-emerald-500" />
-                  <span>Nové pracoviště</span>
-                </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  <FileDigit className="mr-2 h-4 w-4 text-green-600" />
+                <Button variant="outline" className="w-full justify-start" size="sm">
+                  <FileDigit className="mr-2 h-4 w-4" />
                   <span>Nová faktura</span>
+                </Button>
+                <Button variant="outline" className="w-full justify-start" size="sm">
+                  <ClipboardList className="mr-2 h-4 w-4" />
+                  <span>Nový report</span>
                 </Button>
               </div>
             </CardContent>
@@ -731,10 +793,10 @@ export default function CustomDashboard() {
         
       case WidgetType.NOTIFICATIONS:
         return (
-          <Card className="mb-6">
+          <Card className="h-full">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-md font-medium flex items-center">
-                <Bell className="h-4 w-4 mr-2 text-rose-500" />
+                <Bell className="h-4 w-4 mr-2 text-yellow-600" />
                 Oznámení
               </CardTitle>
               <Button 
@@ -747,173 +809,213 @@ export default function CustomDashboard() {
               </Button>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                <div className="bg-white p-3 rounded-lg shadow flex items-center">
-                  <div className="bg-rose-100 p-2 rounded-full mr-3">
-                    <Bell className="h-5 w-5 text-rose-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Nová žádost o výměnu směny</p>
-                    <p className="text-sm text-gray-500">před 2 hodinami</p>
-                  </div>
-                </div>
-                <div className="bg-white p-3 rounded-lg shadow flex items-center">
-                  <div className="bg-blue-100 p-2 rounded-full mr-3">
-                    <Calendar className="h-5 w-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Zítra máte naplánovanou směnu</p>
-                    <p className="text-sm text-gray-500">před 5 hodinami</p>
-                  </div>
-                </div>
+              <div className="bg-white p-4 rounded-lg shadow text-center">
+                <Bell className="h-8 w-8 text-yellow-400 mx-auto mb-2" />
+                <p className="text-gray-500">Oznámení budou brzy k dispozici</p>
+                <p className="text-xs text-gray-400 mt-1">Zobrazí důležité zprávy a upozornění</p>
               </div>
             </CardContent>
           </Card>
         );
-
+        
       default:
         return null;
     }
   };
 
-  // Seznam dostupných widgetů pro dialog
-  // Filtrujte widgety podle role uživatele
-  const companyWidgets = [
-    WidgetType.STATS,
-    WidgetType.WORKPLACE_STATS,
-    WidgetType.WORKER_STATS,
-    WidgetType.WEEKLY_CALENDAR,
-    WidgetType.INVOICE_STATS,
-    WidgetType.DOCUMENTS_STATS,
-    WidgetType.SCAN_WIDGET,
-    WidgetType.CUSTOMERS_WIDGET,
-    WidgetType.REPORTS_WIDGET,
-    WidgetType.HOURS_REPORTS,
-    WidgetType.SHIFT_REPORTS
-  ];
-  
-  const workerWidgets = [
-    WidgetType.STATS,
-    WidgetType.UPCOMING_SHIFTS,
-    WidgetType.EXCHANGE_REQUESTS,
-    WidgetType.WEEKLY_CALENDAR,
-    WidgetType.QUICK_ACTIONS,
-    WidgetType.NOTIFICATIONS
-  ];
-  
-  // Filtrujeme widgety podle role a zároveň jen ty, které ještě nejsou na dashboardu
-  const availableWidgets = (isCompany ? companyWidgets : workerWidgets)
-    .filter(widget => !activeWidgets.includes(widget));
-
-  // Widget options for select
-  const widgetOptions = [
-    // Přehledové widgety
-    { type: WidgetType.STATS, label: "Základní statistiky", icon: <BarChart3 className="mr-2 h-4 w-4 text-blue-500" /> },
-    { type: WidgetType.UPCOMING_SHIFTS, label: "Nadcházející směny", icon: <Calendar className="mr-2 h-4 w-4 text-indigo-500" /> },
-    { type: WidgetType.EXCHANGE_REQUESTS, label: "Žádosti o výměnu", icon: <RefreshCw className="mr-2 h-4 w-4 text-amber-500" /> },
-    { type: WidgetType.WEEKLY_CALENDAR, label: "Týdenní kalendář", icon: <Calendar className="mr-2 h-4 w-4 text-purple-500" /> },
-    
-    // Pracovní widgety
-    { type: WidgetType.WORKPLACE_STATS, label: "Přehled pracovišť", icon: <Building className="mr-2 h-4 w-4 text-emerald-500" /> },
-    { type: WidgetType.WORKER_STATS, label: "Nejaktivnější pracovníci", icon: <Users className="mr-2 h-4 w-4 text-cyan-500" /> },
-    
-    // Administrativní widgety
-    { type: WidgetType.INVOICE_STATS, label: "Přehled fakturace", icon: <FileDigit className="mr-2 h-4 w-4 text-green-600" /> },
-    { type: WidgetType.DOCUMENTS_STATS, label: "Dokumenty", icon: <FileText className="mr-2 h-4 w-4 text-orange-500" /> },
-    { type: WidgetType.SCAN_WIDGET, label: "Skenování dokumentů", icon: <Scan className="mr-2 h-4 w-4 text-red-500" /> },
-    
-    // Zákaznické widgety
-    { type: WidgetType.CUSTOMERS_WIDGET, label: "Zákazníci", icon: <ShoppingCart className="mr-2 h-4 w-4 text-purple-600" /> },
-    
-    // Reporty
-    { type: WidgetType.REPORTS_WIDGET, label: "Reporty", icon: <FileBarChart className="mr-2 h-4 w-4 text-blue-600" /> },
-    { type: WidgetType.HOURS_REPORTS, label: "Přehled hodin", icon: <Clock className="mr-2 h-4 w-4 text-teal-500" /> },
-    { type: WidgetType.SHIFT_REPORTS, label: "Přehled směn", icon: <ClipboardList className="mr-2 h-4 w-4 text-sky-500" /> },
-    
-    // Další widgety
-    { type: WidgetType.QUICK_ACTIONS, label: "Rychlé akce", icon: <Briefcase className="mr-2 h-4 w-4 text-indigo-600" /> },
-    { type: WidgetType.NOTIFICATIONS, label: "Oznámení", icon: <Bell className="mr-2 h-4 w-4 text-rose-500" /> },
-  ];
-
   return (
     <Layout title="Vlastní dashboard">
-      <div className="container mx-auto p-4">
+      <div className="container py-4">
         <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-2xl font-bold">Přizpůsobitelný dashboard</h1>
-            <p className="text-sm text-gray-500">
-              {isCompany 
-                ? 'Firemní uživatel - přizpůsobte si dashboard pro správu a přehled firmy' 
-                : 'Zaměstnanecký pohled - přizpůsobte si dashboard dle vašich potřeb'}
-            </p>
-          </div>
-          
+          <h1 className="text-2xl font-bold">Můj dashboard</h1>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="flex items-center">
-                <Plus className="mr-2 h-4 w-4" />
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
                 Přidat widget
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent>
               <DialogHeader>
-                <DialogTitle>Přidat nový widget</DialogTitle>
+                <DialogTitle>Přidat widget na dashboard</DialogTitle>
               </DialogHeader>
-              <div className="py-4">
-                <p className="text-sm text-gray-500 mb-4">
-                  Vyberte widget, který chcete přidat na váš dashboard:
-                </p>
+              
+              <div className="mt-4 space-y-4">
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-1">Kategorie widgetů</label>
+                  <Select defaultValue="overview">
+                    <SelectTrigger>
+                      <SelectValue placeholder="Vyberte kategorii" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="overview">Přehledové widgety</SelectItem>
+                      <SelectItem value="work">Pracovní widgety</SelectItem>
+                      <SelectItem value="admin">Administrativní widgety</SelectItem>
+                      <SelectItem value="reports">Reporty</SelectItem>
+                      <SelectItem value="other">Další widgety</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
                 <div className="space-y-2">
-                  {availableWidgets.length > 0 ? (
-                    availableWidgets.map((widgetType) => {
-                      const widgetInfo = widgetOptions.find(w => w.type === widgetType);
-                      return (
-                        <Button 
-                          key={widgetType} 
-                          variant="outline" 
-                          className="w-full justify-start"
-                          onClick={() => addWidget(widgetType)}
-                        >
-                          {widgetInfo?.icon}
-                          <span>{widgetInfo?.label || widgetType}</span>
+                  <h3 className="font-medium">Přehledové widgety</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {!activeWidgets.includes(WidgetType.STATS) && (
+                      <Button variant="outline" className="justify-start" onClick={() => addWidget(WidgetType.STATS)}>
+                        <BarChart3 className="mr-2 h-4 w-4 text-blue-600" />
+                        <span>Přehled</span>
+                      </Button>
+                    )}
+                    {!activeWidgets.includes(WidgetType.UPCOMING_SHIFTS) && (
+                      <Button variant="outline" className="justify-start" onClick={() => addWidget(WidgetType.UPCOMING_SHIFTS)}>
+                        <Calendar className="mr-2 h-4 w-4 text-indigo-600" />
+                        <span>Nadcházející směny</span>
+                      </Button>
+                    )}
+                    {!activeWidgets.includes(WidgetType.EXCHANGE_REQUESTS) && (
+                      <Button variant="outline" className="justify-start" onClick={() => addWidget(WidgetType.EXCHANGE_REQUESTS)}>
+                        <RefreshCw className="mr-2 h-4 w-4 text-amber-600" />
+                        <span>Žádosti o výměnu</span>
+                      </Button>
+                    )}
+                    {!activeWidgets.includes(WidgetType.WEEKLY_CALENDAR) && (
+                      <Button variant="outline" className="justify-start" onClick={() => addWidget(WidgetType.WEEKLY_CALENDAR)}>
+                        <Calendar className="mr-2 h-4 w-4 text-rose-600" />
+                        <span>Týdenní kalendář</span>
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                
+                {isCompany && (
+                  <div className="space-y-2">
+                    <h3 className="font-medium">Pracovní widgety</h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      {!activeWidgets.includes(WidgetType.WORKPLACE_STATS) && (
+                        <Button variant="outline" className="justify-start" onClick={() => addWidget(WidgetType.WORKPLACE_STATS)}>
+                          <Building className="mr-2 h-4 w-4 text-blue-600" />
+                          <span>Pobočky</span>
                         </Button>
-                      );
-                    })
-                  ) : (
-                    <p className="text-center py-4 text-sm text-gray-500">
-                      Všechny dostupné widgety jsou již na dashboardu
-                    </p>
-                  )}
+                      )}
+                      {!activeWidgets.includes(WidgetType.WORKER_STATS) && (
+                        <Button variant="outline" className="justify-start" onClick={() => addWidget(WidgetType.WORKER_STATS)}>
+                          <Users className="mr-2 h-4 w-4 text-cyan-600" />
+                          <span>Pracovníci</span>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
+                {isCompany && (
+                  <div className="space-y-2">
+                    <h3 className="font-medium">Administrativní widgety</h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      {!activeWidgets.includes(WidgetType.INVOICE_STATS) && (
+                        <Button variant="outline" className="justify-start" onClick={() => addWidget(WidgetType.INVOICE_STATS)}>
+                          <FileDigit className="mr-2 h-4 w-4 text-green-600" />
+                          <span>Fakturace</span>
+                        </Button>
+                      )}
+                      {!activeWidgets.includes(WidgetType.DOCUMENTS_STATS) && (
+                        <Button variant="outline" className="justify-start" onClick={() => addWidget(WidgetType.DOCUMENTS_STATS)}>
+                          <FileText className="mr-2 h-4 w-4 text-orange-500" />
+                          <span>Dokumenty</span>
+                        </Button>
+                      )}
+                      {!activeWidgets.includes(WidgetType.SCAN_WIDGET) && (
+                        <Button variant="outline" className="justify-start" onClick={() => addWidget(WidgetType.SCAN_WIDGET)}>
+                          <Scan className="mr-2 h-4 w-4 text-red-500" />
+                          <span>Skenování</span>
+                        </Button>
+                      )}
+                      {!activeWidgets.includes(WidgetType.CUSTOMERS_WIDGET) && (
+                        <Button variant="outline" className="justify-start" onClick={() => addWidget(WidgetType.CUSTOMERS_WIDGET)}>
+                          <ShoppingCart className="mr-2 h-4 w-4 text-purple-600" />
+                          <span>Zákazníci</span>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
+                <div className="space-y-2">
+                  <h3 className="font-medium">Reporty</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {!activeWidgets.includes(WidgetType.REPORTS_WIDGET) && (
+                      <Button variant="outline" className="justify-start" onClick={() => addWidget(WidgetType.REPORTS_WIDGET)}>
+                        <FileBarChart className="mr-2 h-4 w-4 text-blue-600" />
+                        <span>Reporty a statistiky</span>
+                      </Button>
+                    )}
+                    {!activeWidgets.includes(WidgetType.HOURS_REPORTS) && (
+                      <Button variant="outline" className="justify-start" onClick={() => addWidget(WidgetType.HOURS_REPORTS)}>
+                        <Clock className="mr-2 h-4 w-4 text-teal-600" />
+                        <span>Odpracované hodiny</span>
+                      </Button>
+                    )}
+                    {!activeWidgets.includes(WidgetType.SHIFT_REPORTS) && (
+                      <Button variant="outline" className="justify-start" onClick={() => addWidget(WidgetType.SHIFT_REPORTS)}>
+                        <FileCheck className="mr-2 h-4 w-4 text-indigo-600" />
+                        <span>Reporty směn</span>
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <h3 className="font-medium">Další widgety</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {!activeWidgets.includes(WidgetType.QUICK_ACTIONS) && (
+                      <Button variant="outline" className="justify-start" onClick={() => addWidget(WidgetType.QUICK_ACTIONS)}>
+                        <Briefcase className="mr-2 h-4 w-4 text-violet-600" />
+                        <span>Rychlé akce</span>
+                      </Button>
+                    )}
+                    {!activeWidgets.includes(WidgetType.NOTIFICATIONS) && (
+                      <Button variant="outline" className="justify-start" onClick={() => addWidget(WidgetType.NOTIFICATIONS)}>
+                        <Bell className="mr-2 h-4 w-4 text-yellow-600" />
+                        <span>Oznámení</span>
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             </DialogContent>
           </Dialog>
         </div>
         
-        {/* Pokud není vybrán žádný widget, zobrazíme vylepšený prázdný stav */}
-        {activeWidgets.length === 0 ? (
-          <div className="text-center py-16 px-6 bg-white shadow-lg rounded-lg border-2 border-dashed border-gray-200">
-            <Home className="h-20 w-20 text-primary/30 mx-auto mb-6" />
-            <h3 className="text-xl font-semibold mb-3">Váš dashboard je prázdný</h3>
-            <p className="text-gray-500 mb-8 max-w-md mx-auto">
-              Přidejte si widgety podle svých potřeb a sestavte si vlastní přehled přesně tak, jak potřebujete.
-              Můžete přidávat a odebírat widgety kdykoli později.
-            </p>
-            <Button className="bg-primary hover:bg-primary/90 shadow-md transition-all" 
-                    size="lg"
-                    onClick={() => setIsDialogOpen(true)}>
-              <Plus className="mr-2 h-5 w-5" />
-              Přidat první widget
-            </Button>
-          </div>
-        ) : (
-          // Zobrazíme aktivní widgety
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {activeWidgets.map((widgetType) => (
-              <div key={widgetType}>
-                {renderWidgetContent(widgetType)}
+        {/* Drag & Drop Dashboard s React Grid Layout */}
+        {activeWidgets.length > 0 ? (
+          <ReactGridLayout
+            className="layout"
+            layout={layout}
+            cols={12}
+            rowHeight={30}
+            containerPadding={[0, 0]}
+            margin={[16, 16]}
+            onLayoutChange={handleLayoutChange}
+            draggableHandle=".drag-handle" // CSS selector pro oblast pro přetahování
+            resizeHandles={['se']} // pouze bottom-right resize handle
+            isBounded={true}  // Zabránit widgetům opustit kontejner
+          >
+            {activeWidgets.map(widgetType => (
+              <div key={widgetType} className="bg-white rounded-md shadow overflow-hidden">
+                <div className="drag-handle cursor-move">
+                  {renderWidgetContent(widgetType)}
+                </div>
               </div>
             ))}
+          </ReactGridLayout>
+        ) : (
+          <div className="text-center py-8 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+            <Home className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+            <h3 className="text-lg font-medium text-gray-600">Váš dashboard je prázdný</h3>
+            <p className="text-gray-500 mb-4">Přidejte widgety pro přizpůsobení vašeho dashboardu</p>
+            <Button onClick={() => setIsDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Přidat widget
+            </Button>
           </div>
         )}
       </div>

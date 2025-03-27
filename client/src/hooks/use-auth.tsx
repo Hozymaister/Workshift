@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext } from "react";
+import React, { createContext, ReactNode, useContext } from "react";
 import {
   useQuery,
   useMutation,
@@ -9,7 +9,23 @@ import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
+// Definice typů
 type SafeUser = Omit<User, "password">;
+
+type LoginData = {
+  email: string;
+  password: string;
+};
+
+type RegisterData = {
+  firstName: string;
+  lastName: string;
+  username: string;
+  email: string;
+  password: string;
+  role: string;
+  [key: string]: any; // Pro další možné vlastnosti
+};
 
 type AuthContextType = {
   user: SafeUser | null;
@@ -21,62 +37,33 @@ type AuthContextType = {
   registerMutation: UseMutationResult<SafeUser, Error, RegisterData>;
 };
 
-const loginSchema = z.object({
-  email: z.string().email("Zadejte platný email"),
-  password: z.string().min(1, "Heslo je povinné"),
-});
-
-const registerSchema = insertUserSchema.extend({
-  password: z.string().min(6, "Heslo musí mít alespoň 6 znaků"),
-  passwordConfirm: z.string().min(6, "Heslo musí mít alespoň 6 znaků"),
-}).refine((data) => data.password === data.passwordConfirm, {
-  message: "Hesla se neshodují",
-  path: ["passwordConfirm"],
-});
-
-type LoginData = z.infer<typeof loginSchema>;
-type RegisterData = z.infer<typeof registerSchema>;
-
+// Vytvoření kontextu s výchozí hodnotou null
 export const AuthContext = createContext<AuthContextType | null>(null);
 
+// Provider komponenta
 export function AuthProvider({ children }: { children: ReactNode }) {
+  // Využití Toast hooku
   const { toast } = useToast();
-  const {
-    data: user,
-    error,
-    isLoading,
-    refetch: refetchUser
-  } = useQuery<SafeUser | null, Error>({
+
+  // Získání informací o aktuálním uživateli
+  const userQuery = useQuery<SafeUser | null, Error>({
     queryKey: ["/api/user"],
     queryFn: getQueryFn({ on401: "returnNull" }),
   });
 
-  const loginMutation = useMutation({
-    mutationFn: async (credentials: LoginData) => {
-      console.log("Attempting login with:", { 
-        email: credentials.email, 
-        passwordProvided: !!credentials.password 
-      });
-      try {
-        const res = await apiRequest("POST", "/api/login", credentials);
-        const userData = await res.json();
-        console.log("Login successful:", { userId: userData.id });
-        return userData;
-      } catch (error) {
-        console.error("Login error:", error);
-        throw error;
-      }
+  // Login mutation pro přihlášení
+  const login = useMutation<SafeUser, Error, LoginData>({
+    mutationFn: async (credentials) => {
+      const res = await apiRequest("POST", "/api/login", credentials);
+      return res.json();
     },
-    onSuccess: (user: SafeUser) => {
-      console.log("Setting user data in query cache");
-      queryClient.setQueryData(["/api/user"], user);
-      console.log("Refreshing user data from server");
-      refetchUser();
-      // Explicitní přesměrování na vlastní dashboard
+    onSuccess: (userData) => {
+      queryClient.setQueryData(["/api/user"], userData);
+      userQuery.refetch();
       window.location.href = "/";
     },
-    onError: (error: Error) => {
-      console.error("Login mutation error handler:", error);
+    onError: (error) => {
+      console.error("Login failed:", error);
       toast({
         title: "Přihlášení selhalo",
         description: error.message,
@@ -85,19 +72,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  const registerMutation = useMutation({
-    mutationFn: async (userData: RegisterData) => {
-      // Omit the passwordConfirm field
+  // Register mutation pro registraci
+  const register = useMutation<SafeUser, Error, RegisterData>({
+    mutationFn: async (userData) => {
       const { passwordConfirm, ...registerData } = userData;
       const res = await apiRequest("POST", "/api/register", registerData);
-      return await res.json();
+      return res.json();
     },
-    onSuccess: (user: SafeUser) => {
-      queryClient.setQueryData(["/api/user"], user);
-      // Explicitní přesměrování na vlastní dashboard
+    onSuccess: (userData) => {
+      queryClient.setQueryData(["/api/user"], userData);
       window.location.href = "/";
     },
-    onError: (error: Error) => {
+    onError: (error) => {
       toast({
         title: "Registrace selhala",
         description: error.message,
@@ -106,21 +92,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  const logoutMutation = useMutation({
+  // Logout mutation pro odhlášení
+  const logout = useMutation<unknown, Error, void>({
     mutationFn: async () => {
-      console.log("Attempting to logout...");
-      try {
-        await apiRequest("POST", "/api/logout");
-      } catch (error) {
-        console.error("Logout API request error:", error);
-        throw error;
-      }
+      return apiRequest("POST", "/api/logout");
     },
     onSuccess: () => {
-      console.log("Logout successful. Clearing user data from cache.");
       // Vyčistit data uživatele z cache
       queryClient.setQueryData(["/api/user"], null);
-      // Invalidovat query, aby se při příští potřebě znovu načetla
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       
       toast({
@@ -128,21 +107,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: "Byli jste úspěšně odhlášeni",
       });
       
-      // Krátké zpoždění před přesměrováním, aby měl toast čas se zobrazit
       setTimeout(() => {
-        // Přesměrování na přihlašovací stránku
         window.location.href = "/auth";
       }, 500);
     },
-    onError: (error: Error) => {
-      console.error("Logout error:", error);
+    onError: (error) => {
       toast({
         title: "Odhlášení selhalo",
-        description: error.message || "Nastala chyba při odhlašování",
+        description: error.message,
         variant: "destructive",
       });
       
-      // I v případě chyby vyčistíme cache a přesměrujeme na přihlašovací stránku
+      // I v případě chyby vyčistíme cache a přesměrujeme
       queryClient.setQueryData(["/api/user"], null);
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       
@@ -152,27 +128,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  // Hodnota kontextu
+  const contextValue: AuthContextType = {
+    user: userQuery.data ?? null,
+    isLoading: userQuery.isLoading,
+    error: userQuery.error ?? null,
+    refetchUser: userQuery.refetch,
+    loginMutation: login,
+    logoutMutation: logout,
+    registerMutation: register,
+  };
+
   return (
-    <AuthContext.Provider
-      value={{
-        user: user ?? null,
-        isLoading,
-        error,
-        refetchUser,
-        loginMutation,
-        logoutMutation,
-        registerMutation,
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
 }
 
+// Custom hook pro použití auth kontextu
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) {
+  
+  if (context === null) {
     throw new Error("useAuth must be used within an AuthProvider");
   }
+  
   return context;
 }
