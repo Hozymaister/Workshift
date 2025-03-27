@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
 import { Layout } from "@/components/layout/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -119,6 +120,10 @@ export default function CustomDashboard() {
   // State pro sledování aktivních widgetů - defaultně prázdný dashboard
   const [activeWidgets, setActiveWidgets] = useState<WidgetType[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  
+  // Get user info and role
+  const { user } = useAuth();
+  const isCompany = user?.role === "company" || user?.role === "admin";
 
   // Data fetching
   const { data: stats } = useQuery<{
@@ -151,9 +156,12 @@ export default function CustomDashboard() {
     queryKey: ["/api/workplaces"]
   });
 
-  // Načtení uložených widgetů z localStorage
+  // Načtení uložených widgetů z localStorage podle role uživatele
   useEffect(() => {
-    const savedWidgets = localStorage.getItem('dashboard_widgets');
+    // Ukládáme widgety pro různé role pod různými klíči
+    const storageKey = isCompany ? 'dashboard_widgets_company' : 'dashboard_widgets_worker';
+    const savedWidgets = localStorage.getItem(storageKey);
+    
     if (savedWidgets) {
       try {
         const parsedWidgets = JSON.parse(savedWidgets) as WidgetType[];
@@ -161,13 +169,21 @@ export default function CustomDashboard() {
       } catch (e) {
         console.error('Chyba při načítání konfigurace dashboardu:', e);
       }
+    } else {
+      // Pokud nejsou žádné uložené widgety, nastavíme některé výchozí podle role
+      const defaultWidgets = isCompany 
+        ? [WidgetType.STATS, WidgetType.WORKPLACE_STATS, WidgetType.WORKER_STATS] 
+        : [WidgetType.STATS, WidgetType.UPCOMING_SHIFTS, WidgetType.WEEKLY_CALENDAR];
+      
+      setActiveWidgets(defaultWidgets);
     }
-  }, []);
+  }, [isCompany]);
 
-  // Uložení widgetů do localStorage při změně
+  // Uložení widgetů do localStorage při změně s rozlišením podle role
   useEffect(() => {
-    localStorage.setItem('dashboard_widgets', JSON.stringify(activeWidgets));
-  }, [activeWidgets]);
+    const storageKey = isCompany ? 'dashboard_widgets_company' : 'dashboard_widgets_worker';
+    localStorage.setItem(storageKey, JSON.stringify(activeWidgets));
+  }, [activeWidgets, isCompany]);
 
   const addWidget = (widgetType: WidgetType) => {
     if (!activeWidgets.includes(widgetType)) {
@@ -761,7 +777,33 @@ export default function CustomDashboard() {
   };
 
   // Seznam dostupných widgetů pro dialog
-  const availableWidgets = Object.values(WidgetType).filter(widget => !activeWidgets.includes(widget));
+  // Filtrujte widgety podle role uživatele
+  const companyWidgets = [
+    WidgetType.STATS,
+    WidgetType.WORKPLACE_STATS,
+    WidgetType.WORKER_STATS,
+    WidgetType.WEEKLY_CALENDAR,
+    WidgetType.INVOICE_STATS,
+    WidgetType.DOCUMENTS_STATS,
+    WidgetType.SCAN_WIDGET,
+    WidgetType.CUSTOMERS_WIDGET,
+    WidgetType.REPORTS_WIDGET,
+    WidgetType.HOURS_REPORTS,
+    WidgetType.SHIFT_REPORTS
+  ];
+  
+  const workerWidgets = [
+    WidgetType.STATS,
+    WidgetType.UPCOMING_SHIFTS,
+    WidgetType.EXCHANGE_REQUESTS,
+    WidgetType.WEEKLY_CALENDAR,
+    WidgetType.QUICK_ACTIONS,
+    WidgetType.NOTIFICATIONS
+  ];
+  
+  // Filtrujeme widgety podle role a zároveň jen ty, které ještě nejsou na dashboardu
+  const availableWidgets = (isCompany ? companyWidgets : workerWidgets)
+    .filter(widget => !activeWidgets.includes(widget));
 
   // Widget options for select
   const widgetOptions = [
@@ -797,7 +839,14 @@ export default function CustomDashboard() {
     <Layout title="Vlastní dashboard">
       <div className="container mx-auto p-4">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Přizpůsobitelný dashboard</h1>
+          <div>
+            <h1 className="text-2xl font-bold">Přizpůsobitelný dashboard</h1>
+            <p className="text-sm text-gray-500">
+              {isCompany 
+                ? 'Firemní uživatel - přizpůsobte si dashboard pro správu a přehled firmy' 
+                : 'Zaměstnanecký pohled - přizpůsobte si dashboard dle vašich potřeb'}
+            </p>
+          </div>
           
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
