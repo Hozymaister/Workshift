@@ -72,7 +72,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       queryClient.setQueryData(["/api/user"], user);
       console.log("Refreshing user data from server");
       refetchUser();
-      // Přesměrování provede ProtectedRoute
+      // Explicitní přesměrování na vlastní dashboard
+      window.location.href = "/";
     },
     onError: (error: Error) => {
       console.error("Login mutation error handler:", error);
@@ -93,8 +94,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: (user: SafeUser) => {
       queryClient.setQueryData(["/api/user"], user);
-      // Nebudeme zobrazovat toast aby nedošlo ke zpoždění přesměrování
-      // Pozn: přesměrování bude provedeno automaticky díky ProtectedRoute
+      // Explicitní přesměrování na vlastní dashboard
+      window.location.href = "/";
     },
     onError: (error: Error) => {
       toast({
