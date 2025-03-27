@@ -21,9 +21,8 @@ export function Sidebar() {
 
   // Základní navigační položky
   const commonNavItems = [
-    { path: "/", label: "Dashboard", icon: <LayoutDashboard className="mr-3 h-5 w-5" /> },
-    { path: "/vlastnidashboard", label: "Vlastní dashboard", icon: <LayoutGrid className="mr-3 h-5 w-5" /> },
-    { path: "/custom-dashboard", label: "Přizpůsobitelný dashboard", icon: <Layout className="mr-3 h-5 w-5" /> },
+    { path: "/custom-dashboard", label: "Dashboard", icon: <Layout className="mr-3 h-5 w-5" /> },
+    { path: "/", label: "Přehled", icon: <LayoutDashboard className="mr-3 h-5 w-5" /> },
     { path: "/shifts", label: "Moje směny", icon: <Calendar className="mr-3 h-5 w-5" /> },
     { path: "/shift-table", label: "Tabulka směn", icon: <Table className="mr-3 h-5 w-5" /> },
     { path: "/exchanges", label: "Výměny směn", icon: <RefreshCw className="mr-3 h-5 w-5" /> },

@@ -27,7 +27,8 @@ function Router() {
     <Switch>
       <Route path="/auth" component={AuthPage} />
       <ProtectedRoute path="/vlastnidashboard" component={VlastniDashboard} />
-      <ProtectedRoute path="/custom-dashboard" component={CustomDashboard} />
+      <ProtectedRoute path="/" component={CustomDashboard} />
+      <ProtectedRoute path="/dashboard" component={DashboardPage} />
       <ProtectedRoute path="/shifts" component={ShiftsPage} />
       <ProtectedRoute path="/shift-table" component={ShiftTablePage} />
       <ProtectedRoute path="/exchanges" component={ExchangesPage} />
@@ -40,7 +41,6 @@ function Router() {
       <ProtectedRoute path="/scan" component={ScanPage} />
       <ProtectedRoute path="/profile" component={ProfilePage} />
       <ProtectedRoute path="/settings" component={SettingsPage} />
-      <ProtectedRoute path="/" component={DashboardPage} />
       <Route component={NotFound} />
     </Switch>
   );
