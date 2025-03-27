@@ -209,9 +209,11 @@ export class MemStorage implements IStorage {
   async createWorkplace(insertWorkplace: InsertWorkplace): Promise<Workplace> {
     const id = this.workplaceIdCounter++;
     // Zajistíme, že všechny povinné atributy jsou nastaveny
+    // Nejdříve přidáme ID a zpracujeme požadované atributy
     const workplace: Workplace = { 
-      ...insertWorkplace, 
       id,
+      name: insertWorkplace.name,
+      type: insertWorkplace.type,
       address: insertWorkplace.address ?? null,
       notes: insertWorkplace.notes ?? null,
       // Firemní údaje
@@ -219,7 +221,8 @@ export class MemStorage implements IStorage {
       companyId: insertWorkplace.companyId ?? null,
       companyVatId: insertWorkplace.companyVatId ?? null,
       companyAddress: insertWorkplace.companyAddress ?? null,
-      managerId: insertWorkplace.managerId ?? null
+      managerId: insertWorkplace.managerId ?? null,
+      ownerId: insertWorkplace.ownerId ?? null
     };
     this.workplaces.set(id, workplace);
     return workplace;
@@ -255,6 +258,7 @@ export class MemStorage implements IStorage {
       date: insertShift.date ?? null,
       startTime: insertShift.startTime ?? null,
       endTime: insertShift.endTime ?? null,
+      hours: insertShift.hours ?? null,
       notes: insertShift.notes ?? null,
       userId: insertShift.userId ?? null
     };
@@ -519,6 +523,7 @@ export class PostgreSQLStorage implements IStorage {
           date: today.toISOString(),
           startTime: new Date(today.setHours(8, 0, 0, 0)).toISOString(),
           endTime: new Date(today.setHours(16, 0, 0, 0)).toISOString(),
+          hours: 8, // Přidáno odpracovaných hodin
           notes: "Ranní směna"
         });
         
@@ -528,6 +533,7 @@ export class PostgreSQLStorage implements IStorage {
           date: tomorrow.toISOString(),
           startTime: new Date(tomorrow.setHours(8, 0, 0, 0)).toISOString(),
           endTime: new Date(tomorrow.setHours(16, 0, 0, 0)).toISOString(),
+          hours: 8, // Přidáno odpracovaných hodin
           notes: "Další směna"
         });
         

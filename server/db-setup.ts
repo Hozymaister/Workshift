@@ -84,9 +84,29 @@ export async function setupDatabase() {
           "date" TIMESTAMP,
           "start_time" TIMESTAMP,
           "end_time" TIMESTAMP,
+          "hours" INTEGER,
           "notes" TEXT
         )
       `);
+      
+      // Kontrola a případné přidání sloupce hours, který byl přidán později
+      try {
+        await client(`
+          DO $$
+          BEGIN
+            IF NOT EXISTS (
+              SELECT 1 FROM information_schema.columns 
+              WHERE table_name = 'shifts' AND column_name = 'hours'
+            ) THEN
+              ALTER TABLE shifts ADD COLUMN hours INTEGER;
+            END IF;
+          END
+          $$;
+        `);
+        console.log('Sloupec hours byl úspěšně zkontrolován a v případě potřeby přidán.');
+      } catch (err) {
+        console.error('Chyba při kontrole nebo přidání sloupce hours:', err);
+      }
       
       await client(`
         CREATE TABLE IF NOT EXISTS "exchange_requests" (
