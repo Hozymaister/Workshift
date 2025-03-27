@@ -14,18 +14,17 @@ export function ProtectedRoute({
   return (
     <Route path={path}>
       {() => {
-        // Dočasně vypnuto ověřování pro účely testování
-        // if (isLoading) {
-        //   return (
-        //     <div className="flex items-center justify-center min-h-screen">
-        //       <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        //     </div>
-        //   );
-        // }
+        if (isLoading) {
+          return (
+            <div className="flex items-center justify-center min-h-screen">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          );
+        }
 
-        // if (!user) {
-        //   return <Redirect to="/auth" />;
-        // }
+        if (!user) {
+          return <Redirect to="/auth" />;
+        }
 
         return <Component />;
       }}
