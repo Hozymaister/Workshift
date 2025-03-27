@@ -426,11 +426,17 @@ export default function DashboardPage() {
     }
     
     e.stopPropagation(); // Zastavíme propagaci události, aby se nevyvolal onClick z rodiče
+    e.preventDefault(); // Zabráníme výchozímu chování
     
     // Pro debugging
     console.log(`handleRemoveWidget zavolán pro widget: ${widgetType}`);
     
-    removeWidget(widgetType);
+    // Ujistit se, že widget existuje v aktivních widgetech
+    if (activeWidgets.includes(widgetType)) {
+      removeWidget(widgetType);
+    } else {
+      console.error(`Widget ${widgetType} není v aktivních widgetech`);
+    }
   };
 
   // Funkce pro vykreslení obsahu widgetu podle typu
@@ -541,14 +547,16 @@ export default function DashboardPage() {
                 <RefreshCw className="h-4 w-4 mr-2 text-amber-600" />
                 Žádosti o výměnu
               </CardTitle>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-8 w-8 rounded-full" 
-                onClick={(e) => handleRemoveWidget(e, WidgetType.EXCHANGE_REQUESTS)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
+              {(isEditMode || isMobile) && (
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8 rounded-full" 
+                  onClick={(e) => handleRemoveWidget(e, WidgetType.EXCHANGE_REQUESTS)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
               {exchangeRequests && exchangeRequests.length > 0 ? (
@@ -596,14 +604,16 @@ export default function DashboardPage() {
                 <Calendar className="h-4 w-4 mr-2 text-rose-600" />
                 Týdenní kalendář
               </CardTitle>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-8 w-8 rounded-full" 
-                onClick={(e) => handleRemoveWidget(e, WidgetType.WEEKLY_CALENDAR)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
+              {(isEditMode || isMobile) && (
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8 rounded-full" 
+                  onClick={(e) => handleRemoveWidget(e, WidgetType.WEEKLY_CALENDAR)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
               <div className="bg-white p-4 rounded-lg shadow text-center">
@@ -623,14 +633,16 @@ export default function DashboardPage() {
                 <Building className="h-4 w-4 mr-2 text-blue-600" />
                 Pobočky
               </CardTitle>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-8 w-8 rounded-full" 
-                onClick={(e) => handleRemoveWidget(e, WidgetType.WORKPLACE_STATS)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
+              {(isEditMode || isMobile) && (
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8 rounded-full" 
+                  onClick={(e) => handleRemoveWidget(e, WidgetType.WORKPLACE_STATS)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
               {workplaces && workplaces.length > 0 ? (
@@ -671,14 +683,16 @@ export default function DashboardPage() {
                 <Users className="h-4 w-4 mr-2 text-cyan-600" />
                 Pracovníci
               </CardTitle>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-8 w-8 rounded-full" 
-                onClick={(e) => handleRemoveWidget(e, WidgetType.WORKER_STATS)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
+              {(isEditMode || isMobile) && (
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8 rounded-full" 
+                  onClick={(e) => handleRemoveWidget(e, WidgetType.WORKER_STATS)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
               <div className="bg-white p-4 rounded-lg shadow text-center">
@@ -1124,7 +1138,7 @@ export default function DashboardPage() {
             margin={[16, 16]} // [horizontal, vertical]
           >
             {activeWidgets.map((widgetType) => (
-              <div key={widgetType} className={`overflow-hidden ${(isMobile || isEditMode) ? 'widget-edit-mode' : ''}`}>
+              <div key={widgetType} className={`overflow-hidden ${(isMobile || isEditMode) ? 'widget-edit-mode border-2 border-dashed border-blue-200' : ''}`}>
                 {renderWidgetContent(widgetType)}
               </div>
             ))}
