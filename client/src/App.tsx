@@ -26,13 +26,13 @@ function Router() {
     <Switch>
       <Route path="/auth" component={AuthPage} />
       {/* Cesty pro všechny role */}
-      <ProtectedRoute path="/dashboard" component={DashboardPage} />
+      <ProtectedRoute path="/dashboard-old" component={DashboardPage} />
       <ProtectedRoute path="/shifts" component={ShiftsPage} />
       <ProtectedRoute path="/shift-table" component={ShiftTablePage} />
       <ProtectedRoute path="/exchanges" component={ExchangesPage} />
       <ProtectedRoute path="/profile" component={ProfilePage} />
       <ProtectedRoute path="/settings" component={SettingsPage} />
-      <ProtectedRoute path="/" component={CustomDashboard} />
+      <ProtectedRoute path="/" component={DashboardPage} />
       
       {/* Cesty pouze pro adminy a společnosti */}
       <ProtectedRoute 
