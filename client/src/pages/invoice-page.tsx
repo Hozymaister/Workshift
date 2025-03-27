@@ -1,16 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { Redirect } from "wouter";
-import { format, subMonths } from "date-fns";
+import { format, subMonths, parseISO } from "date-fns";
 import { cs } from "date-fns/locale";
 import jsPDF from "jspdf";
 import { Layout } from "@/components/layout/layout";
 import { CustomerAutocomplete } from "@/components/invoice/customer-autocomplete";
 import { Customer } from "@shared/schema";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import {
   Form,
   FormControl,
@@ -195,69 +197,107 @@ export default function InvoicePage() {
   // Filtr pro historii faktur
   const [yearFilter, setYearFilter] = useState<string>("current");
   
-  // Historie vydaných a přijatých faktur
-  const [invoiceHistory, setInvoiceHistory] = useState<Invoice[]>([
-    // Demo data pro historii faktur
-    {
-      id: "1",
-      type: "issued",
-      number: "2025-03-001",
-      date: new Date(2025, 2, 15),
-      clientOrSupplier: "ABC s.r.o.",
-      amount: 15000,
-      isPaid: true,
-      dueDate: new Date(2025, 3, 15)
-    },
-    {
-      id: "2",
-      type: "received",
-      number: "FV-2025-123",
-      date: new Date(2025, 2, 10),
-      clientOrSupplier: "Dodavatel XYZ",
-      amount: 5000,
-      isPaid: true,
-      dueDate: new Date(2025, 3, 10)
-    },
-    {
-      id: "3",
-      type: "issued",
-      number: "2025-03-002",
-      date: new Date(2025, 2, 20),
-      clientOrSupplier: "Odběratel DEF",
-      amount: 8000,
-      isPaid: false,
-      dueDate: new Date(2025, 3, 20)
-    },
-    {
-      id: "4",
-      type: "received",
-      number: "D-2025-456",
-      date: new Date(2025, 2, 5),
-      clientOrSupplier: "Služby ABC",
-      amount: 3500,
-      isPaid: false,
-      dueDate: new Date(2025, 3, 5)
+  // Použijeme React Query pro načtení seznamu faktur
+  const queryClient = useQueryClient();
+  
+  // Query pro načtení seznamu všech faktur
+  const { data: invoiceHistory = [], isLoading: isLoadingInvoices } = useQuery({
+    queryKey: ['/api/invoices'],
+    queryFn: async () => {
+      const response = await fetch('/api/invoices');
+      if (!response.ok) {
+        throw new Error('Nepodařilo se načíst faktury');
+      }
+      const data = await response.json();
+      return data.map((invoice: any) => ({
+        id: invoice.id.toString(),
+        type: invoice.type,
+        number: invoice.invoiceNumber,
+        date: new Date(invoice.date),
+        clientOrSupplier: invoice.type === 'issued' ? invoice.customerName : invoice.supplierName,
+        amount: invoice.amount,
+        isPaid: invoice.isPaid,
+        dueDate: new Date(invoice.dateDue)
+      }));
     }
-  ]);
-  
-  // Finanční data pro grafy
-  const [financialData, setFinancialData] = useState<FinancialData[]>([
-    { month: "Leden", income: 25000, expenses: 18000, profit: 7000 },
-    { month: "Únor", income: 32000, expenses: 22000, profit: 10000 },
-    { month: "Březen", income: 28000, expenses: 19500, profit: 8500 },
-    { month: "Duben", income: 35000, expenses: 24000, profit: 11000 },
-    { month: "Květen", income: 30000, expenses: 21500, profit: 8500 },
-    { month: "Červen", income: 38000, expenses: 25000, profit: 13000 }
-  ]);
-  
-  // Součty pro aktuální období
-  const [financialSummary, setFinancialSummary] = useState({
-    totalIncome: 123000,
-    totalExpenses: 90000,
-    totalProfit: 33000,
-    unpaidInvoices: 15000,
-    unpaidBills: 7500
   });
+  
+  // Finanční data pro grafy - inicializujeme jako prázdné pole, které bude naplněno po načtení faktur
+  const [financialData, setFinancialData] = useState<FinancialData[]>([]);
+  
+  // Součty pro aktuální období - inicializujeme nulovými hodnotami
+  const [financialSummary, setFinancialSummary] = useState({
+    totalIncome: 0,
+    totalExpenses: 0,
+    totalProfit: 0,
+    unpaidInvoices: 0,
+    unpaidBills: 0
+  });
+  
+  // Efekt pro výpočet finančních dat z faktur
+  useEffect(() => {
+    if (invoiceHistory && invoiceHistory.length > 0) {
+      // Vypočteme finanční přehledy
+      let totalIncome = 0;
+      let totalExpenses = 0;
+      let unpaidInvoices = 0;
+      let unpaidBills = 0;
+      
+      // Vytvoříme mapu pro měsíční přehledy
+      const monthlyData = new Map<string, { income: number, expenses: number }>();
+      
+      // Projdeme všechny faktury
+      invoiceHistory.forEach(invoice => {
+        const amount = invoice.amount || 0;
+        const month = format(new Date(invoice.date), 'MMMM', { locale: cs });
+        
+        // Aktualizujeme celkové hodnoty
+        if (invoice.type === 'issued') {
+          totalIncome += amount;
+          if (!invoice.isPaid) {
+            unpaidInvoices += amount;
+          }
+        } else {
+          totalExpenses += amount;
+          if (!invoice.isPaid) {
+            unpaidBills += amount;
+          }
+        }
+        
+        // Aktualizujeme měsíční data
+        if (!monthlyData.has(month)) {
+          monthlyData.set(month, { income: 0, expenses: 0 });
+        }
+        const monthData = monthlyData.get(month)!;
+        
+        if (invoice.type === 'issued') {
+          monthData.income += amount;
+        } else {
+          monthData.expenses += amount;
+        }
+      });
+      
+      // Nastavíme souhrnné údaje
+      setFinancialSummary({
+        totalIncome,
+        totalExpenses,
+        totalProfit: totalIncome - totalExpenses,
+        unpaidInvoices,
+        unpaidBills
+      });
+      
+      // Převedeme měsíční data na pole pro grafy
+      const graphData: FinancialData[] = Array.from(monthlyData.entries())
+        .map(([month, data]) => ({
+          month,
+          income: data.income,
+          expenses: data.expenses,
+          profit: data.income - data.expenses
+        }));
+      
+      setFinancialData(graphData);
+    }
+  }, [invoiceHistory]);
   
   // Formuláře pro vytváření faktur
   const createInvoiceForm = useForm<InvoiceFormValues>({
@@ -339,6 +379,165 @@ export default function InvoicePage() {
       itemForm.reset();
       setIsItemDialogOpen(false);
     }
+  };
+  
+  // Mutace pro vytvoření faktury
+  const createInvoiceMutation = useMutation({
+    mutationFn: async (invoiceData: any) => {
+      const response = await apiRequest('/api/invoices', 'POST', invoiceData);
+      return response;
+    },
+    onSuccess: () => {
+      // Po úspěšném vytvoření faktury invalidujeme cache pro seznam faktur
+      queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
+      
+      // Resetujeme formulář
+      createInvoiceForm.reset({
+        invoiceNumber: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${(invoiceHistory.length + 1).toString().padStart(3, '0')}`,
+        dateIssued: new Date(),
+        dateDue: new Date(new Date().setDate(new Date().getDate() + 14)),
+        customerName: "",
+        customerAddress: "",
+        customerIC: "",
+        customerDIC: "",
+        isVatPayer: true,
+        notes: "",
+        paymentMethod: "bank",
+        bankAccount: "",
+      });
+      
+      // Resetujeme položky faktury
+      setInvoiceItems([]);
+      
+      toast({
+        title: "Faktura uložena",
+        description: "Faktura byla úspěšně uložena do databáze."
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Chyba při ukládání faktury",
+        description: error.message || "Při ukládání faktury došlo k chybě.",
+        variant: "destructive"
+      });
+    }
+  });
+  
+  // Mutace pro evidenci přijaté faktury
+  const recordInvoiceMutation = useMutation({
+    mutationFn: async (invoiceData: any) => {
+      const response = await apiRequest('/api/invoices', 'POST', invoiceData);
+      return response;
+    },
+    onSuccess: () => {
+      // Po úspěšném vytvoření faktury invalidujeme cache pro seznam faktur
+      queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
+      
+      // Resetujeme formulář
+      receivedInvoiceForm.reset({
+        invoiceNumber: "",
+        dateReceived: new Date(),
+        dateDue: new Date(new Date().setDate(new Date().getDate() + 14)),
+        supplierName: "",
+        supplierAddress: "",
+        supplierIC: "",
+        supplierDIC: "",
+        notes: "",
+        amount: 0,
+        isPaid: false
+      });
+      
+      toast({
+        title: "Faktura evidována",
+        description: "Přijatá faktura byla úspěšně evidována v systému."
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Chyba při evidování faktury",
+        description: error.message || "Při evidování faktury došlo k chybě.",
+        variant: "destructive"
+      });
+    }
+  });
+  
+  // Funkce pro uložení vydané faktury do databáze
+  const handleSaveInvoice = () => {
+    if (!createInvoiceForm.formState.isValid || invoiceItems.length === 0) {
+      toast({
+        title: "Chyba",
+        description: "Zkontrolujte, zda jsou všechna pole správně vyplněna a je přidána alespoň jedna položka.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Získání dat z formuláře
+    const formData = createInvoiceForm.getValues();
+    
+    // Výpočet celkové částky
+    let totalAmount = 0;
+    invoiceItems.forEach(item => {
+      totalAmount += item.quantity * item.pricePerUnit;
+    });
+    
+    // Příprava dat pro odeslání na server
+    const invoiceData = {
+      invoiceNumber: formData.invoiceNumber,
+      type: "issued",
+      dateIssued: formData.dateIssued,
+      date: formData.dateIssued,
+      dateDue: formData.dateDue,
+      customerName: formData.customerName,
+      customerAddress: formData.customerAddress,
+      customerIC: formData.customerIC,
+      customerDIC: formData.customerDIC,
+      bankAccount: formData.bankAccount,
+      paymentMethod: formData.paymentMethod,
+      isVatPayer: formData.isVatPayer,
+      amount: totalAmount,
+      notes: formData.notes,
+      isPaid: false,
+      items: invoiceItems
+    };
+    
+    // Odeslání dat na server
+    createInvoiceMutation.mutate(invoiceData);
+  };
+  
+  // Funkce pro uložení přijaté faktury do databáze
+  const handleSaveReceivedInvoice = () => {
+    if (!receivedInvoiceForm.formState.isValid) {
+      receivedInvoiceForm.trigger();
+      toast({
+        title: "Chyba",
+        description: "Zkontrolujte, zda jsou všechna pole správně vyplněna.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Získání dat z formuláře
+    const formData = receivedInvoiceForm.getValues();
+    
+    // Příprava dat pro odeslání na server
+    const invoiceData = {
+      invoiceNumber: formData.invoiceNumber,
+      type: "received",
+      dateReceived: formData.dateReceived,
+      date: formData.dateReceived,
+      dateDue: formData.dateDue,
+      supplierName: formData.supplierName,
+      supplierAddress: formData.supplierAddress,
+      supplierIC: formData.supplierIC,
+      supplierDIC: formData.supplierDIC,
+      amount: formData.amount,
+      notes: formData.notes,
+      isPaid: formData.isPaid
+    };
+    
+    // Odeslání dat na server
+    recordInvoiceMutation.mutate(invoiceData);
   };
   
   // Funkce pro generování PDF faktury
@@ -1236,6 +1435,17 @@ export default function InvoicePage() {
                     <Button onClick={handleGeneratePdf} disabled={invoiceItems.length === 0 || !createInvoiceForm.formState.isValid}>
                       <FileDown className="mr-2 h-4 w-4" /> Stáhnout PDF
                     </Button>
+                    <Button 
+                      onClick={handleSaveInvoice}
+                      disabled={invoiceItems.length === 0 || !createInvoiceForm.formState.isValid || createInvoiceMutation.isPending}
+                    >
+                      {createInvoiceMutation.isPending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Save className="mr-2 h-4 w-4" />
+                      )}
+                      Uložit do systému
+                    </Button>
                   </CardFooter>
                 </Card>
               </div>
@@ -1715,20 +1925,15 @@ export default function InvoicePage() {
                         <div className="flex justify-end">
                           <Button 
                             type="button" 
-                            onClick={() => {
-                              if (receivedInvoiceForm.formState.isValid) {
-                                const data = receivedInvoiceForm.getValues();
-                                toast({
-                                  title: "Faktura evidována",
-                                  description: `Faktura č. ${data.invoiceNumber} byla úspěšně evidována.`
-                                });
-                                receivedInvoiceForm.reset();
-                              } else {
-                                receivedInvoiceForm.trigger();
-                              }
-                            }}
+                            onClick={handleSaveReceivedInvoice}
+                            disabled={recordInvoiceMutation.isPending}
                           >
-                            <Save className="mr-2 h-4 w-4" /> Uložit fakturu
+                            {recordInvoiceMutation.isPending ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <Save className="mr-2 h-4 w-4" />
+                            )}
+                            Uložit fakturu
                           </Button>
                         </div>
                       </form>

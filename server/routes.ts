@@ -2001,46 +2001,238 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).send("Unauthorized");
       }
       
-      // V budoucí implementaci by zde bylo načtení faktur z databáze
-      // Pro demonstraci vracíme prázdné pole
-      res.json([]);
+      const userId = req.user.id;
+      const type = req.query.type as string;
+      
+      // Načtení faktur z databáze podle typu (vydané/přijaté) nebo všechny
+      let invoices;
+      if (type && (type === 'issued' || type === 'received')) {
+        invoices = await storage.getInvoicesByType(userId, type as "issued" | "received");
+      } else {
+        invoices = await storage.getUserInvoices(userId);
+      }
+      
+      res.json(invoices);
     } catch (error) {
       console.error("Chyba při načítání faktur:", error);
       res.status(500).json({ error: "Nepodařilo se načíst faktury" });
     }
   });
   
-  // Endpoint pro generování a ukládání faktur - pouze pro firemní účty
+  // Endpoint pro získání faktury podle ID
+  app.get("/api/invoices/:id", isAuthenticated, isCompany, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).send("Unauthorized");
+      }
+      
+      const invoiceId = parseInt(req.params.id);
+      if (isNaN(invoiceId)) {
+        return res.status(400).json({ error: "Neplatné ID faktury" });
+      }
+      
+      // Načtení faktury z databáze
+      const invoice = await storage.getInvoice(invoiceId);
+      
+      if (!invoice) {
+        return res.status(404).json({ error: "Faktura nebyla nalezena" });
+      }
+      
+      // Ověření, že faktura patří přihlášenému uživateli
+      if (invoice.userId !== req.user.id) {
+        return res.status(403).json({ error: "K této faktuře nemáte přístup" });
+      }
+      
+      // Načtení položek faktury
+      const items = await storage.getInvoiceItems(invoiceId);
+      
+      // Vytvoření kompletního objektu faktury s položkami
+      const invoiceWithItems = {
+        ...invoice,
+        items
+      };
+      
+      res.json(invoiceWithItems);
+    } catch (error) {
+      console.error("Chyba při načítání faktury:", error);
+      res.status(500).json({ error: "Nepodařilo se načíst fakturu" });
+    }
+  });
+  
+  // Endpoint pro vytvoření faktury
   app.post("/api/invoices", isAuthenticated, isCompany, async (req, res) => {
     try {
       if (!req.user) {
         return res.status(401).send("Unauthorized");
       }
       
+      const userId = req.user.id;
       const invoiceData = req.body;
       
-      // Zde by byla logika pro vytváření faktury
-      // a ukládání do databáze
-
-      // Simulujeme vytvoření faktury - v budoucí implementaci
-      // by zde bylo skutečné vytvoření PDF faktury a uložení do DB 
-      const invoice = {
-        id: Math.floor(Math.random() * 100000).toString(),
-        number: `FV${new Date().getFullYear()}${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`,
-        date: new Date(),
-        dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // splatnost 14 dní
-        clientOrSupplier: invoiceData.clientName || "Neznámý klient",
+      // Připravíme data faktury pro uložení
+      const insertInvoice = {
+        userId,
+        invoiceNumber: invoiceData.invoiceNumber,
+        type: invoiceData.type,
+        date: new Date(invoiceData.date || new Date()),
+        dateDue: new Date(invoiceData.dateDue || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)),
+        dateIssued: invoiceData.dateIssued ? new Date(invoiceData.dateIssued) : null,
+        dateReceived: invoiceData.dateReceived ? new Date(invoiceData.dateReceived) : null,
+        customerName: invoiceData.customerName || invoiceData.supplierName,
+        customerAddress: invoiceData.customerAddress || invoiceData.supplierAddress,
+        customerIC: invoiceData.customerIC,
+        customerDIC: invoiceData.customerDIC,
+        supplierName: invoiceData.supplierName,
+        supplierAddress: invoiceData.supplierAddress,
+        supplierIC: invoiceData.supplierIC,
+        supplierDIC: invoiceData.supplierDIC,
+        bankAccount: invoiceData.bankAccount,
+        paymentMethod: invoiceData.paymentMethod || "bank",
+        isVatPayer: invoiceData.isVatPayer !== undefined ? invoiceData.isVatPayer : true,
         amount: invoiceData.amount || 0,
-        isPaid: false,
-        userId: req.user.id,
-        items: invoiceData.items || [],
-        type: invoiceData.type || "issued"
+        notes: invoiceData.notes,
+        isPaid: invoiceData.isPaid !== undefined ? invoiceData.isPaid : false
       };
       
-      res.status(201).json(invoice);
+      // Uložíme fakturu do databáze
+      const createdInvoice = await storage.createInvoice(insertInvoice);
+      
+      // Pokud máme položky faktury, uložíme je také
+      const items = invoiceData.items || [];
+      const savedItems = [];
+      
+      for (const item of items) {
+        const insertItem = {
+          invoiceId: createdInvoice.id,
+          description: item.description,
+          quantity: item.quantity,
+          unit: item.unit,
+          pricePerUnit: item.pricePerUnit
+        };
+        
+        const savedItem = await storage.createInvoiceItem(insertItem);
+        savedItems.push(savedItem);
+      }
+      
+      // Vrátíme vytvořenou fakturu s položkami
+      res.status(201).json({
+        ...createdInvoice,
+        items: savedItems
+      });
     } catch (error) {
       console.error("Chyba při vytváření faktury:", error);
       res.status(500).json({ error: "Nepodařilo se vytvořit fakturu" });
+    }
+  });
+  
+  // Endpoint pro aktualizaci faktury
+  app.put("/api/invoices/:id", isAuthenticated, isCompany, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).send("Unauthorized");
+      }
+      
+      const invoiceId = parseInt(req.params.id);
+      if (isNaN(invoiceId)) {
+        return res.status(400).json({ error: "Neplatné ID faktury" });
+      }
+      
+      // Načtení faktury z databáze pro ověření vlastnictví
+      const existingInvoice = await storage.getInvoice(invoiceId);
+      
+      if (!existingInvoice) {
+        return res.status(404).json({ error: "Faktura nebyla nalezena" });
+      }
+      
+      // Ověření, že faktura patří přihlášenému uživateli
+      if (existingInvoice.userId !== req.user.id) {
+        return res.status(403).json({ error: "K této faktuře nemáte přístup" });
+      }
+      
+      const invoiceData = req.body;
+      
+      // Aktualizujeme fakturu
+      const updatedInvoice = await storage.updateInvoice(invoiceId, invoiceData);
+      
+      // Pokud máme položky faktury, aktualizujeme je také
+      const items = invoiceData.items || [];
+      
+      if (items.length > 0) {
+        // Nejprve smažeme existující položky
+        const existingItems = await storage.getInvoiceItems(invoiceId);
+        for (const item of existingItems) {
+          await storage.deleteInvoiceItem(item.id);
+        }
+        
+        // Poté vytvoříme nové položky
+        const savedItems = [];
+        for (const item of items) {
+          const insertItem = {
+            invoiceId: updatedInvoice.id,
+            description: item.description,
+            quantity: item.quantity,
+            unit: item.unit,
+            pricePerUnit: item.pricePerUnit
+          };
+          
+          const savedItem = await storage.createInvoiceItem(insertItem);
+          savedItems.push(savedItem);
+        }
+        
+        // Vrátíme aktualizovanou fakturu s položkami
+        res.json({
+          ...updatedInvoice,
+          items: savedItems
+        });
+      } else {
+        // Vrátíme aktualizovanou fakturu bez položek
+        const items = await storage.getInvoiceItems(invoiceId);
+        res.json({
+          ...updatedInvoice,
+          items
+        });
+      }
+    } catch (error) {
+      console.error("Chyba při aktualizaci faktury:", error);
+      res.status(500).json({ error: "Nepodařilo se aktualizovat fakturu" });
+    }
+  });
+  
+  // Endpoint pro smazání faktury
+  app.delete("/api/invoices/:id", isAuthenticated, isCompany, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).send("Unauthorized");
+      }
+      
+      const invoiceId = parseInt(req.params.id);
+      if (isNaN(invoiceId)) {
+        return res.status(400).json({ error: "Neplatné ID faktury" });
+      }
+      
+      // Načtení faktury z databáze pro ověření vlastnictví
+      const existingInvoice = await storage.getInvoice(invoiceId);
+      
+      if (!existingInvoice) {
+        return res.status(404).json({ error: "Faktura nebyla nalezena" });
+      }
+      
+      // Ověření, že faktura patří přihlášenému uživateli
+      if (existingInvoice.userId !== req.user.id) {
+        return res.status(403).json({ error: "K této faktuře nemáte přístup" });
+      }
+      
+      // Smažeme fakturu
+      const deleted = await storage.deleteInvoice(invoiceId);
+      
+      if (deleted) {
+        res.json({ success: true, message: "Faktura byla úspěšně smazána" });
+      } else {
+        res.status(500).json({ error: "Nepodařilo se smazat fakturu" });
+      }
+    } catch (error) {
+      console.error("Chyba při mazání faktury:", error);
+      res.status(500).json({ error: "Nepodařilo se smazat fakturu" });
     }
   });
 

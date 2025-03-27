@@ -496,7 +496,7 @@ export class MemStorage implements IStorage {
       id,
       userId: insertInvoice.userId,
       invoiceNumber: insertInvoice.invoiceNumber,
-      type: insertInvoice.type,
+      type: insertInvoice.type || "issued",
       date: insertInvoice.date || today,
       dateDue: insertInvoice.dateDue || dueDate,
       dateIssued: insertInvoice.dateIssued || null,
