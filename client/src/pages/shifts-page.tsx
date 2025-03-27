@@ -400,7 +400,7 @@ export default function ShiftsPage() {
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-2">
-                                {user?.role === "admin" && (
+                                {user?.role === "company" && (
                                   <>
                                     <Button 
                                       variant="ghost" 

@@ -108,7 +108,7 @@ export default function WorkplacesPage() {
   const [workplaceToDelete, setWorkplaceToDelete] = useState<number | null>(null);
   const [aresLoading, setAresLoading] = useState(false);
   
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.role === "company";
   
   const { data: workplaces, isLoading } = useQuery<Workplace[]>({
     queryKey: ["/api/workplaces"],

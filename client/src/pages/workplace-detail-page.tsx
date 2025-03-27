@@ -517,7 +517,7 @@ export default function WorkplaceDetailPage() {
                 Zpět na seznam
               </Button>
               
-              {user?.role === "admin" && (
+              {user?.role === "company" && (
                 <Button
                   onClick={() => setEditDialogOpen(true)}
                   className="inline-flex items-center"

@@ -7,8 +7,8 @@ export default function CustomersPage() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
 
-  // Pouze správci mají přístup k adresáři zákazníků
-  if (user?.role !== "admin") {
+  // Pouze firemní účty mají přístup k adresáři zákazníků
+  if (user?.role !== "company") {
     setLocation("/");
     return <div></div>; // Vracíme prázdný element místo null
   }
