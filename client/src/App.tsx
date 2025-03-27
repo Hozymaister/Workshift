@@ -2,10 +2,12 @@ import { Switch, Route } from "wouter";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/hooks/use-auth";
 import { LanguageProvider } from "@/hooks/use-language";
+import { OnboardingProvider } from "@/hooks/use-onboarding";
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
 import DashboardPage from "@/pages/dashboard-page";
 import VlastniDashboard from "@/pages/vlastni-dashboard";
+import CustomDashboard from "@/pages/custom-dashboard";
 import ShiftsPage from "@/pages/shifts-page";
 import ShiftTablePage from "@/pages/shift-table-page";
 import ExchangesPage from "@/pages/exchanges-page";
@@ -49,7 +51,9 @@ function App() {
     <>
       <LanguageProvider>
         <AuthProvider>
-          <Router />
+          <OnboardingProvider>
+            <Router />
+          </OnboardingProvider>
         </AuthProvider>
       </LanguageProvider>
       <Toaster />

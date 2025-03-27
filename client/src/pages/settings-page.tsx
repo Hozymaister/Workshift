@@ -38,7 +38,8 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Bell, Lock, UserCircle, Settings } from "lucide-react";
+import { Bell, Lock, UserCircle, Settings, HelpCircle } from "lucide-react";
+import { OnboardingSettings } from "@/components/onboarding/settings";
 import { useToast } from "@/hooks/use-toast";
 
 const profileFormSchema = z.object({
@@ -185,7 +186,7 @@ export default function SettingsPage() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <div className="flex justify-between">
-            <TabsList className="grid w-full md:w-auto grid-cols-2 md:grid-cols-4 gap-2">
+            <TabsList className="grid w-full md:w-auto grid-cols-2 md:grid-cols-5 gap-2">
               <TabsTrigger value="profile" className="flex items-center space-x-2">
                 <UserCircle className="h-4 w-4" />
                 <span>Profil</span>
@@ -201,6 +202,10 @@ export default function SettingsPage() {
               <TabsTrigger value="notifications" className="flex items-center space-x-2">
                 <Bell className="h-4 w-4" />
                 <span>Notifikace</span>
+              </TabsTrigger>
+              <TabsTrigger value="onboarding" className="flex items-center space-x-2">
+                <HelpCircle className="h-4 w-4" />
+                <span>Průvodce</span>
               </TabsTrigger>
             </TabsList>
           </div>
@@ -499,6 +504,26 @@ export default function SettingsPage() {
               <CardFooter className="border-t bg-slate-50">
                 <p className="text-sm text-muted-foreground">
                   Tato nastavení ovlivňují pouze notifikace v této aplikaci, ne e-mailové zprávy ze systému.
+                </p>
+              </CardFooter>
+            </Card>
+          </TabsContent>
+          
+          {/* Obsah záložky Průvodce */}
+          <TabsContent value="onboarding">
+            <Card>
+              <CardHeader>
+                <CardTitle>Nastavení průvodce aplikací</CardTitle>
+                <CardDescription>
+                  Upravte nastavení průvodce a nápovědu v aplikaci
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <OnboardingSettings />
+              </CardContent>
+              <CardFooter className="border-t bg-slate-50">
+                <p className="text-sm text-muted-foreground">
+                  Průvodce vám pomůže objevit všechny funkce aplikace a efektivně ji využívat.
                 </p>
               </CardFooter>
             </Card>

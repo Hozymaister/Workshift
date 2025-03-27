@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { MobileNavigation } from "@/components/layout/mobile-navigation";
@@ -6,6 +6,9 @@ import { ShiftForm } from "@/components/shifts/shift-form";
 import { ExchangeForm } from "@/components/shifts/exchange-form";
 import { Button } from "@/components/ui/button";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useOnboarding } from "@/hooks/use-onboarding";
+import { OnboardingTip } from "@/components/onboarding/tip";
+import { Tour } from "@/components/onboarding/tours";
 import { Shift, Workplace } from "@shared/schema";
 import { Plus, Pencil, Trash2, RefreshCw, Loader2, Table as TableIcon, 
   Clock, Users, Building, Calendar, BarChart2 } from "lucide-react";

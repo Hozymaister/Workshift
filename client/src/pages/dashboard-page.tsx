@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Layout } from "@/components/layout/layout";
 import { WeeklyCalendar } from "@/components/dashboard/weekly-calendar";
 import { UpcomingShifts } from "@/components/dashboard/upcoming-shifts";
@@ -11,10 +11,16 @@ import { Clock, CheckCircle, Calendar, RefreshCw, Plus, Building2, User } from "
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
 import { Badge } from "@/components/ui/badge";
+import { useOnboarding } from "@/hooks/use-onboarding";
+import { OnboardingTip } from "@/components/onboarding/tip";
+import { Tour } from "@/components/onboarding/tours";
+import { Link } from "wouter";
 
 export default function DashboardPage() {
   const [isShiftFormOpen, setIsShiftFormOpen] = useState(false);
   const { user } = useAuth();
+  const { isTipSeen } = useOnboarding();
+  const [showDashboardTour, setShowDashboardTour] = useState(false);
   
   interface DashboardStats {
     plannedHours: number;
@@ -28,9 +34,41 @@ export default function DashboardPage() {
   });
 
   const isCompanyAccount = user?.role === "company";
+  
+  // Spustíme túru při první návštěvě
+  useEffect(() => {
+    if (!isTipSeen('dashboard_overview')) {
+      setShowDashboardTour(true);
+    }
+  }, [isTipSeen]);
 
   return (
     <Layout title="Dashboard">
+      {/* Dashboard Tour */}
+      {showDashboardTour && (
+        <Tour 
+          tourType="dashboard" 
+          onComplete={() => setShowDashboardTour(false)}
+        />
+      )}
+      
+      {/* Tip pro vlastní dashboard */}
+      {!isTipSeen('custom_dashboard_intro') && (
+        <div className="absolute right-4 bottom-4 z-50">
+          <OnboardingTip
+            id="custom_dashboard_intro"
+            title="Vlastní dashboard"
+            content={
+              <div>
+                <p>Víte, že si můžete vytvořit vlastní dashboard s widgety, které potřebujete?</p>
+                <p className="mt-1">Vyzkoušejte sekci "Vlastní dashboard" níže.</p>
+              </div>
+            }
+            position="top"
+          />
+        </div>
+      )}
+      
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <div>
           <div className="flex items-center">
