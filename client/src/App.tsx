@@ -25,20 +25,52 @@ function Router() {
   return (
     <Switch>
       <Route path="/auth" component={AuthPage} />
+      {/* Cesty pro všechny role */}
       <ProtectedRoute path="/dashboard" component={DashboardPage} />
       <ProtectedRoute path="/shifts" component={ShiftsPage} />
       <ProtectedRoute path="/shift-table" component={ShiftTablePage} />
       <ProtectedRoute path="/exchanges" component={ExchangesPage} />
-      <ProtectedRoute path="/workplaces/:id" component={WorkplaceDetailPage} />
-      <ProtectedRoute path="/workplaces" component={WorkplacesPage} />
-      <ProtectedRoute path="/workers" component={WorkersPage} />
-      <ProtectedRoute path="/reports" component={ReportsPage} />
-      <ProtectedRoute path="/invoice" component={InvoicePage} />
-      <ProtectedRoute path="/customers" component={CustomersPage} />
-      <ProtectedRoute path="/scan" component={ScanPage} />
       <ProtectedRoute path="/profile" component={ProfilePage} />
       <ProtectedRoute path="/settings" component={SettingsPage} />
       <ProtectedRoute path="/" component={CustomDashboard} />
+      
+      {/* Cesty pouze pro adminy a společnosti */}
+      <ProtectedRoute 
+        path="/workplaces/:id" 
+        component={WorkplaceDetailPage} 
+        requiredRoles={["admin", "company"]} 
+      />
+      <ProtectedRoute 
+        path="/workplaces" 
+        component={WorkplacesPage} 
+        requiredRoles={["admin", "company"]} 
+      />
+      <ProtectedRoute 
+        path="/workers" 
+        component={WorkersPage} 
+        requiredRoles={["admin", "company"]} 
+      />
+      <ProtectedRoute 
+        path="/reports" 
+        component={ReportsPage} 
+        requiredRoles={["admin", "company"]} 
+      />
+      <ProtectedRoute 
+        path="/invoice" 
+        component={InvoicePage} 
+        requiredRoles={["admin", "company"]} 
+      />
+      <ProtectedRoute 
+        path="/customers" 
+        component={CustomersPage} 
+        requiredRoles={["admin", "company"]} 
+      />
+      <ProtectedRoute 
+        path="/scan" 
+        component={ScanPage} 
+        requiredRoles={["admin", "company"]} 
+      />
+      
       <Route component={NotFound} />
     </Switch>
   );

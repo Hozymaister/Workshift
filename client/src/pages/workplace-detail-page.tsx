@@ -22,7 +22,8 @@ import {
 import { 
   ChevronLeft, ChevronRight, Edit, Building, Warehouse, Crown, Music, Info, 
   MapPin, Clock, Trophy, Download, Calendar, Users, BarChart2, Save, 
-  Phone, Building2, Mail, Loader2, User as UserIcon, UserCircle, DollarSign
+  Phone, Building2, Mail, Loader2, User as UserIcon, UserCircle, DollarSign,
+  Plus
 } from "lucide-react";
 import { 
   Table, 
@@ -688,10 +689,22 @@ export default function WorkplaceDetailPage() {
                       Pracovníci na pracovišti {workplace.name} a jejich odpracované hodiny
                     </CardDescription>
                   </div>
-                  <Button variant="outline" onClick={exportToCSV}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Export CSV
-                  </Button>
+                  <div className="flex gap-2">
+                    {/* Tlačítko "Přidat pracovníka" - dostupné pouze pro správce nebo firmu */}
+                    {(user?.role === "admin" || user?.role === "company") && (
+                      <Button 
+                        onClick={() => navigate(`/workers?workplace=${workplace.id}`)}
+                        className="inline-flex items-center bg-primary text-white"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Přidat pracovníka
+                      </Button>
+                    )}
+                    <Button variant="outline" onClick={exportToCSV}>
+                      <Download className="h-4 w-4 mr-2" />
+                      Export CSV
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   {userStats.length > 0 ? (
@@ -792,6 +805,16 @@ export default function WorkplaceDetailPage() {
                       </CardDescription>
                     </div>
                     <div className="flex gap-2">
+                      {/* Tlačítko "Přidat směnu" - dostupné pouze pro správce nebo firmu */}
+                      {(user?.role === "admin" || user?.role === "company") && (
+                        <Button 
+                          onClick={() => navigate(`/shifts/new?workplace=${workplace.id}`)}
+                          className="inline-flex items-center bg-primary text-white"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Přidat směnu
+                        </Button>
+                      )}
                       <Button size="sm" variant="outline" onClick={handlePreviousMonth}>
                         <ChevronLeft className="h-4 w-4 mr-1" /> Předchozí
                       </Button>
