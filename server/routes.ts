@@ -38,6 +38,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(403).send("Forbidden: Company access required");
   };
   
+  // Middleware pro ověření, zda má uživatel přístup k datům (vlastní nebo jako firma k datům svých zaměstnanců)
+  const hasDataAccess = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.isAuthenticated() || !req.user) {
+        return res.status(401).send("Unauthorized");
+      }
+
+      // Pokud je admin, má přístup ke všemu
+      if (req.user.role === "admin") {
+        return next();
+      }
+
+      // Získáme ID dat z požadavku, ke kterým chceme přistoupit
+      const dataId = parseInt(req.params.id);
+      const dataType = req.path.split('/')[2] || ''; // Např. 'workplaces', 'shifts', 'users', atd.
+      
+      // Pokud nemáme ID, nemůžeme ověřit přístup
+      if (!dataId || isNaN(dataId)) {
+        return next();
+      }
+      
+      // Ověření podle typu dat
+      switch(dataType) {
+        case 'workplaces':
+          // Pokud je company, má přístup jen k vlastním pracovištím nebo těm, kde je správcem
+          if (req.user.role === "company") {
+            const workplace = await storage.getWorkplace(dataId);
+            if (!workplace || (workplace.ownerId !== req.user.id && workplace.managerId !== req.user.id)) {
+              return res.status(403).send("Forbidden: No access to this workplace");
+            }
+          }
+          break;
+          
+        case 'shifts':
+          // Pracovník má přístup jen ke vlastním směnám
+          if (req.user.role === "worker") {
+            const shift = await storage.getShift(dataId);
+            if (!shift || shift.userId !== req.user.id) {
+              return res.status(403).send("Forbidden: No access to this shift");
+            }
+          }
+          // Firma má přístup ke směnám svých pracovníků
+          else if (req.user.role === "company") {
+            const shift = await storage.getShift(dataId);
+            if (!shift) {
+              return res.status(404).send("Shift not found");
+            }
+            
+            // Pokud směna není přiřazena žádnému pracovišti
+            if (!shift.workplaceId) {
+              return res.status(403).send("Forbidden: No access to this shift");
+            }
+            
+            // Ověříme, zda pracoviště patří této firmě
+            const workplace = await storage.getWorkplace(shift.workplaceId);
+            if (!workplace || workplace.ownerId !== req.user.id) {
+              return res.status(403).send("Forbidden: No access to this shift");
+            }
+          }
+          break;
+          
+        case 'workers':
+        case 'users':
+          // Každý uživatel může přistupovat jen ke svému účtu
+          if (dataId !== req.user.id) {
+            // Firma může přistupovat ke svým zaměstnancům
+            if (req.user.role === "company") {
+              // Ověříme, zda je pracovník zaměstnancem této firmy
+              const worker = await storage.getUser(dataId);
+              if (!worker || worker.companyId !== req.user.id) {
+                return res.status(403).send("Forbidden: No access to this user");
+              }
+            } else {
+              return res.status(403).send("Forbidden: No access to this user");
+            }
+          }
+          break;
+          
+        default:
+          // Pro ostatní typy dat ověříme podle vlastníka
+          // Toto by mělo být doplněno podle specifických potřeb aplikace
+          break;
+      }
+      
+      // Pokud prošlo všemi kontrolami, uživatel má přístup
+      return next();
+    } catch (error) {
+      console.error("Error during data access check:", error);
+      return res.status(500).send("Server error during access check");
+    }
+  };
+  
   // Zajistíme, že uploadovací složky existují
   const uploadDir = 'uploads/documents';
   if (!fs.existsSync('uploads')) {
@@ -81,29 +173,139 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Workplace routes
   app.get("/api/workplaces", isAuthenticated, async (req, res) => {
-    const workplaces = await storage.getAllWorkplaces();
-    res.json(workplaces);
+    try {
+      let workplaces;
+      
+      // Pokud je admin, vidí všechna pracoviště
+      if (req.user?.role === "admin") {
+        workplaces = await storage.getAllWorkplaces();
+      } 
+      // Pokud je firemní účet, vidí jen vlastní pracoviště
+      else if (req.user?.role === "company") {
+        // Pro firmu filtrujeme jen pracoviště, které vlastní nebo kde je správcem
+        workplaces = (await storage.getAllWorkplaces()).filter(
+          w => w.ownerId === req.user?.id || w.managerId === req.user?.id
+        );
+      }
+      // Pracovníci vidí jen pracoviště, kde mají směny
+      else {
+        const shifts = await storage.getUserShifts(req.user?.id || 0);
+        const workplaceIds = [...new Set(shifts.map(s => s.workplaceId))]; // Unikátní ID pracovišť
+        
+        // Získáme detaily o pracovištích
+        workplaces = await Promise.all(
+          workplaceIds.map(id => storage.getWorkplace(id))
+        );
+        
+        // Odfiltrujeme undefined hodnoty (pro případ, že by nějaké pracoviště už neexistovalo)
+        workplaces = workplaces.filter(Boolean);
+      }
+      
+      res.json(workplaces);
+    } catch (error) {
+      console.error("Error fetching workplaces:", error);
+      res.status(500).json({ error: "Failed to fetch workplaces" });
+    }
   });
 
-  app.post("/api/workplaces", isAdmin, async (req, res) => {
-    const workplace = await storage.createWorkplace(req.body);
-    res.status(201).json(workplace);
+  app.post("/api/workplaces", isAuthenticated, async (req, res) => {
+    try {
+      // Pouze admin nebo company role může vytvářet pracoviště
+      if (req.user?.role !== "admin" && req.user?.role !== "company") {
+        return res.status(403).json({ error: "Forbidden: Admin or Company access required" });
+      }
+      
+      // Přidáme ID vlastníka (přihlášeného uživatele)
+      const workplaceData = { 
+        ...req.body,
+        ownerId: req.user.id // Nastavíme vlastníka na ID aktuálního uživatele
+      };
+      
+      const workplace = await storage.createWorkplace(workplaceData);
+      res.status(201).json(workplace);
+    } catch (error) {
+      console.error("Error creating workplace:", error);
+      res.status(500).json({ error: "Failed to create workplace" });
+    }
   });
 
   app.get("/api/workplaces/:id", isAuthenticated, async (req, res) => {
-    const workplace = await storage.getWorkplace(parseInt(req.params.id));
-    if (!workplace) {
-      return res.status(404).send("Workplace not found");
+    try {
+      const workplaceId = parseInt(req.params.id);
+      const workplace = await storage.getWorkplace(workplaceId);
+      
+      if (!workplace) {
+        return res.status(404).json({ error: "Pracoviště nenalezeno" });
+      }
+      
+      // Admin má přístup ke všem pracovištím
+      if (req.user?.role === "admin") {
+        return res.json(workplace);
+      }
+      
+      // Firma má přístup jen ke svým pracovištím nebo těm, kde je správcem
+      if (req.user?.role === "company") {
+        if (workplace.ownerId === req.user.id || workplace.managerId === req.user.id) {
+          return res.json(workplace);
+        }
+        return res.status(403).json({ error: "Nemáte oprávnění k tomuto pracovišti" });
+      }
+      
+      // Pracovník má přístup jen k pracovištím, kde má směny
+      const shifts = await storage.getUserShifts(req.user?.id || 0);
+      const hasShiftAtWorkplace = shifts.some(shift => shift.workplaceId === workplaceId);
+      
+      if (hasShiftAtWorkplace) {
+        return res.json(workplace);
+      }
+      
+      return res.status(403).json({ error: "Nemáte oprávnění k tomuto pracovišti" });
+    } catch (error: any) {
+      console.error("Chyba při získávání pracoviště:", error);
+      return res.status(500).json({ error: "Nepodařilo se získat informace o pracovišti" });
     }
-    res.json(workplace);
   });
 
-  app.put("/api/workplaces/:id", isAdmin, async (req, res) => {
-    const updatedWorkplace = await storage.updateWorkplace(parseInt(req.params.id), req.body);
-    if (!updatedWorkplace) {
-      return res.status(404).send("Workplace not found");
+  app.put("/api/workplaces/:id", isAuthenticated, async (req, res) => {
+    try {
+      const workplaceId = parseInt(req.params.id);
+      const workplaceData = req.body;
+      
+      // Nejprve získáme existující pracoviště, abychom mohli zkontrolovat oprávnění
+      const existingWorkplace = await storage.getWorkplace(workplaceId);
+      if (!existingWorkplace) {
+        return res.status(404).json({ error: "Pracoviště nenalezeno" });
+      }
+      
+      // Ověříme přístupová práva - pouze admin a vlastník/správce pracoviště může upravovat pracoviště
+      const isAdmin = req.user?.role === "admin";
+      const isOwner = req.user?.role === "company" && existingWorkplace.ownerId === req.user.id;
+      const isManager = req.user?.role === "company" && existingWorkplace.managerId === req.user.id;
+      
+      if (!isAdmin && !isOwner && !isManager) {
+        return res.status(403).json({ error: "Nemáte oprávnění upravovat toto pracoviště" });
+      }
+      
+      // Pouze admin a vlastník mohou měnit vlastníka pracoviště
+      if (!isAdmin && !isOwner && workplaceData.ownerId !== undefined) {
+        delete workplaceData.ownerId;
+      }
+      
+      // Ujistíme se, že všechna ID jsou čísla
+      if (workplaceData.managerId !== null && workplaceData.managerId !== undefined) {
+        workplaceData.managerId = Number(workplaceData.managerId);
+      }
+      
+      const updatedWorkplace = await storage.updateWorkplace(workplaceId, workplaceData);
+      if (!updatedWorkplace) {
+        return res.status(500).json({ error: "Nepodařilo se aktualizovat pracoviště" });
+      }
+      
+      res.json(updatedWorkplace);
+    } catch (error: any) {
+      console.error("Chyba při aktualizaci pracoviště:", error);
+      res.status(500).json({ error: error.message || "Nepodařilo se aktualizovat pracoviště" });
     }
-    res.json(updatedWorkplace);
   });
   
   // Přidaný PATCH endpoint pro částečnou aktualizaci pracoviště
@@ -112,15 +314,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("PATCH workplace data:", JSON.stringify(req.body, null, 2));
       const workplaceId = parseInt(req.params.id);
       
+      // Nejprve získáme existující pracoviště, abychom mohli zkontrolovat oprávnění
+      const existingWorkplace = await storage.getWorkplace(workplaceId);
+      if (!existingWorkplace) {
+        return res.status(404).json({ error: "Pracoviště nenalezeno" });
+      }
+      
+      // Ověříme přístupová práva - pouze admin a vlastník/správce pracoviště může upravovat pracoviště
+      const isAdmin = req.user?.role === "admin";
+      const isOwner = req.user?.role === "company" && existingWorkplace.ownerId === req.user.id;
+      const isManager = req.user?.role === "company" && existingWorkplace.managerId === req.user.id;
+      
+      if (!isAdmin && !isOwner && !isManager) {
+        return res.status(403).json({ error: "Nemáte oprávnění upravovat toto pracoviště" });
+      }
+      
       // Ujistíme se, že managerId je číslo, pokud je definováno
       const updateData = { ...req.body };
+      
+      // Pouze admin a vlastník mohou měnit vlastníka pracoviště
+      if (!isAdmin && !isOwner && updateData.ownerId !== undefined) {
+        delete updateData.ownerId;
+      }
+      
       if (updateData.managerId !== null && updateData.managerId !== undefined) {
         updateData.managerId = Number(updateData.managerId);
       }
       
       const updatedWorkplace = await storage.updateWorkplace(workplaceId, updateData);
       if (!updatedWorkplace) {
-        return res.status(404).json({ error: "Pracoviště nenalezeno" });
+        return res.status(500).json({ error: "Nepodařilo se aktualizovat pracoviště" });
       }
       
       res.json(updatedWorkplace);
@@ -130,26 +353,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/workplaces/:id", isAdmin, async (req, res) => {
-    const success = await storage.deleteWorkplace(parseInt(req.params.id));
-    if (!success) {
-      return res.status(404).send("Workplace not found");
+  app.delete("/api/workplaces/:id", isAuthenticated, async (req, res) => {
+    try {
+      const workplaceId = parseInt(req.params.id);
+      
+      // Nejprve získáme existující pracoviště, abychom mohli zkontrolovat oprávnění
+      const existingWorkplace = await storage.getWorkplace(workplaceId);
+      if (!existingWorkplace) {
+        return res.status(404).json({ error: "Pracoviště nenalezeno" });
+      }
+      
+      // Ověříme přístupová práva - pouze admin a vlastník pracoviště může mazat pracoviště
+      const isAdmin = req.user?.role === "admin";
+      const isOwner = req.user?.role === "company" && existingWorkplace.ownerId === req.user.id;
+      
+      if (!isAdmin && !isOwner) {
+        return res.status(403).json({ error: "Nemáte oprávnění smazat toto pracoviště" });
+      }
+      
+      // Zkontrolujeme, zda nejsou na pracovišti aktviní směny
+      // Toto je volitelné a dá se to implementovat
+      
+      const success = await storage.deleteWorkplace(workplaceId);
+      if (!success) {
+        return res.status(500).json({ error: "Nepodařilo se smazat pracoviště" });
+      }
+      
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Chyba při mazání pracoviště:", error);
+      res.status(500).json({ error: error.message || "Nepodařilo se smazat pracoviště" });
     }
-    res.status(204).send();
   });
 
   // Worker/User routes
   app.get("/api/workers", isAuthenticated, async (req, res) => {
-    const users = await storage.getAllUsers();
-    
-    // Don't expose password hashes
-    const safeUsers = users.map(({ password, ...user }) => user);
-    res.json(safeUsers);
+    try {
+      let users;
+      
+      // Admin vidí všechny uživatele
+      if (req.user?.role === "admin") {
+        users = await storage.getAllUsers();
+      }
+      // Firmy vidí pouze své zaměstnance
+      else if (req.user?.role === "company") {
+        users = (await storage.getAllUsers()).filter(user => 
+          // Uživatel má parentCompanyId shodné s ID přihlášené firmy nebo je to sám přihlášený uživatel
+          user.parentCompanyId === req.user.id || user.id === req.user.id
+        );
+      }
+      // Pracovníci vidí pouze svůj účet
+      else {
+        users = [await storage.getUser(req.user?.id || 0)].filter(Boolean);
+      }
+      
+      // Don't expose password hashes
+      const safeUsers = users.map(({ password, ...user }) => user);
+      res.json(safeUsers);
+    } catch (error) {
+      console.error("Error fetching workers:", error);
+      res.status(500).json({ error: "Failed to fetch workers" });
+    }
   });
   
   // Vytvoření nového pracovníka
-  app.post("/api/workers", isAdmin, async (req, res) => {
+  app.post("/api/workers", isAuthenticated, async (req, res) => {
     try {
+      // Ověříme oprávnění - pouze admin nebo company může vytvářet pracovníky
+      if (req.user?.role !== "admin" && req.user?.role !== "company") {
+        return res.status(403).json({ error: "Nemáte oprávnění přidávat pracovníky" });
+      }
+      
       const userData = req.body;
       
       // Ověříme, zda email a username již neexistuje
@@ -170,10 +444,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userData.hourlyWage = parseInt(userData.hourlyWage);
       }
       
-      const newUser = await storage.createUser({
+      // Nastavíme role a parent company
+      let userDataToSave = {
         ...userData,
         password: hashedPassword
-      });
+      };
+      
+      // Pokud vytváří pracovníka firma, automaticky ho označíme jako "worker" a přiřadíme k firmě
+      if (req.user.role === "company") {
+        userDataToSave = {
+          ...userDataToSave,
+          role: "worker", // Vždy pouze pracovník, firma nemůže vytvářet admin účty
+          parentCompanyId: req.user.id // Přiřadíme pracovníka k této firmě
+        };
+      }
+      
+      const newUser = await storage.createUser(userDataToSave);
       
       // Odebereme heslo před odesláním odpovědi
       const { password, ...safeUser } = newUser;
@@ -185,7 +471,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Aktualizace pracovníka
-  app.patch("/api/workers/:id", isAdmin, async (req, res) => {
+  app.patch("/api/workers/:id", isAuthenticated, async (req, res) => {
     try {
       const userId = parseInt(req.params.id);
       const userData = req.body;
@@ -194,6 +480,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const existingUser = await storage.getUser(userId);
       if (!existingUser) {
         return res.status(404).json({ error: "Pracovník nenalezen" });
+      }
+      
+      // Ověříme přístupová práva
+      const hasAccess = 
+        req.user?.role === "admin" || // Admin má přístup ke všem
+        req.user?.id === userId || // Uživatel může editovat svůj vlastní profil
+        (req.user?.role === "company" && existingUser.parentCompanyId === req.user.id); // Firma může editovat své zaměstnance
+      
+      if (!hasAccess) {
+        return res.status(403).json({ error: "Nemáte oprávnění upravovat tohoto pracovníka" });
       }
       
       // Ověříme, zda nový email již neexistuje (pokud se mění)
@@ -222,6 +518,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userData.hourlyWage = parseInt(userData.hourlyWage);
       }
       
+      // Firma nesmí měnit role pracovníků (pokud není admin)
+      if (req.user?.role === "company" && userData.role && req.user.id !== userId) {
+        delete userData.role; // Odstraníme role z dat, která se budou ukládat
+      }
+      
+      // Pracovník nesmí měnit svou vlastní roli
+      if (req.user?.role === "worker" && userData.role) {
+        delete userData.role;
+      }
+      
       const updatedUser = await storage.updateUser(userId, userData);
       if (!updatedUser) {
         return res.status(500).json({ error: "Nepodařilo se aktualizovat pracovníka" });
@@ -237,7 +543,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Smazání pracovníka
-  app.delete("/api/workers/:id", isAdmin, async (req, res) => {
+  app.delete("/api/workers/:id", isAuthenticated, async (req, res) => {
     try {
       const userId = parseInt(req.params.id);
       
@@ -250,6 +556,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Nelze smazat vlastní účet
       if (userId === req.user?.id) {
         return res.status(400).json({ error: "Nelze smazat vlastní účet" });
+      }
+      
+      // Ověříme přístupová práva
+      const hasAccess = 
+        req.user?.role === "admin" || // Admin může smazat kohokoliv
+        (req.user?.role === "company" && existingUser.parentCompanyId === req.user.id); // Firma může smazat svoje zaměstnance
+      
+      if (!hasAccess) {
+        return res.status(403).json({ error: "Nemáte oprávnění smazat tohoto pracovníka" });
       }
       
       const success = await storage.deleteUser(userId);
@@ -266,38 +581,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Shift routes
   app.get("/api/shifts", isAuthenticated, async (req, res) => {
-    const userId = req.query.userId ? parseInt(req.query.userId as string) : undefined;
-    const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
-    const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
-    
-    let shifts;
-    if (userId) {
-      shifts = await storage.getUserShifts(userId);
-    } else if (startDate && endDate) {
-      shifts = await storage.getShiftsByDate(startDate, endDate);
-    } else {
-      shifts = await storage.getAllShifts();
+    try {
+      const userId = req.query.userId ? parseInt(req.query.userId as string) : undefined;
+      const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+      const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+      const workplaceId = req.query.workplaceId ? parseInt(req.query.workplaceId as string) : undefined;
+      
+      let allShifts;
+      
+      // Získáme směny podle zadaných parametrů
+      if (userId) {
+        allShifts = await storage.getUserShifts(userId);
+      } else if (startDate && endDate) {
+        allShifts = await storage.getShiftsByDate(startDate, endDate);
+      } else {
+        allShifts = await storage.getAllShifts();
+      }
+      
+      // Filtrujeme směny podle pracoviště, pokud je zadáno
+      let shifts = allShifts;
+      if (workplaceId) {
+        shifts = shifts.filter(shift => shift.workplaceId === workplaceId);
+      }
+      
+      // Filtrujeme směny podle role uživatele a přístupových práv
+      if (req.user?.role === "admin") {
+        // Admin vidí všechny směny, nemusíme filtrovat
+      } else if (req.user?.role === "company") {
+        // Firma vidí pouze směny svých pracovníků a na svých pracovištích
+        const companyId = req.user.id;
+        
+        // Získáme všechny pracovníky firmy
+        const companyEmployees = (await storage.getAllUsers())
+          .filter(user => user.parentCompanyId === companyId)
+          .map(user => user.id);
+          
+        // Získáme všechna pracoviště firmy
+        const companyWorkplaces = (await storage.getAllWorkplaces())
+          .filter(workplace => workplace.ownerId === companyId)
+          .map(workplace => workplace.id);
+          
+        // Filtrujeme směny, které patří zaměstnancům firmy nebo jsou na pracovištích firmy
+        shifts = shifts.filter(shift => 
+          (shift.userId && companyEmployees.includes(shift.userId)) || 
+          (shift.workplaceId && companyWorkplaces.includes(shift.workplaceId))
+        );
+      } else {
+        // Pracovník vidí pouze své vlastní směny
+        shifts = shifts.filter(shift => shift.userId === req.user?.id);
+      }
+      
+      // Enhance shifts with workplace and user details
+      const enhancedShifts = await Promise.all(shifts.map(async (shift) => {
+        const workplace = shift.workplaceId ? await storage.getWorkplace(shift.workplaceId) : null;
+        const user = shift.userId ? await storage.getUser(shift.userId) : null;
+        
+        // Remove password from user object if it exists
+        const safeUser = user ? { ...user, password: undefined } : null;
+        
+        return {
+          ...shift,
+          workplace,
+          user: safeUser,
+        };
+      }));
+      
+      res.json(enhancedShifts);
+    } catch (error: any) {
+      console.error("Chyba při získávání směn:", error);
+      res.status(500).json({ error: error.message || "Nepodařilo se získat informace o směnách" });
     }
-    
-    // Enhance shifts with workplace and user details
-    const enhancedShifts = await Promise.all(shifts.map(async (shift) => {
-      const workplace = shift.workplaceId ? await storage.getWorkplace(shift.workplaceId) : null;
-      const user = shift.userId ? await storage.getUser(shift.userId) : null;
-      
-      // Remove password from user object if it exists
-      const safeUser = user ? { ...user, password: undefined } : null;
-      
-      return {
-        ...shift,
-        workplace,
-        user: safeUser,
-      };
-    }));
-    
-    res.json(enhancedShifts);
   });
 
-  app.post("/api/shifts", isAdmin, async (req, res) => {
+  app.post("/api/shifts", isAuthenticated, async (req, res) => {
     try {
       // Zkopírujeme tělo požadavku, abychom ho mohli upravit
       const shiftData = { ...req.body };
@@ -356,6 +712,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid endTime format" });
       }
       
+      // Ověříme přístupová práva - pouze admin a company mohou vytvářet směny
+      if (req.user?.role !== "admin" && req.user?.role !== "company") {
+        return res.status(403).json({ error: "Nemáte oprávnění vytvářet směny" });
+      }
+      
+      // Pokud je přihlášen company účet, ověříme, zda mu patří pracoviště
+      if (req.user?.role === "company") {
+        const workplace = await storage.getWorkplace(shiftData.workplaceId);
+        if (!workplace) {
+          return res.status(404).json({ error: "Pracoviště nenalezeno" });
+        }
+        
+        // Pokud má pracoviště vlastníka, ověříme, že je to aktuální firma
+        if (workplace.ownerId !== undefined && workplace.ownerId !== req.user.id) {
+          return res.status(403).json({ error: "Nemáte oprávnění vytvářet směny pro toto pracoviště" });
+        }
+        
+        // Pokud je specifikován uživatel, ověříme, že patří do této firmy
+        if (shiftData.userId) {
+          const user = await storage.getUser(shiftData.userId);
+          if (!user) {
+            return res.status(404).json({ error: "Zaměstnanec nenalezen" });
+          }
+          
+          if (user.parentCompanyId !== req.user.id) {
+            return res.status(403).json({ error: "Nemáte oprávnění vytvářet směny pro tohoto zaměstnance" });
+          }
+        }
+      }
+      
       console.log("Final shift data to save:", {
         workplaceId: shiftData.workplaceId,
         userId: shiftData.userId,
@@ -375,29 +761,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/shifts/:id", isAuthenticated, async (req, res) => {
-    const shift = await storage.getShift(parseInt(req.params.id));
-    if (!shift) {
-      return res.status(404).send("Shift not found");
+    try {
+      const shiftId = parseInt(req.params.id);
+      const shift = await storage.getShift(shiftId);
+      
+      if (!shift) {
+        return res.status(404).json({ error: "Směna nenalezena" });
+      }
+      
+      // Ověříme přístupová práva
+      const isAdmin = req.user?.role === "admin";
+      const isCompany = req.user?.role === "company";
+      const isOwnShift = req.user?.id === shift.userId;
+      
+      // Pokud jde o firemní účet, zkontrolujeme, zda má přístup k pracovišti nebo zaměstnanci
+      let hasCompanyAccess = false;
+      if (isCompany) {
+        // Ověříme, zda je vlastníkem pracoviště nebo má zaměstnance přiřazeného k tomuto pracovišti
+        const workplace = shift.workplaceId ? await storage.getWorkplace(shift.workplaceId) : null;
+        const worker = shift.userId ? await storage.getUser(shift.userId) : null;
+        
+        if (workplace && (workplace.ownerId === req.user.id || workplace.managerId === req.user.id)) {
+          hasCompanyAccess = true;
+        }
+        
+        if (worker && worker.parentCompanyId === req.user.id) {
+          hasCompanyAccess = true;
+        }
+      }
+      
+      // Pokud nemá potřebná oprávnění, vrátíme chybu
+      if (!isAdmin && !isOwnShift && !hasCompanyAccess) {
+        return res.status(403).json({ error: "Nemáte oprávnění zobrazit tuto směnu" });
+      }
+      
+      // Enhance shift with workplace and user details
+      const workplace = shift.workplaceId ? await storage.getWorkplace(shift.workplaceId) : null;
+      const user = shift.userId ? await storage.getUser(shift.userId) : null;
+      
+      // Remove password from user object if it exists
+      const safeUser = user ? { ...user, password: undefined } : null;
+      
+      const enhancedShift = {
+        ...shift,
+        workplace,
+        user: safeUser,
+      };
+      
+      res.json(enhancedShift);
+    } catch (error: any) {
+      console.error("Chyba při získávání směny:", error);
+      res.status(500).json({ error: error.message || "Nepodařilo se získat informace o směně" });
     }
-    
-    // Enhance shift with workplace and user details
-    const workplace = shift.workplaceId ? await storage.getWorkplace(shift.workplaceId) : null;
-    const user = shift.userId ? await storage.getUser(shift.userId) : null;
-    
-    // Remove password from user object if it exists
-    const safeUser = user ? { ...user, password: undefined } : null;
-    
-    const enhancedShift = {
-      ...shift,
-      workplace,
-      user: safeUser,
-    };
-    
-    res.json(enhancedShift);
   });
 
-  app.put("/api/shifts/:id", isAdmin, async (req, res) => {
+  app.put("/api/shifts/:id", isAuthenticated, async (req, res) => {
     try {
+      // Načteme existující směnu, abychom mohli ověřit přístupová práva
+      const shiftId = parseInt(req.params.id);
+      const existingShift = await storage.getShift(shiftId);
+      
+      if (!existingShift) {
+        return res.status(404).json({ error: "Směna nenalezena" });
+      }
+      
+      // Ověříme přístupová práva - pouze admin a company mohou upravovat směny
+      // Worker může upravovat pouze své vlastní směny (když je přiřazen jako userId)
+      const isAdmin = req.user?.role === "admin";
+      const isCompany = req.user?.role === "company";
+      const isOwnShift = req.user?.id === existingShift.userId;
+      
+      if (!isAdmin && !isCompany && !isOwnShift) {
+        return res.status(403).json({ error: "Nemáte oprávnění upravovat tuto směnu" });
+      }
+      
+      // Pokud je přihlášen company účet, ověříme, zda mu patří pracoviště
+      if (isCompany && !isOwnShift) {
+        const workplace = await storage.getWorkplace(existingShift.workplaceId);
+        
+        if (!workplace) {
+          return res.status(404).json({ error: "Pracoviště nenalezeno" });
+        }
+        
+        // Ověříme, že pracoviště patří přihlášenému uživateli (firmě)
+        if (workplace.ownerId !== undefined && workplace.ownerId !== req.user?.id) {
+          return res.status(403).json({ error: "Nemáte oprávnění upravovat směny pro toto pracoviště" });
+        }
+      }
+      
       // Zkopírujeme tělo požadavku, abychom ho mohli upravit
       const shiftData = { ...req.body };
       
@@ -407,10 +858,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Ujistíme se, že workplaceId a userId jsou čísla
       if (shiftData.workplaceId) {
         shiftData.workplaceId = Number(shiftData.workplaceId);
+        
+        // Pokud je přihlášen company účet a mění se pracoviště, ověříme, zda má oprávnění k novému pracovišti
+        if (isCompany && shiftData.workplaceId !== existingShift.workplaceId) {
+          const newWorkplace = await storage.getWorkplace(shiftData.workplaceId);
+          
+          if (!newWorkplace) {
+            return res.status(404).json({ error: "Nové pracoviště nenalezeno" });
+          }
+          
+          if (newWorkplace.ownerId !== undefined && newWorkplace.ownerId !== req.user?.id) {
+            return res.status(403).json({ error: "Nemáte oprávnění přiřadit směnu k tomuto pracovišti" });
+          }
+        }
       }
       
       if (shiftData.userId) {
         shiftData.userId = Number(shiftData.userId);
+        
+        // Pokud je přihlášen company účet a mění se zaměstnanec, ověříme, zda má oprávnění k novému zaměstnanci
+        if (isCompany && shiftData.userId !== existingShift.userId) {
+          const newUser = await storage.getUser(shiftData.userId);
+          
+          if (!newUser) {
+            return res.status(404).json({ error: "Zaměstnanec nenalezen" });
+          }
+          
+          if (newUser.parentCompanyId !== req.user?.id) {
+            return res.status(403).json({ error: "Nemáte oprávnění přiřadit směnu k tomuto zaměstnanci" });
+          }
+        }
+      }
+      
+      // Worker nemůže měnit userId - nemůže přiřadit směnu jinému zaměstnanci
+      if (!isAdmin && !isCompany && isOwnShift && shiftData.userId && shiftData.userId !== existingShift.userId) {
+        delete shiftData.userId;
       }
       
       // Konvertujeme řetězce ISO na objekty Date
@@ -454,7 +936,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         notes: shiftData.notes
       });
       
-      const updatedShift = await storage.updateShift(parseInt(req.params.id), shiftData);
+      const updatedShift = await storage.updateShift(shiftId, shiftData);
       if (!updatedShift) {
         return res.status(404).send("Shift not found");
       }
@@ -467,12 +949,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/shifts/:id", isAdmin, async (req, res) => {
-    const success = await storage.deleteShift(parseInt(req.params.id));
-    if (!success) {
-      return res.status(404).send("Shift not found");
+  app.delete("/api/shifts/:id", isAuthenticated, async (req, res) => {
+    try {
+      const shiftId = parseInt(req.params.id);
+      
+      // Načteme existující směnu, abychom mohli ověřit přístupová práva
+      const existingShift = await storage.getShift(shiftId);
+      
+      if (!existingShift) {
+        return res.status(404).json({ error: "Směna nenalezena" });
+      }
+      
+      // Ověříme přístupová práva - pouze admin a company mohou mazat směny
+      // Worker může mazat pouze své vlastní směny (když je přiřazen jako userId)
+      const isAdmin = req.user?.role === "admin";
+      const isCompany = req.user?.role === "company";
+      const isOwnShift = req.user?.id === existingShift.userId;
+      
+      if (!isAdmin && !isCompany && !isOwnShift) {
+        return res.status(403).json({ error: "Nemáte oprávnění smazat tuto směnu" });
+      }
+      
+      // Pokud je přihlášen company účet, ověříme, zda mu patří pracoviště
+      if (isCompany && !isOwnShift) {
+        const workplace = await storage.getWorkplace(existingShift.workplaceId);
+        
+        if (!workplace) {
+          return res.status(404).json({ error: "Pracoviště nenalezeno" });
+        }
+        
+        // Ověříme, že pracoviště patří přihlášenému uživateli (firmě)
+        if (workplace.ownerId !== undefined && workplace.ownerId !== req.user?.id) {
+          return res.status(403).json({ error: "Nemáte oprávnění smazat směny pro toto pracoviště" });
+        }
+      }
+      
+      const success = await storage.deleteShift(shiftId);
+      if (!success) {
+        return res.status(404).json({ error: "Směna nenalezena" });
+      }
+      
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Chyba při mazání směny:", error);
+      res.status(500).json({ error: error.message || "Nepodařilo se smazat směnu" });
     }
-    res.status(204).send();
   });
 
   // Exchange request routes

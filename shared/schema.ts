@@ -60,6 +60,7 @@ export const workplaces = pgTable("workplaces", {
   address: text("address"),
   notes: text("notes"),
   managerId: integer("manager_id"),
+  ownerId: integer("owner_id"), // ID firmy, která vlastní toto pracoviště
   // Údaje o klientovi/firmě
   companyName: text("company_name"),
   companyId: text("company_id"), // IČO
