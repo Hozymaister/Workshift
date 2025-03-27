@@ -17,7 +17,7 @@ type AuthContextType = {
   error: Error | null;
   refetchUser: () => void;
   loginMutation: UseMutationResult<SafeUser, Error, LoginData>;
-  logoutMutation: UseMutationResult<void, Error, void>;
+  logoutMutation: UseMutationResult<unknown, Error, void>;
   registerMutation: UseMutationResult<SafeUser, Error, RegisterData>;
 };
 
@@ -108,12 +108,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logoutMutation = useMutation({
     mutationFn: async () => {
       console.log("Attempting to logout...");
-      await apiRequest("POST", "/api/logout");
+      try {
+        await apiRequest("POST", "/api/logout");
+      } catch (error) {
+        console.error("Logout API request error:", error);
+        throw error;
+      }
     },
     onSuccess: () => {
       console.log("Logout successful. Clearing user data from cache.");
+      // Vyčistit data uživatele z cache
       queryClient.setQueryData(["/api/user"], null);
-      // Ensure the query is invalidated to force a refetch when needed
+      // Invalidovat query, aby se při příští potřebě znovu načetla
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       
       toast({
@@ -121,16 +127,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: "Byli jste úspěšně odhlášeni",
       });
       
-      // Přesměrování na přihlašovací stránku
-      window.location.href = "/auth";
+      // Krátké zpoždění před přesměrováním, aby měl toast čas se zobrazit
+      setTimeout(() => {
+        // Přesměrování na přihlašovací stránku
+        window.location.href = "/auth";
+      }, 500);
     },
     onError: (error: Error) => {
       console.error("Logout error:", error);
       toast({
         title: "Odhlášení selhalo",
-        description: error.message,
+        description: error.message || "Nastala chyba při odhlašování",
         variant: "destructive",
       });
+      
+      // I v případě chyby vyčistíme cache a přesměrujeme na přihlašovací stránku
+      queryClient.setQueryData(["/api/user"], null);
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      
+      setTimeout(() => {
+        window.location.href = "/auth";
+      }, 1500);
     },
   });
 

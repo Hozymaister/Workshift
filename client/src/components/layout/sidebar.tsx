@@ -9,7 +9,9 @@ export function Sidebar() {
   const { user, logoutMutation } = useAuth();
   const [location] = useLocation();
 
-  const handleLogout = () => {
+  const handleLogout = (e: React.MouseEvent) => {
+    e.preventDefault();
+    console.log("Logout button clicked");
     logoutMutation.mutate();
   };
 

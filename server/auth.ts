@@ -179,10 +179,30 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/logout", (req, res, next) => {
-    req.logout((err) => {
-      if (err) return next(err);
-      res.sendStatus(200);
-    });
+    console.log("Logout endpoint called");
+    // Pokud je uživatel přihlášen, odhlásit ho
+    if (req.isAuthenticated()) {
+      console.log("User is authenticated, performing logout");
+      req.logout((err) => {
+        if (err) {
+          console.error("Logout error:", err);
+          return next(err);
+        }
+        req.session.destroy((err) => {
+          if (err) {
+            console.error("Session destruction error:", err);
+            return next(err);
+          }
+          console.log("Session destroyed, logout successful");
+          res.clearCookie('connect.sid');
+          res.status(200).json({ message: "Logout successful" });
+        });
+      });
+    } else {
+      // Uživatel již není přihlášen, ale i tak vrátíme úspěch
+      console.log("User already not authenticated");
+      res.status(200).json({ message: "Already logged out" });
+    }
   });
 
   app.get("/api/user", (req, res) => {

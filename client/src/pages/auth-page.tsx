@@ -125,7 +125,12 @@ export default function AuthPage() {
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [isNewPasswordDialogOpen, setIsNewPasswordDialogOpen] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
-  const [registrationType, setRegistrationType] = useState<"worker"|"company">("worker");
+  const [registrationType, setRegistrationType] = useState<"worker"|"company">(() => {
+    // Zjistíme, zda máme uloženou poslední volbu
+    const savedType = localStorage.getItem('registrationType');
+    // Pokud ano, použijeme ji, jinak výchozí hodnota je "worker"
+    return (savedType === "worker" || savedType === "company") ? savedType : "worker";
+  });
 
   // Login form
   const loginForm = useForm<LoginFormValues>({
@@ -680,7 +685,10 @@ export default function AuthPage() {
                   <div className="flex space-x-4">
                     <button
                       type="button"
-                      onClick={() => setRegistrationType("worker")}
+                      onClick={() => {
+                        setRegistrationType("worker");
+                        localStorage.setItem('registrationType', 'worker');
+                      }}
                       className={`flex-1 p-3 border rounded-lg text-center ${
                         registrationType === "worker" 
                           ? "border-primary bg-primary/10 text-primary" 
@@ -695,7 +703,10 @@ export default function AuthPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setRegistrationType("company")}
+                      onClick={() => {
+                        setRegistrationType("company");
+                        localStorage.setItem('registrationType', 'company');
+                      }}
                       className={`flex-1 p-3 border rounded-lg text-center ${
                         registrationType === "company" 
                           ? "border-primary bg-primary/10 text-primary" 
