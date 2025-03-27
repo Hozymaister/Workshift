@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Calendar, RefreshCw, Building2, MoreHorizontal, Receipt, Table, FileText, Users } from "lucide-react";
+import { LayoutDashboard, Calendar, RefreshCw, Building2, MoreHorizontal, Receipt, Table, FileText, Users, LayoutGrid } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useState } from "react";

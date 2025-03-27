@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { X, LayoutDashboard, Calendar, RefreshCw, Building2, Users, FileText, LogOut, Receipt, Table, Book, ScanLine } from "lucide-react";
+import { X, LayoutDashboard, Calendar, RefreshCw, Building2, Users, FileText, LogOut, Receipt, Table, Book, ScanLine, LayoutGrid } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface MobileMenuProps {
@@ -37,6 +37,7 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
   // Základní navigační položky
   const commonNavItems = [
     { path: "/", label: "Domů", icon: <LayoutDashboard className="mr-3 h-5 w-5" /> },
+    { path: "/custom-dashboard", label: "Přizpůsobitelný dashboard", icon: <LayoutGrid className="mr-3 h-5 w-5" /> },
     { path: "/shifts", label: "Směny", icon: <Calendar className="mr-3 h-5 w-5" /> },
     { path: "/shift-table", label: "Tabulka směn", icon: <Table className="mr-3 h-5 w-5" /> },
     { path: "/exchanges", label: "Výměny směn", icon: <RefreshCw className="mr-3 h-5 w-5" /> },

@@ -5,6 +5,7 @@ import { LanguageProvider } from "@/hooks/use-language";
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
 import DashboardPage from "@/pages/dashboard-page";
+import CustomDashboard from "@/pages/custom-dashboard";
 import ShiftsPage from "@/pages/shifts-page";
 import ShiftTablePage from "@/pages/shift-table-page";
 import ExchangesPage from "@/pages/exchanges-page";
@@ -24,6 +25,7 @@ function Router() {
     <Switch>
       <Route path="/auth" component={AuthPage} />
       <ProtectedRoute path="/" component={DashboardPage} />
+      <ProtectedRoute path="/custom-dashboard" component={CustomDashboard} />
       <ProtectedRoute path="/shifts" component={ShiftsPage} />
       <ProtectedRoute path="/shift-table" component={ShiftTablePage} />
       <ProtectedRoute path="/exchanges" component={ExchangesPage} />
