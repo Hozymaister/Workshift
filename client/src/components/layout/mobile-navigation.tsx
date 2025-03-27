@@ -12,10 +12,10 @@ export function MobileNavigation() {
   
   // Základní navigační položky pro všechny
   const commonNavItems = [
-    { path: "/dashboard", label: "Dashboard", icon: <LayoutDashboard className="h-5 w-5" /> },
-    { path: "/", label: "Vlastní", icon: <LayoutGrid className="h-5 w-5" /> },
+    { path: "/", label: "Dashboard", icon: <LayoutDashboard className="h-5 w-5" /> },
     { path: "/shifts", label: "Směny", icon: <Calendar className="h-5 w-5" /> },
     { path: "/shift-table", label: "Tabulka", icon: <Table className="h-5 w-5" /> },
+    { path: "/exchanges", label: "Výměny", icon: <RefreshCw className="h-5 w-5" /> },
   ];
   
   // Položky pro firmy v dolní navigaci

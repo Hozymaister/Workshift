@@ -6,7 +6,6 @@ import { OnboardingProvider } from "@/hooks/use-onboarding";
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
 import DashboardPage from "@/pages/dashboard-page";
-import CustomDashboard from "@/pages/custom-dashboard";
 import ShiftsPage from "@/pages/shifts-page";
 import ShiftTablePage from "@/pages/shift-table-page";
 import ExchangesPage from "@/pages/exchanges-page";
@@ -26,12 +25,12 @@ function Router() {
     <Switch>
       <Route path="/auth" component={AuthPage} />
       {/* Cesty pro všechny role */}
-      <ProtectedRoute path="/dashboard-old" component={DashboardPage} />
       <ProtectedRoute path="/shifts" component={ShiftsPage} />
       <ProtectedRoute path="/shift-table" component={ShiftTablePage} />
       <ProtectedRoute path="/exchanges" component={ExchangesPage} />
       <ProtectedRoute path="/profile" component={ProfilePage} />
       <ProtectedRoute path="/settings" component={SettingsPage} />
+      <ProtectedRoute path="/reports" component={ReportsPage} />
       <ProtectedRoute path="/" component={DashboardPage} />
       
       {/* Cesty pouze pro adminy a společnosti */}
@@ -48,11 +47,6 @@ function Router() {
       <ProtectedRoute 
         path="/workers" 
         component={WorkersPage} 
-        requiredRoles={["admin", "company"]} 
-      />
-      <ProtectedRoute 
-        path="/reports" 
-        component={ReportsPage} 
         requiredRoles={["admin", "company"]} 
       />
       <ProtectedRoute 
