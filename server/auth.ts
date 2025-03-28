@@ -1,8 +1,8 @@
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
-import { Express } from "express";
+import { Express, Request, Response, NextFunction } from "express";
 import session from "express-session";
-import { scrypt, randomBytes, timingSafeEqual } from "crypto";
+import { scrypt, randomBytes, timingSafeEqual, ScryptOptions } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
@@ -13,19 +13,51 @@ declare global {
   }
 }
 
+// Použití promisify pro scrypt
 const scryptAsync = promisify(scrypt);
 
+// Bezpečná implementace hashování s vyššími parametry bezpečnosti
 export async function hashPassword(password: string) {
-  const salt = randomBytes(16).toString("hex");
-  const buf = (await scryptAsync(password, salt, 64)) as Buffer;
-  return `${buf.toString("hex")}.${salt}`;
+  // Zvýšení délky soli pro lepší bezpečnost
+  const salt = randomBytes(32).toString("hex");
+  
+  // Nastavení pro zvýšení bezpečnosti (N = 2^14, r = 8, p = 1)
+  const N = 16384; // 2^14 (standardní doporučení)
+  const r = 8;     // Doporučená hodnota
+  const p = 1;     // Paralelní faktor (obvykle 1 pro webové aplikace)
+  
+  return new Promise<string>((resolve, reject) => {
+    scrypt(password, salt, 64, { N, r, p }, (err, derivedKey) => {
+      if (err) return reject(err);
+      resolve(`${derivedKey.toString("hex")}.${salt}`);
+    });
+  });
 }
 
 async function comparePasswords(supplied: string, stored: string) {
   const [hashed, salt] = stored.split(".");
   const hashedBuf = Buffer.from(hashed, "hex");
-  const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
-  return timingSafeEqual(hashedBuf, suppliedBuf);
+  
+  return new Promise<boolean>((resolve, reject) => {
+    // Výchozí nastavení pro kryptografickou sílu
+    const options = { 
+      N: 16384,  // CPU/memory cost faktor
+      r: 8,      // Block size faktor
+      p: 1       // Paralelizační faktor
+    };
+    
+    // Ověření hesla se stejnými parametry jako při vytváření
+    scrypt(supplied, salt, 64, options, (err, derivedKey) => {
+      if (err) return reject(err);
+      
+      try {
+        // Bezpečné porovnání odolné vůči timing útokům
+        resolve(timingSafeEqual(hashedBuf, derivedKey));
+      } catch (e) {
+        reject(e);
+      }
+    });
+  });
 }
 
 export function setupAuth(app: Express) {
@@ -45,9 +77,12 @@ export function setupAuth(app: Express) {
     resave: false,
     saveUninitialized: false,
     store: storage.sessionStore,
+    name: 'shift_manager_sid', // Vlastní název cookie pro zvýšení bezpečnosti
     cookie: {
       secure: process.env.NODE_ENV === "production",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week
+      httpOnly: true, // Ochrana proti XSS
+      sameSite: 'lax', // Ochrana proti CSRF
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 1 týden
     }
   };
 
@@ -75,8 +110,26 @@ export function setupAuth(app: Express) {
 
   passport.serializeUser((user, done) => done(null, user.id));
   passport.deserializeUser(async (id: number, done) => {
-    const user = await storage.getUser(id);
-    done(null, user);
+    try {
+      const user = await storage.getUser(id);
+      if (!user) {
+        return done(null, false);
+      }
+      
+      // Odstranění hesla z objektu uživatele pro zvýšení bezpečnosti
+      const { password, ...safeUser } = user;
+      
+      // Přidání časového razítka poslední aktivity
+      const userWithTimestamp = {
+        ...safeUser,
+        lastActive: new Date()
+      };
+      
+      done(null, userWithTimestamp as any);
+    } catch (error) {
+      console.error("Error during user deserialization:", error);
+      done(error, null);
+    }
   });
 
   app.post("/api/register", async (req, res, next) => {
@@ -198,7 +251,7 @@ export function setupAuth(app: Express) {
             return next(err);
           }
           console.log("Session destroyed, logout successful");
-          res.clearCookie('connect.sid');
+          res.clearCookie('shift_manager_sid'); // Aktualizováno na vlastní název cookie
           res.status(200).json({ message: "Logout successful" });
         });
       });

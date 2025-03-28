@@ -14,48 +14,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Sets up /api/register, /api/login, /api/logout, /api/user
   setupAuth(app);
 
-  // Middleware to check if user is authenticated
-  const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
-    if (req.isAuthenticated()) {
-      return next();
-    }
-    res.status(401).send("Unauthorized");
+  // Definice povolených rolí pro konzistentní kontrolu
+  const ROLES = {
+    ADMIN: "admin",
+    COMPANY: "company",
+    WORKER: "worker"
   };
 
-  // Middleware to check if user is admin
-  const isAdmin = (req: Request, res: Response, next: NextFunction) => {
-    if (req.isAuthenticated() && req.user && req.user.role === "admin") {
+  // Middleware pro kontrolu, zda je uživatel přihlášen
+  const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
+    if (req.isAuthenticated()) {
+      // Zaznamenání přístupu pro účely auditu
+      console.log(`Authenticated access: ${req.method} ${req.path} by user ID ${req.user.id} (${req.user.role})`);
       return next();
     }
+    // Detailnější sledování neautorizovaných přístupů
+    console.log(`Unauthorized access attempt: ${req.method} ${req.path}`);
+    res.status(401).send("Unauthorized: Please login to access this resource");
+  };
+
+  // Vylepšené middleware pro ověření role admin
+  const isAdmin = (req: Request, res: Response, next: NextFunction) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Unauthorized: Please login to access this resource");
+    }
+    
+    if (req.user && req.user.role === ROLES.ADMIN) {
+      console.log(`Admin access: ${req.method} ${req.path} by user ID ${req.user.id}`);
+      return next();
+    }
+    
+    // Logování pokusů o neoprávněný přístup pro účely auditu
+    console.log(`Forbidden admin access attempt: ${req.method} ${req.path} by user ID ${req.user.id} (${req.user.role})`);
     res.status(403).send("Forbidden: Admin access required");
   };
   
-  // Middleware pro firemní účty - pouze firemní účty mohou přistupovat k fakturám a skenování
+  // Vylepšené middleware pro ověření role company
   const isCompany = (req: Request, res: Response, next: NextFunction) => {
-    if (req.isAuthenticated() && req.user && (req.user.role === "company" || req.user.role === "admin")) {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Unauthorized: Please login to access this resource");
+    }
+    
+    if (req.user && (req.user.role === ROLES.COMPANY || req.user.role === ROLES.ADMIN)) {
+      console.log(`Company/Admin access: ${req.method} ${req.path} by user ID ${req.user.id} (${req.user.role})`);
       return next();
     }
-    res.status(403).send("Forbidden: Company access required");
+    
+    // Logování pokusů o neoprávněný přístup
+    console.log(`Forbidden company access attempt: ${req.method} ${req.path} by user ID ${req.user.id} (${req.user.role})`);
+    res.status(403).send("Forbidden: Company or admin access required");
   };
   
-  // Middleware pro ověření, zda má uživatel přístup k datům (vlastní nebo jako firma k datům svých zaměstnanců)
+  // Vylepšené middleware pro ověření, zda má uživatel přístup k datům
   const hasDataAccess = async (req: Request, res: Response, next: NextFunction) => {
     try {
       if (!req.isAuthenticated() || !req.user) {
-        return res.status(401).send("Unauthorized");
+        console.log(`Unauthorized access attempt to protected data: ${req.method} ${req.path}`);
+        return res.status(401).send("Unauthorized: Please login to access this resource");
       }
 
       // Pokud je admin, má přístup ke všemu
-      if (req.user.role === "admin") {
+      if (req.user.role === ROLES.ADMIN) {
+        console.log(`Admin access to data: ${req.method} ${req.path} by user ID ${req.user.id}`);
         return next();
       }
 
       // Získáme ID dat z požadavku, ke kterým chceme přistoupit
       const dataId = parseInt(req.params.id);
-      const dataType = req.path.split('/')[2] || ''; // Např. 'workplaces', 'shifts', 'users', atd.
+      // Rozpoznáme typ dat z cesty URL (např. 'workplaces', 'shifts', 'users', atd.)
+      const pathParts = req.path.split('/').filter(Boolean); // Odstraní prázdné řetězce
+      const dataType = pathParts.length > 0 ? pathParts[0] : '';
       
-      // Pokud nemáme ID, nemůžeme ověřit přístup
+      // Pokud nemáme ID nebo je ID neplatné, nemůžeme spolehlivě ověřit přístup
       if (!dataId || isNaN(dataId)) {
+        // Přístup ke kolekcím je ověřen v jednotlivých kontrolerech
+        console.log(`Access to collection ${dataType}: ${req.method} ${req.path} by user ID ${req.user.id} (${req.user.role})`);
         return next();
       }
       
@@ -63,24 +96,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       switch(dataType) {
         case 'workplaces':
           // Pokud je company, má přístup jen k vlastním pracovištím nebo těm, kde je správcem
-          if (req.user.role === "company") {
+          if (req.user.role === ROLES.COMPANY) {
             const workplace = await storage.getWorkplace(dataId);
-            if (!workplace || (workplace.ownerId !== req.user.id && workplace.managerId !== req.user.id)) {
+            if (!workplace) {
+              return res.status(404).send("Workplace not found");
+            }
+            
+            if (workplace.ownerId !== req.user.id && workplace.managerId !== req.user.id) {
+              console.log(`Forbidden workplace access attempt: ${req.method} ${req.path} by user ID ${req.user.id}`);
               return res.status(403).send("Forbidden: No access to this workplace");
             }
+            
+            console.log(`Company access to workplace ${dataId}: ${req.method} ${req.path} by user ID ${req.user.id}`);
+          }
+          // Pracovníci mají přístup jen k pracovištím, kde mají směny
+          else if (req.user.role === ROLES.WORKER) {
+            const shifts = await storage.getUserShifts(req.user.id);
+            const hasShiftAtWorkplace = shifts.some(shift => shift.workplaceId === dataId);
+            
+            if (!hasShiftAtWorkplace) {
+              console.log(`Forbidden workplace access attempt by worker: ${req.method} ${req.path} by user ID ${req.user.id}`);
+              return res.status(403).send("Forbidden: No access to this workplace");
+            }
+            
+            console.log(`Worker access to workplace ${dataId}: ${req.method} ${req.path} by user ID ${req.user.id}`);
           }
           break;
           
         case 'shifts':
           // Pracovník má přístup jen ke vlastním směnám
-          if (req.user.role === "worker") {
+          if (req.user.role === ROLES.WORKER) {
             const shift = await storage.getShift(dataId);
-            if (!shift || shift.userId !== req.user.id) {
+            if (!shift) {
+              return res.status(404).send("Shift not found");
+            }
+            
+            if (shift.userId !== req.user.id) {
+              console.log(`Forbidden shift access attempt by worker: ${req.method} ${req.path} by user ID ${req.user.id}`);
               return res.status(403).send("Forbidden: No access to this shift");
             }
+            
+            console.log(`Worker access to own shift ${dataId}: ${req.method} ${req.path} by user ID ${req.user.id}`);
           }
-          // Firma má přístup ke směnám svých pracovníků
-          else if (req.user.role === "company") {
+          // Firma má přístup ke směnám svých pracovníků na svých pracovištích
+          else if (req.user.role === ROLES.COMPANY) {
             const shift = await storage.getShift(dataId);
             if (!shift) {
               return res.status(404).send("Shift not found");
@@ -88,14 +147,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             // Pokud směna není přiřazena žádnému pracovišti
             if (!shift.workplaceId) {
-              return res.status(403).send("Forbidden: No access to this shift");
+              console.log(`Shift ${dataId} has no associated workplace, checking worker association`);
+              
+              // Kontrola, zda je pracovník zaměstnancem této firmy
+              const worker = await storage.getUser(shift.userId);
+              if (!worker || worker.companyId !== req.user.id) {
+                console.log(`Forbidden shift access attempt by company: ${req.method} ${req.path} by user ID ${req.user.id}`);
+                return res.status(403).send("Forbidden: No access to this shift");
+              }
+            } else {
+              // Ověříme, zda pracoviště patří této firmě
+              const workplace = await storage.getWorkplace(shift.workplaceId);
+              if (!workplace || (workplace.ownerId !== req.user.id && workplace.managerId !== req.user.id)) {
+                console.log(`Forbidden shift access attempt (workplace not owned): ${req.method} ${req.path} by user ID ${req.user.id}`);
+                return res.status(403).send("Forbidden: No access to this shift");
+              }
             }
             
-            // Ověříme, zda pracoviště patří této firmě
-            const workplace = await storage.getWorkplace(shift.workplaceId);
-            if (!workplace || workplace.ownerId !== req.user.id) {
-              return res.status(403).send("Forbidden: No access to this shift");
-            }
+            console.log(`Company access to shift ${dataId}: ${req.method} ${req.path} by user ID ${req.user.id}`);
           }
           break;
           
@@ -104,21 +173,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Každý uživatel může přistupovat jen ke svému účtu
           if (dataId !== req.user.id) {
             // Firma může přistupovat ke svým zaměstnancům
-            if (req.user.role === "company") {
+            if (req.user.role === ROLES.COMPANY) {
               // Ověříme, zda je pracovník zaměstnancem této firmy
               const worker = await storage.getUser(dataId);
-              if (!worker || worker.companyId !== req.user.id) {
+              if (!worker) {
+                return res.status(404).send("User not found");
+              }
+              
+              if (worker.companyId !== req.user.id) {
+                console.log(`Forbidden user access attempt: ${req.method} ${req.path} by company ID ${req.user.id}`);
                 return res.status(403).send("Forbidden: No access to this user");
               }
+              
+              console.log(`Company access to worker ${dataId}: ${req.method} ${req.path} by user ID ${req.user.id}`);
             } else {
+              console.log(`Forbidden user access attempt: ${req.method} ${req.path} by user ID ${req.user.id}`);
               return res.status(403).send("Forbidden: No access to this user");
             }
+          } else {
+            console.log(`User access to own profile ${dataId}: ${req.method} ${req.path} by user ID ${req.user.id}`);
+          }
+          break;
+          
+        case 'customers':
+          // Firma nebo admin mají přístup ke svým zákazníkům
+          if (req.user.role === ROLES.COMPANY) {
+            const customer = await storage.getCustomer(dataId);
+            if (!customer) {
+              return res.status(404).send("Customer not found");
+            }
+            
+            if (customer.ownerId !== req.user.id) {
+              console.log(`Forbidden customer access attempt: ${req.method} ${req.path} by user ID ${req.user.id}`);
+              return res.status(403).send("Forbidden: No access to this customer");
+            }
+            
+            console.log(`Company access to customer ${dataId}: ${req.method} ${req.path} by user ID ${req.user.id}`);
+          }
+          break;
+        
+        case 'invoices':
+          // Firma nebo admin mají přístup ke svým fakturám
+          if (req.user.role === ROLES.COMPANY) {
+            const invoice = await storage.getInvoice(dataId);
+            if (!invoice) {
+              return res.status(404).send("Invoice not found");
+            }
+            
+            if (invoice.ownerId !== req.user.id) {
+              console.log(`Forbidden invoice access attempt: ${req.method} ${req.path} by user ID ${req.user.id}`);
+              return res.status(403).send("Forbidden: No access to this invoice");
+            }
+            
+            console.log(`Company access to invoice ${dataId}: ${req.method} ${req.path} by user ID ${req.user.id}`);
           }
           break;
           
         default:
-          // Pro ostatní typy dat ověříme podle vlastníka
-          // Toto by mělo být doplněno podle specifických potřeb aplikace
+          // Pro ostatní typy dat použijeme volnější kontrolu, ale zalogujeme přístup pro budoucí audit
+          console.log(`Access to resource of type ${dataType} with ID ${dataId}: ${req.method} ${req.path} by user ID ${req.user.id} (${req.user.role})`);
           break;
       }
       
@@ -126,7 +239,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return next();
     } catch (error) {
       console.error("Error during data access check:", error);
-      return res.status(500).send("Server error during access check");
+      return res.status(500).send("Server error: Could not validate your access to this resource");
     }
   };
   
