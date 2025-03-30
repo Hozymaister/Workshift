@@ -2,10 +2,16 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { setupDatabase } from "./db-setup";
+import { setupAuth } from "./auth";
 
 const app = express();
-app.use(express.json());
+
+// Nastavení bezpečnostních omezení pro JSON parser
+app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: false }));
+
+// Nastavení autentizace a session
+setupAuth(app);
 
 app.use((req, res, next) => {
   const start = Date.now();
