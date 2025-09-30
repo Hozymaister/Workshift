@@ -9,6 +9,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { v4 as uuidv4 } from "uuid";
+import type { User } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Sets up /api/register, /api/login, /api/logout, /api/user
@@ -130,12 +131,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (!shift) {
               return res.status(404).send("Shift not found");
             }
-            
+
             if (shift.userId !== req.user.id) {
               console.log(`Forbidden shift access attempt by worker: ${req.method} ${req.path} by user ID ${req.user.id}`);
               return res.status(403).send("Forbidden: No access to this shift");
             }
-            
+
             console.log(`Worker access to own shift ${dataId}: ${req.method} ${req.path} by user ID ${req.user.id}`);
           }
           // Firma má přístup ke směnám svých pracovníků na svých pracovištích
@@ -144,14 +145,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (!shift) {
               return res.status(404).send("Shift not found");
             }
-            
+
             // Pokud směna není přiřazena žádnému pracovišti
             if (!shift.workplaceId) {
               console.log(`Shift ${dataId} has no associated workplace, checking worker association`);
-              
+
               // Kontrola, zda je pracovník zaměstnancem této firmy
+              if (!shift.userId) {
+                console.log(`Shift ${dataId} has no assigned worker.`);
+                return res.status(403).send("Forbidden: No access to this shift");
+              }
+
               const worker = await storage.getUser(shift.userId);
-              if (!worker || worker.companyId !== req.user.id) {
+              if (!worker || worker.parentCompanyId !== req.user.id) {
                 console.log(`Forbidden shift access attempt by company: ${req.method} ${req.path} by user ID ${req.user.id}`);
                 return res.status(403).send("Forbidden: No access to this shift");
               }
@@ -179,8 +185,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               if (!worker) {
                 return res.status(404).send("User not found");
               }
-              
-              if (worker.companyId !== req.user.id) {
+
+              if (worker.parentCompanyId !== req.user.id) {
                 console.log(`Forbidden user access attempt: ${req.method} ${req.path} by company ID ${req.user.id}`);
                 return res.status(403).send("Forbidden: No access to this user");
               }
@@ -202,12 +208,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (!customer) {
               return res.status(404).send("Customer not found");
             }
-            
-            if (customer.ownerId !== req.user.id) {
+
+            if (customer.userId !== req.user.id) {
               console.log(`Forbidden customer access attempt: ${req.method} ${req.path} by user ID ${req.user.id}`);
               return res.status(403).send("Forbidden: No access to this customer");
             }
-            
+
             console.log(`Company access to customer ${dataId}: ${req.method} ${req.path} by user ID ${req.user.id}`);
           }
           break;
@@ -219,12 +225,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (!invoice) {
               return res.status(404).send("Invoice not found");
             }
-            
-            if (invoice.ownerId !== req.user.id) {
+
+            if (invoice.userId !== req.user.id) {
               console.log(`Forbidden invoice access attempt: ${req.method} ${req.path} by user ID ${req.user.id}`);
               return res.status(403).send("Forbidden: No access to this invoice");
             }
-            
+
             console.log(`Company access to invoice ${dataId}: ${req.method} ${req.path} by user ID ${req.user.id}`);
           }
           break;
@@ -303,7 +309,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Pracovníci vidí jen pracoviště, kde mají směny
       else {
         const shifts = await storage.getUserShifts(req.user?.id || 0);
-        const workplaceIds = [...new Set(shifts.map(s => s.workplaceId))]; // Unikátní ID pracovišť
+        const workplaceIds = Array.from(new Set(shifts.map(s => s.workplaceId))).filter(
+          (id): id is number => typeof id === 'number'
+        ); // Unikátní ID pracovišť
         
         // Získáme detaily o pracovištích
         workplaces = await Promise.all(
@@ -502,24 +510,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Worker/User routes
   app.get("/api/workers", isAuthenticated, async (req, res) => {
     try {
-      let users;
-      
+      if (!req.user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      let users: User[] = [];
+
       // Admin vidí všechny uživatele
-      if (req.user?.role === "admin") {
+      if (req.user.role === "admin") {
         users = await storage.getAllUsers();
       }
       // Firmy vidí pouze své zaměstnance
-      else if (req.user?.role === "company") {
-        users = (await storage.getAllUsers()).filter(user => 
+      else if (req.user.role === "company") {
+        const currentUserId = req.user.id;
+        users = (await storage.getAllUsers()).filter(user =>
           // Uživatel má parentCompanyId shodné s ID přihlášené firmy nebo je to sám přihlášený uživatel
-          user.parentCompanyId === req.user.id || user.id === req.user.id
+          user.parentCompanyId === currentUserId || user.id === currentUserId
         );
       }
       // Pracovníci vidí pouze svůj účet
       else {
-        users = [await storage.getUser(req.user?.id || 0)].filter(Boolean);
+        const currentUser = await storage.getUser(req.user.id);
+        if (currentUser) {
+          users = [currentUser];
+        }
       }
-      
+
       // Don't expose password hashes
       const safeUsers = users.map(({ password, ...user }) => user);
       res.json(safeUsers);
@@ -873,19 +889,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/shifts/:id", isAuthenticated, async (req, res) => {
-    try {
-      const shiftId = parseInt(req.params.id);
-      const shift = await storage.getShift(shiftId);
-      
-      if (!shift) {
-        return res.status(404).json({ error: "Směna nenalezena" });
-      }
-      
-      // Ověříme přístupová práva
-      const isAdmin = req.user?.role === "admin";
-      const isCompany = req.user?.role === "company";
-      const isOwnShift = req.user?.id === shift.userId;
+    app.get("/api/shifts/:id", isAuthenticated, async (req, res) => {
+      try {
+        if (!req.user) {
+          return res.status(401).json({ error: "Unauthorized" });
+        }
+
+        const shiftId = parseInt(req.params.id);
+        const shift = await storage.getShift(shiftId);
+
+        if (!shift) {
+          return res.status(404).json({ error: "Směna nenalezena" });
+        }
+
+        // Ověříme přístupová práva
+        const currentUser = req.user;
+        const isAdmin = currentUser.role === "admin";
+        const isCompany = currentUser.role === "company";
+        const isOwnShift = currentUser.id === shift.userId;
       
       // Pokud jde o firemní účet, zkontrolujeme, zda má přístup k pracovišti nebo zaměstnanci
       let hasCompanyAccess = false;
@@ -894,14 +915,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const workplace = shift.workplaceId ? await storage.getWorkplace(shift.workplaceId) : null;
         const worker = shift.userId ? await storage.getUser(shift.userId) : null;
         
-        if (workplace && (workplace.ownerId === req.user.id || workplace.managerId === req.user.id)) {
-          hasCompanyAccess = true;
+          if (workplace && (workplace.ownerId === currentUser.id || workplace.managerId === currentUser.id)) {
+            hasCompanyAccess = true;
+          }
+
+          if (worker && worker.parentCompanyId === currentUser.id) {
+            hasCompanyAccess = true;
+          }
         }
-        
-        if (worker && worker.parentCompanyId === req.user.id) {
-          hasCompanyAccess = true;
-        }
-      }
       
       // Pokud nemá potřebná oprávnění, vrátíme chybu
       if (!isAdmin && !isOwnShift && !hasCompanyAccess) {
@@ -1231,10 +1252,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // Ověříme, že oba pracovníci patří k této společnosti
-        if (!companyEmployees.includes(requestShift.userId) || !companyEmployees.includes(offeredShift.userId)) {
-          return res.status(403).json({ error: "Nemáte oprávnění vytvářet požadavky na výměnu pro tyto zaměstnance" });
+          const requestUserId = requestShift.userId;
+          const offeredUserId = offeredShift.userId;
+
+          if (
+            !requestUserId ||
+            !offeredUserId ||
+            !companyEmployees.includes(requestUserId) ||
+            !companyEmployees.includes(offeredUserId)
+          ) {
+            return res.status(403).json({ error: "Nemáte oprávnění vytvářet požadavky na výměnu pro tyto zaměstnance" });
+          }
         }
-      }
       
       // Vytvoříme požadavek na výměnu
       const request = await storage.createExchangeRequest(requestData);
@@ -2266,6 +2295,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Aktualizujeme fakturu
       const updatedInvoice = await storage.updateInvoice(invoiceId, invoiceData);
+      if (!updatedInvoice) {
+        return res.status(500).json({ error: "Nepodařilo se aktualizovat fakturu" });
+      }
       
       // Pokud máme položky faktury, aktualizujeme je také
       const items = invoiceData.items || [];

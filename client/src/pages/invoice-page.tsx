@@ -171,15 +171,15 @@ type FinancialData = {
 };
 
 // Typ pro fakturu v historii
-type Invoice = {
+type InvoiceHistoryEntry = {
   id: string;
   type: "issued" | "received";
   number: string;
-  date: Date;
+  date: Date | null;
   clientOrSupplier: string;
   amount: number;
   isPaid: boolean;
-  dueDate: Date;
+  dueDate: Date | null;
 };
 
 export default function InvoicePage() {
@@ -201,7 +201,7 @@ export default function InvoicePage() {
   const queryClient = useQueryClient();
   
   // Query pro načtení seznamu všech faktur
-  const { data: invoiceHistory = [], isLoading: isLoadingInvoices } = useQuery({
+  const { data: invoiceHistory = [], isLoading: isLoadingInvoices } = useQuery<InvoiceHistoryEntry[]>({
     queryKey: ['/api/invoices'],
     queryFn: async () => {
       const response = await fetch('/api/invoices');
@@ -209,15 +209,15 @@ export default function InvoicePage() {
         throw new Error('Nepodařilo se načíst faktury');
       }
       const data = await response.json();
-      return data.map((invoice: any) => ({
-        id: invoice.id.toString(),
+      return data.map((invoice: any): InvoiceHistoryEntry => ({
+        id: String(invoice.id),
         type: invoice.type,
         number: invoice.invoiceNumber,
-        date: new Date(invoice.date),
-        clientOrSupplier: invoice.type === 'issued' ? invoice.customerName : invoice.supplierName,
-        amount: invoice.amount,
-        isPaid: invoice.isPaid,
-        dueDate: new Date(invoice.dateDue)
+        date: invoice.date ? new Date(invoice.date) : null,
+        clientOrSupplier: invoice.type === 'issued' ? invoice.customerName : invoice.supplierName || "",
+        amount: Number(invoice.amount) || 0,
+        isPaid: Boolean(invoice.isPaid),
+        dueDate: invoice.dateDue ? new Date(invoice.dateDue) : null
       }));
     }
   });
@@ -247,10 +247,10 @@ export default function InvoicePage() {
       const monthlyData = new Map<string, { income: number, expenses: number }>();
       
       // Projdeme všechny faktury
-      invoiceHistory.forEach(invoice => {
+      invoiceHistory.forEach((invoice) => {
         const amount = invoice.amount || 0;
-        const month = format(new Date(invoice.date), 'MMMM', { locale: cs });
-        
+        const monthName = invoice.date ? format(invoice.date, 'MMMM', { locale: cs }) : 'Neznámý měsíc';
+
         // Aktualizujeme celkové hodnoty
         if (invoice.type === 'issued') {
           totalIncome += amount;
@@ -265,10 +265,10 @@ export default function InvoicePage() {
         }
         
         // Aktualizujeme měsíční data
-        if (!monthlyData.has(month)) {
-          monthlyData.set(month, { income: 0, expenses: 0 });
+        if (!monthlyData.has(monthName)) {
+          monthlyData.set(monthName, { income: 0, expenses: 0 });
         }
-        const monthData = monthlyData.get(month)!;
+        const monthData = monthlyData.get(monthName)!;
         
         if (invoice.type === 'issued') {
           monthData.income += amount;
@@ -2020,7 +2020,7 @@ export default function InvoicePage() {
                         <tr key={invoice.id} className="border-b hover:bg-slate-50">
                           <td className="p-3 whitespace-nowrap">{invoice.type === "issued" ? "Vydaná" : "Přijatá"}</td>
                           <td className="p-3 whitespace-nowrap">{invoice.number}</td>
-                          <td className="p-3 whitespace-nowrap">{format(invoice.date, "dd.MM.yyyy", { locale: cs })}</td>
+                          <td className="p-3 whitespace-nowrap">{invoice.date ? format(invoice.date, "dd.MM.yyyy", { locale: cs }) : "Neznámé datum"}</td>
                           <td className="p-3 max-w-[200px] truncate">{invoice.clientOrSupplier}</td>
                           <td className="p-3 text-right whitespace-nowrap">{invoice.amount.toLocaleString()} Kč</td>
                           <td className="p-3 text-center whitespace-nowrap">

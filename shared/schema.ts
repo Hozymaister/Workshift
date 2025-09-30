@@ -153,6 +153,11 @@ export type Report = typeof reports.$inferSelect;
 export type InsertCustomer = z.infer<typeof insertCustomerSchema>;
 export type Customer = typeof customers.$inferSelect;
 
+export type ShiftWithRelations = Shift & {
+  workplace?: Workplace | null;
+  user?: Omit<User, "password"> | null;
+};
+
 // Invoice schema - pro faktury vydané i přijaté
 export const invoices = pgTable("invoices", {
   id: serial("id").primaryKey(),

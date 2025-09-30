@@ -6,7 +6,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Report, Shift } from "@shared/schema";
+import { Report, Shift, User as SchemaUser } from "@shared/schema";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -94,7 +94,7 @@ export default function ReportsPage() {
   const currentMonth = (currentDate.getMonth() + 1).toString();
   
   // Get all workers if admin
-  const { data: workers } = useQuery({
+  const { data: workers } = useQuery<SchemaUser[]>({
     queryKey: ["/api/workers"],
     enabled: isAdmin,
   });
@@ -158,19 +158,24 @@ export default function ReportsPage() {
     return monthNames[month - 1];
   };
   
+  const parseDate = (value?: string | null) => {
+    if (!value) return null;
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+
   const showReportDetails = (report: Report) => {
     setSelectedReport(report);
-    
+
     // Filter shifts for the selected report month and year
     if (allShifts) {
       const filteredShifts = allShifts.filter(shift => {
-        const shiftDate = new Date(shift.date);
-        return (
-          shiftDate.getMonth() + 1 === report.month &&
-          shiftDate.getFullYear() === report.year
-        );
+        const shiftDate = parseDate(shift.date);
+        return shiftDate
+          ? shiftDate.getMonth() + 1 === report.month && shiftDate.getFullYear() === report.year
+          : false;
       });
-      
+
       setSelectedReportShifts(filteredShifts);
     }
     
@@ -237,7 +242,7 @@ export default function ReportsPage() {
                 <td>${formatDateTime(shift.date).date}</td>
                 <td>${formatDateTime(shift.startTime).time} - ${formatDateTime(shift.endTime).time}</td>
                 <td>${calculateDuration(shift.startTime, shift.endTime)}</td>
-                <td>${shift.workplace?.name || "Neznámý objekt"}</td>
+                  <td>${shift.workplaceId ? `Pracoviště ${shift.workplaceId}` : "Neznámý objekt"}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -590,7 +595,7 @@ export default function ReportsPage() {
                           </TableCell>
                           <TableCell>
                             <div className="font-medium">
-                              {shift.workplace?.name || "Neznámý objekt"}
+                            {shift.workplaceId ? `Pracoviště ${shift.workplaceId}` : "Neznámý objekt"}
                             </div>
                           </TableCell>
                         </TableRow>

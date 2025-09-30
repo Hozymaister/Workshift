@@ -9,6 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Shift } from "@shared/schema";
 import { format } from "date-fns";
 import { cs } from "date-fns/locale";
+import { calculateDuration } from "@/lib/utils";
 
 export default function ProfilePage() {
   const { user } = useAuth();
@@ -19,9 +20,17 @@ export default function ProfilePage() {
     enabled: !!user,
   });
   
+  const parseDate = (value?: string | null) => {
+    if (!value) return null;
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+
   // Seřazení směn podle data (nejnovější první)
   const sortedShifts = [...userShifts].sort((a, b) => {
-    return new Date(b.date).getTime() - new Date(a.date).getTime();
+    const dateA = parseDate(a.date);
+    const dateB = parseDate(b.date);
+    return (dateB?.getTime() ?? 0) - (dateA?.getTime() ?? 0);
   });
 
   // Posledních 5 směn
@@ -33,17 +42,24 @@ export default function ProfilePage() {
   oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
   
   const shiftsLastMonth = userShifts.filter(shift => {
-    const shiftDate = new Date(shift.date);
-    return shiftDate >= oneMonthAgo && shiftDate <= currentDate;
+    const shiftDate = parseDate(shift.date);
+    return shiftDate ? shiftDate >= oneMonthAgo && shiftDate <= currentDate : false;
   });
-  
+
   // Výpočet odpracovaných hodin
   const totalHoursWorked = shiftsLastMonth.reduce((total, shift) => {
-    const startTime = new Date(shift.startTime);
-    const endTime = new Date(shift.endTime);
-    const hours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
-    return total + hours;
+    return total + calculateDuration(shift.startTime, shift.endTime);
   }, 0);
+
+  const formatDateSafe = (value?: string | null, dateFormat = "EEEE d. MMMM yyyy") => {
+    const parsed = parseDate(value);
+    return parsed ? format(parsed, dateFormat, { locale: cs }) : "Neznámé datum";
+  };
+
+  const formatTimeSafe = (value?: string | null) => {
+    const parsed = parseDate(value);
+    return parsed ? format(parsed, "HH:mm") : "??:??";
+  };
 
   if (!user) {
     return <div>Načítání profilu...</div>;
@@ -109,14 +125,14 @@ export default function ProfilePage() {
                       <div key={shift.id} className="border-b pb-3 last:border-0">
                         <div className="flex justify-between items-start">
                           <div>
-                            <p className="font-medium">{format(new Date(shift.date), "EEEE d. MMMM yyyy", { locale: cs })}</p>
+                            <p className="font-medium">{formatDateSafe(shift.date)}</p>
                             <p className="text-sm text-slate-500">
-                              {format(new Date(shift.startTime), "HH:mm")} - {format(new Date(shift.endTime), "HH:mm")}
+                              {formatTimeSafe(shift.startTime)} - {formatTimeSafe(shift.endTime)}
                             </p>
                           </div>
                           <div className="text-right">
                             <span className="px-2 py-1 rounded-full text-xs bg-primary/10 text-primary">
-                              {shift.workplaceId}
+                              {shift.workplaceId ?? "N/A"}
                             </span>
                           </div>
                         </div>
