@@ -3,6 +3,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { setupDatabase } from "./db-setup";
 import { setupAuth } from "./auth";
+import { csrfProtection, sameSiteCookies, sessionActivityMonitor } from "./middleware/session-security";
 
 const app = express();
 
@@ -12,6 +13,11 @@ app.use(express.urlencoded({ extended: false }));
 
 // Nastavení autentizace a session
 setupAuth(app);
+
+// Základní bezpečnostní middleware pro práci se session
+app.use(sameSiteCookies);
+app.use(sessionActivityMonitor);
+app.use(csrfProtection);
 
 app.use((req, res, next) => {
   const start = Date.now();

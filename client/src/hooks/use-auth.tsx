@@ -2,7 +2,7 @@
 import { createContext, ReactNode, useContext, useState } from "react";
 import { User } from "@shared/schema";
 import { UseMutationResult, useQuery, useMutation } from "@tanstack/react-query";
-import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
+import { getQueryFn, apiRequest, queryClient, setCsrfToken } from "../lib/queryClient";
 import { toast } from "@/hooks/use-toast";
 
 // Definice typů
@@ -28,9 +28,9 @@ type AuthContextType = {
   isLoading: boolean;
   error: Error | null;
   refetchUser: () => void;
-  loginMutation: UseMutationResult<SafeUser, Error, LoginData>;
+  loginMutation: UseMutationResult<AuthSuccessResponse, Error, LoginData>;
   logoutMutation: UseMutationResult<unknown, Error, void>;
-  registerMutation: UseMutationResult<SafeUser, Error, RegisterData>;
+  registerMutation: UseMutationResult<AuthSuccessResponse, Error, RegisterData>;
 };
 
 // Defaultní hodnota pro context
@@ -101,6 +101,11 @@ const defaultContext: AuthContextType = {
 // Vytvoření kontextu
 export const AuthContext = createContext<AuthContextType>(defaultContext);
 
+type AuthSuccessResponse = {
+  user: SafeUser;
+  csrfToken?: string;
+};
+
 // Provider komponenta
 export function AuthProvider({ children }: { children: ReactNode }) {
   // Získání informací o aktuálním uživateli
@@ -112,13 +117,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   // Login mutation pro přihlášení
-  const loginMutation = useMutation<SafeUser, Error, LoginData>({
+  const loginMutation = useMutation<AuthSuccessResponse, Error, LoginData>({
     mutationFn: async (credentials) => {
       const res = await apiRequest("POST", "/api/login", credentials);
       return res.json();
     },
-    onSuccess: (userData) => {
-      queryClient.setQueryData(["/api/user"], userData);
+    onSuccess: ({ user, csrfToken }) => {
+      if (csrfToken) {
+        setCsrfToken(csrfToken);
+      }
+      queryClient.setQueryData(["/api/user"], user);
       userQuery.refetch();
       window.location.href = "/";
     },
@@ -133,14 +141,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   // Register mutation pro registraci
-  const registerMutation = useMutation<SafeUser, Error, RegisterData>({
+  const registerMutation = useMutation<AuthSuccessResponse, Error, RegisterData>({
     mutationFn: async (userData) => {
       const { passwordConfirm, ...registerData } = userData;
       const res = await apiRequest("POST", "/api/register", registerData);
       return res.json();
     },
-    onSuccess: (userData) => {
-      queryClient.setQueryData(["/api/user"], userData);
+    onSuccess: ({ user, csrfToken }) => {
+      if (csrfToken) {
+        setCsrfToken(csrfToken);
+      }
+      queryClient.setQueryData(["/api/user"], user);
       window.location.href = "/";
     },
     onError: (error) => {
@@ -161,6 +172,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Vyčistit data uživatele z cache
       queryClient.setQueryData(["/api/user"], null);
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      setCsrfToken(null);
       
       toast({
         title: "Odhlášení úspěšné",
@@ -177,10 +189,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: error.message,
         variant: "destructive",
       });
-      
+
       // I v případě chyby vyčistíme cache a přesměrujeme
       queryClient.setQueryData(["/api/user"], null);
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      setCsrfToken(null);
       
       setTimeout(() => {
         window.location.href = "/auth";

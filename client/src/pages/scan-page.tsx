@@ -38,7 +38,7 @@ import { cs } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { Document } from "@shared/schema";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, getCsrfToken } from "@/lib/queryClient";
 
 type DocumentWithUrl = Document & {
   thumbnailUrl: string;
@@ -179,10 +179,14 @@ export default function ScanPage() {
       formData.append('name', `Naskenovaný dokument ${format(new Date(), "d.M.yyyy HH:mm")}`);
       
       // Pošleme soubor na server
+      const csrfToken = getCsrfToken();
+      const headers: HeadersInit = csrfToken ? { 'X-CSRF-Token': csrfToken } : {};
+
       const res = await fetch('/api/documents/upload', {
         method: 'POST',
         body: formData,
         credentials: 'include',
+        headers,
       });
       
       if (!res.ok) {
@@ -231,10 +235,14 @@ export default function ScanPage() {
       formData.append('file', file);
       formData.append('name', file.name);
       
+      const csrfToken = getCsrfToken();
+      const headers: HeadersInit = csrfToken ? { 'X-CSRF-Token': csrfToken } : {};
+
       const res = await fetch('/api/documents/upload', {
         method: 'POST',
         body: formData,
         credentials: 'include',
+        headers,
       });
       
       if (!res.ok) {

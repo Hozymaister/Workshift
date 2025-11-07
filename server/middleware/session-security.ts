@@ -55,16 +55,22 @@ export function sessionActivityMonitor(req: Request, res: Response, next: NextFu
 export function csrfProtection(req: Request, res: Response, next: NextFunction) {
   // Nebezpečné HTTP metody, které by měly být chráněny
   const unsafeMethods = ['POST', 'PUT', 'DELETE', 'PATCH'];
-  
+
   // Ignorujeme GET, HEAD, OPTIONS
   if (!unsafeMethods.includes(req.method)) {
     return next();
   }
-  
+
   // API endpointy by měly mít CSRF token v hlavičce X-CSRF-Token
-  const csrfToken = req.headers['x-csrf-token'] || req.body._csrf;
+  const headerToken = req.headers['x-csrf-token'];
+  const csrfToken = Array.isArray(headerToken) ? headerToken[0] : headerToken || req.body._csrf;
   const sessionToken = req.session && (req.session as any).csrfToken;
-  
+
+  if (!sessionToken) {
+    // Pokud session ještě nemá CSRF token (např. před přihlášením), validaci přeskočíme
+    return next();
+  }
+
   // Pokud nejsou tokeny nebo se neshodují
   if (!sessionToken || !csrfToken || csrfToken !== sessionToken) {
     console.warn('CSRF validace selhala:', {
@@ -122,7 +128,7 @@ export function sameSiteCookies(req: Request, res: Response, next: NextFunction)
     }
     
     // Voláme původní metodu s vylepšenými možnostmi
-    return originalCookie.call(this, name, val, secureOptions);
+    return (originalCookie as any).call(this, name, val, secureOptions);
   } as typeof res.cookie;
   
   next();
