@@ -1,4 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { getCsrfToken, setCsrfToken } from "./csrf";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -24,12 +25,27 @@ export async function apiRequest(
   data?: unknown | undefined,
 ): Promise<Response> {
   console.log(`API Request: ${method} ${url}`, data);
-  
+
   try {
+    const headers: Record<string, string> = {};
+    const upperMethod = method.toUpperCase();
+    const requiresCsrf = !["GET", "HEAD", "OPTIONS"].includes(upperMethod);
+
+    if (data !== undefined) {
+      headers["Content-Type"] = "application/json";
+    }
+
+    if (requiresCsrf) {
+      const token = getCsrfToken();
+      if (token) {
+        headers["X-CSRF-Token"] = token;
+      }
+    }
+
     const res = await fetch(url, {
       method,
-      headers: data ? { "Content-Type": "application/json" } : {},
-      body: data ? JSON.stringify(data) : undefined,
+      headers,
+      body: data !== undefined ? JSON.stringify(data) : undefined,
       credentials: "include",
     });
 
@@ -43,22 +59,36 @@ export async function apiRequest(
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
-export const getQueryFn: <T>(options: {
+export function getQueryFn<T>({
+  on401: unauthorizedBehavior,
+}: {
   on401: UnauthorizedBehavior;
-}) => QueryFunction<T> =
-  ({ on401: unauthorizedBehavior }) =>
-  async ({ queryKey }) => {
+}): QueryFunction<T> {
+  return async ({ queryKey }) => {
     const res = await fetch(queryKey[0] as string, {
       credentials: "include",
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+      setCsrfToken(null);
       return null;
     }
 
     await throwIfResNotOk(res);
-    return await res.json();
+    const payload = await res.json();
+
+    if (payload && typeof payload === "object" && "csrfToken" in payload) {
+      const csrfToken = (payload as { csrfToken?: string }).csrfToken ?? null;
+      setCsrfToken(csrfToken);
+
+      if (Object.prototype.hasOwnProperty.call(payload, "user")) {
+        return (payload as { user: T }).user;
+      }
+    }
+
+    return payload as T;
   };
+}
 
 export const queryClient = new QueryClient({
   defaultOptions: {

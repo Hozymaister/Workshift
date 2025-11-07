@@ -15,6 +15,7 @@ import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { eq, and, between, like, or, sql } from 'drizzle-orm';
 import PgSession from 'connect-pg-simple';
+import { config, requireDatabaseUrl } from './config';
 
 const MemoryStore = createMemoryStore(session);
 
@@ -598,15 +599,16 @@ export class PostgreSQLStorage implements IStorage {
   sessionStore: any;
 
   constructor() {
-    const sql = neon(process.env.DATABASE_URL!);
+    const databaseUrl = requireDatabaseUrl();
+    const sql = neon(databaseUrl);
     this.db = drizzle(sql);
-    
+
     // Initialize session store with PostgreSQL
     const PgStore = PgSession(session);
     this.sessionStore = new PgStore({
-      conString: process.env.DATABASE_URL,
+      conString: databaseUrl,
       tableName: 'sessions',
-      createTableIfMissing: true,
+      createTableIfMissing: false,
     });
 
     // Note: We'll initialize demo data after tables are created
@@ -1043,6 +1045,6 @@ export class PostgreSQLStorage implements IStorage {
 }
 
 // Use PostgreSQL storage in production, MemStorage as fallback
-export const storage = process.env.DATABASE_URL 
-  ? new PostgreSQLStorage() 
+export const storage = config.databaseUrl
+  ? new PostgreSQLStorage()
   : new MemStorage();
