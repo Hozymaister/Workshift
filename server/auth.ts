@@ -2,10 +2,11 @@ import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { Express, Request, Response, NextFunction } from "express";
 import session from "express-session";
-import { scrypt, randomBytes, timingSafeEqual, ScryptOptions } from "crypto";
+import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
+import { config } from "./config";
 
 declare global {
   namespace Express {
@@ -60,17 +61,14 @@ async function comparePasswords(supplied: string, stored: string) {
   });
 }
 
-export function setupAuth(app: Express) {
-  // Ověříme, zda je SESSION_SECRET k dispozici v produkčním prostředí
-  if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
-    console.error('VAROVÁNÍ: SESSION_SECRET není nastaven v produkčním prostředí!');
-    console.error('Pro produkční nasazení by měl být nastaven stabilní SESSION_SECRET!');
-    // Použijeme náhodný klíč, pokud není SESSION_SECRET nastaven, ale to způsobí odhlášení uživatelů při restartu
-    process.env.SESSION_SECRET = randomBytes(32).toString('hex');
-  }
+function issueCsrfToken(req: Request) {
+  const token = randomBytes(32).toString("hex");
+  req.session.csrfToken = token;
+  return token;
+}
 
-  // Bezpečnostní opatření - ujistíme se, že používáme silný SESSION_SECRET
-  const sessionSecret = process.env.SESSION_SECRET || randomBytes(32).toString('hex');
+export function setupAuth(app: Express) {
+  const sessionSecret = config.sessionSecret;
 
   const sessionSettings: session.SessionOptions = {
     secret: sessionSecret,
@@ -79,7 +77,7 @@ export function setupAuth(app: Express) {
     store: storage.sessionStore,
     name: 'shift_manager_sid', // Vlastní název cookie pro zvýšení bezpečnosti
     cookie: {
-      secure: process.env.NODE_ENV === "production",
+      secure: config.isProduction,
       httpOnly: true, // Ochrana proti XSS
       sameSite: 'lax', // Ochrana proti CSRF
       maxAge: 7 * 24 * 60 * 60 * 1000, // 1 týden
@@ -184,10 +182,11 @@ export function setupAuth(app: Express) {
       // Přihlásíme uživatele
       req.login(user, (err) => {
         if (err) return next(err);
-        
+
         // Neexponujeme hash hesla
         const { password, ...safeUser } = user;
-        res.status(201).json(safeUser);
+        const csrfToken = issueCsrfToken(req);
+        res.status(201).json({ user: safeUser, csrfToken });
       });
     } catch (error) {
       console.error("Error during registration:", error);
@@ -216,18 +215,19 @@ export function setupAuth(app: Express) {
         console.log("Password doesn't match");
         return res.status(401).send("Neplatný email nebo heslo");
       }
-      
+
       // Použití Passport, ale s již ověřeným uživatelem
       req.login(user, (err) => {
         if (err) {
           console.log("Login error:", err);
           return next(err);
         }
-        
+
         console.log("Login success for user:", user.id);
         // Neposílejme hashované heslo klientovi
         const { password, ...safeUser } = user;
-        res.status(200).json(safeUser);
+        const csrfToken = issueCsrfToken(req);
+        res.status(200).json({ user: safeUser, csrfToken });
       });
     } catch (error) {
       console.error("Login error:", error);
@@ -245,6 +245,7 @@ export function setupAuth(app: Express) {
           console.error("Logout error:", err);
           return next(err);
         }
+        delete req.session.csrfToken;
         req.session.destroy((err) => {
           if (err) {
             console.error("Session destruction error:", err);
@@ -264,9 +265,10 @@ export function setupAuth(app: Express) {
 
   app.get("/api/user", (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    
+
     // Don't expose password hash to client
     const { password, ...safeUser } = req.user as SelectUser;
-    res.json(safeUser);
+    const csrfToken = req.session.csrfToken ?? issueCsrfToken(req);
+    res.json({ user: safeUser, csrfToken });
   });
 }

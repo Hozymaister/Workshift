@@ -3,6 +3,13 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { setupDatabase } from "./db-setup";
 import { setupAuth } from "./auth";
+import { config } from "./config";
+import {
+  csrfProtection,
+  ensureCsrfToken,
+  sameSiteCookies,
+  sessionActivityMonitor,
+} from "./middleware/session-security";
 
 const app = express();
 
@@ -10,8 +17,13 @@ const app = express();
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: false }));
 
+app.use(sameSiteCookies);
+
 // Nastavení autentizace a session
 setupAuth(app);
+app.use(ensureCsrfToken);
+app.use(sessionActivityMonitor);
+app.use(csrfProtection);
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -29,7 +41,12 @@ app.use((req, res, next) => {
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+        let responseToLog = capturedJsonResponse;
+        if (responseToLog && typeof responseToLog === 'object' && 'csrfToken' in responseToLog) {
+          const { csrfToken: _csrfToken, ...rest } = responseToLog as Record<string, unknown>;
+          responseToLog = rest;
+        }
+        logLine += ` :: ${JSON.stringify(responseToLog)}`;
       }
 
       if (logLine.length > 80) {
@@ -45,18 +62,17 @@ app.use((req, res, next) => {
 
 (async () => {
   // Nastav NODE_ENV pro správnou detekci prostředí
-  process.env.NODE_ENV = process.env.NODE_ENV || 'development';
-  console.log(`Running in ${process.env.NODE_ENV} environment`);
+  console.log(`Running in ${config.nodeEnv} environment`);
 
   // Initialize database if DATABASE_URL is available
-  if (process.env.DATABASE_URL) {
+  if (config.databaseUrl) {
     try {
       await setupDatabase();
     } catch (error) {
       console.error("Failed to set up database:", error);
-      
+
       // V produkčním prostředí opakujeme pokus o inicializaci
-      if (process.env.NODE_ENV === 'production') {
+      if (config.isProduction) {
         console.log('Attempting database setup retry in production environment...');
         try {
           // Čekáme 5 sekund a zkusíme znovu
@@ -87,7 +103,7 @@ app.use((req, res, next) => {
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
-  if (process.env.NODE_ENV === "development") {
+  if (!config.isProduction) {
     await setupVite(app, server);
   } else {
     serveStatic(app);

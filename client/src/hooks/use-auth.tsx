@@ -3,6 +3,7 @@ import { createContext, ReactNode, useContext, useState } from "react";
 import { User } from "@shared/schema";
 import { UseMutationResult, useQuery, useMutation } from "@tanstack/react-query";
 import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
+import { setCsrfToken } from "@/lib/csrf";
 import { toast } from "@/hooks/use-toast";
 
 // Definice typů
@@ -21,6 +22,11 @@ export type RegisterData = {
   password: string;
   role: string;
   [key: string]: any; // Pro další možné vlastnosti
+};
+
+type AuthResponse = {
+  user: SafeUser;
+  csrfToken?: string | null;
 };
 
 type AuthContextType = {
@@ -115,7 +121,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginMutation = useMutation<SafeUser, Error, LoginData>({
     mutationFn: async (credentials) => {
       const res = await apiRequest("POST", "/api/login", credentials);
-      return res.json();
+      const payload: AuthResponse = await res.json();
+      setCsrfToken(payload.csrfToken ?? null);
+      return payload.user;
     },
     onSuccess: (userData) => {
       queryClient.setQueryData(["/api/user"], userData);
@@ -137,7 +145,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     mutationFn: async (userData) => {
       const { passwordConfirm, ...registerData } = userData;
       const res = await apiRequest("POST", "/api/register", registerData);
-      return res.json();
+      const payload: AuthResponse = await res.json();
+      setCsrfToken(payload.csrfToken ?? null);
+      return payload.user;
     },
     onSuccess: (userData) => {
       queryClient.setQueryData(["/api/user"], userData);
@@ -158,6 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return apiRequest("POST", "/api/logout");
     },
     onSuccess: () => {
+      setCsrfToken(null);
       // Vyčistit data uživatele z cache
       queryClient.setQueryData(["/api/user"], null);
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
@@ -177,10 +188,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: error.message,
         variant: "destructive",
       });
-      
+
       // I v případě chyby vyčistíme cache a přesměrujeme
       queryClient.setQueryData(["/api/user"], null);
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      setCsrfToken(null);
       
       setTimeout(() => {
         window.location.href = "/auth";

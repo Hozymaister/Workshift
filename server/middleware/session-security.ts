@@ -1,5 +1,16 @@
 import { NextFunction, Request, Response, CookieOptions } from "express";
-import { SessionData } from "express-session";
+import { randomBytes } from "crypto";
+
+declare module "express-session" {
+  interface SessionData {
+    csrfToken?: string;
+  }
+}
+
+const CSRF_EXEMPT_PATHS = new Set([
+  "/api/login",
+  "/api/register",
+]);
 
 /**
  * Konstanta pro maximální dobu nečinnosti (30 minut)
@@ -55,6 +66,10 @@ export function sessionActivityMonitor(req: Request, res: Response, next: NextFu
 export function csrfProtection(req: Request, res: Response, next: NextFunction) {
   // Nebezpečné HTTP metody, které by měly být chráněny
   const unsafeMethods = ['POST', 'PUT', 'DELETE', 'PATCH'];
+
+  if (CSRF_EXEMPT_PATHS.has(req.path)) {
+    return next();
+  }
   
   // Ignorujeme GET, HEAD, OPTIONS
   if (!unsafeMethods.includes(req.method)) {
@@ -62,8 +77,13 @@ export function csrfProtection(req: Request, res: Response, next: NextFunction) 
   }
   
   // API endpointy by měly mít CSRF token v hlavičce X-CSRF-Token
-  const csrfToken = req.headers['x-csrf-token'] || req.body._csrf;
-  const sessionToken = req.session && (req.session as any).csrfToken;
+  const headerToken = req.headers['x-csrf-token'];
+  const csrfToken = typeof headerToken === 'string'
+    ? headerToken
+    : Array.isArray(headerToken)
+      ? headerToken[0]
+      : req.body._csrf;
+  const sessionToken = req.session?.csrfToken;
   
   // Pokud nejsou tokeny nebo se neshodují
   if (!sessionToken || !csrfToken || csrfToken !== sessionToken) {
@@ -122,8 +142,24 @@ export function sameSiteCookies(req: Request, res: Response, next: NextFunction)
     }
     
     // Voláme původní metodu s vylepšenými možnostmi
-    return originalCookie.call(this, name, val, secureOptions);
+    return (originalCookie as any).call(this, name, val, secureOptions);
   } as typeof res.cookie;
   
+  next();
+}
+
+export function ensureCsrfToken(req: Request, _res: Response, next: NextFunction) {
+  if (!req.session) {
+    return next();
+  }
+
+  if (typeof req.isAuthenticated === 'function' && !req.isAuthenticated()) {
+    return next();
+  }
+
+  if (!req.session.csrfToken) {
+    req.session.csrfToken = randomBytes(32).toString("hex");
+  }
+
   next();
 }
