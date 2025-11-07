@@ -3,6 +3,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { setupDatabase } from "./db-setup";
 import { setupAuth } from "./auth";
+import { config } from "./config";
 
 const app = express();
 
@@ -44,29 +45,15 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Nastav NODE_ENV pro správnou detekci prostředí
-  process.env.NODE_ENV = process.env.NODE_ENV || 'development';
-  console.log(`Running in ${process.env.NODE_ENV} environment`);
+  console.log(`Running in ${config.nodeEnv} environment`);
 
-  // Initialize database if DATABASE_URL is available
-  if (process.env.DATABASE_URL) {
+  if (config.databaseUrl) {
     try {
       await setupDatabase();
     } catch (error) {
       console.error("Failed to set up database:", error);
-      
-      // V produkčním prostředí opakujeme pokus o inicializaci
-      if (process.env.NODE_ENV === 'production') {
-        console.log('Attempting database setup retry in production environment...');
-        try {
-          // Čekáme 5 sekund a zkusíme znovu
-          await new Promise(resolve => setTimeout(resolve, 5000));
-          await setupDatabase();
-        } catch (retryError) {
-          console.error("Failed to set up database after retry:", retryError);
-          // V produkci neukončujeme aplikaci, ale pokračujeme s varováním
-          console.warn("WARNING: Application starting with database initialization issues!");
-        }
+      if (config.isProduction) {
+        process.exit(1);
       }
     }
   } else {
