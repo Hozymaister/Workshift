@@ -60,6 +60,14 @@ async function comparePasswords(supplied: string, stored: string) {
   });
 }
 
+function issueCsrfToken(req: Request) {
+  const token = randomBytes(32).toString('hex');
+  if (req.session) {
+    (req.session as any).csrfToken = token;
+  }
+  return token;
+}
+
 export function setupAuth(app: Express) {
   // Ověříme, zda je SESSION_SECRET k dispozici v produkčním prostředí
   if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
@@ -187,7 +195,8 @@ export function setupAuth(app: Express) {
         
         // Neexponujeme hash hesla
         const { password, ...safeUser } = user;
-        res.status(201).json(safeUser);
+        const csrfToken = issueCsrfToken(req);
+        res.status(201).json({ user: safeUser, csrfToken });
       });
     } catch (error) {
       console.error("Error during registration:", error);
@@ -227,7 +236,8 @@ export function setupAuth(app: Express) {
         console.log("Login success for user:", user.id);
         // Neposílejme hashované heslo klientovi
         const { password, ...safeUser } = user;
-        res.status(200).json(safeUser);
+        const csrfToken = issueCsrfToken(req);
+        res.status(200).json({ user: safeUser, csrfToken });
       });
     } catch (error) {
       console.error("Login error:", error);

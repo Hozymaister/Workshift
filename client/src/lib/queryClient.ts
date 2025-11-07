@@ -1,5 +1,26 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+let csrfToken: string | null = null;
+
+if (typeof window !== "undefined") {
+  csrfToken = window.localStorage.getItem("csrfToken");
+}
+
+export function setCsrfToken(token: string | null) {
+  csrfToken = token;
+  if (typeof window !== "undefined") {
+    if (token) {
+      window.localStorage.setItem("csrfToken", token);
+    } else {
+      window.localStorage.removeItem("csrfToken");
+    }
+  }
+}
+
+export function getCsrfToken() {
+  return csrfToken;
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     let errorMessage = res.statusText;
@@ -18,17 +39,39 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
-export async function apiRequest(
-  method: string,
-  url: string,
-  data?: unknown | undefined,
-): Promise<Response> {
+type ApiRequestArgs =
+  | [method: string, url: string, data?: unknown | undefined]
+  | [url: string, method: string, data?: unknown | undefined];
+
+export async function apiRequest(...args: ApiRequestArgs): Promise<Response> {
+  let method = args[0];
+  let url = args[1];
+  let data = args[2];
+
+  if (args[0].startsWith("/")) {
+    url = args[0];
+    method = args[1];
+    data = args[2];
+  }
+
+  method = method.toUpperCase();
+
   console.log(`API Request: ${method} ${url}`, data);
-  
+
   try {
+    const headers: Record<string, string> = {};
+
+    if (data !== undefined) {
+      headers["Content-Type"] = "application/json";
+    }
+
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(method) && csrfToken) {
+      headers["X-CSRF-Token"] = csrfToken;
+    }
+
     const res = await fetch(url, {
       method,
-      headers: data ? { "Content-Type": "application/json" } : {},
+      headers,
       body: data ? JSON.stringify(data) : undefined,
       credentials: "include",
     });
