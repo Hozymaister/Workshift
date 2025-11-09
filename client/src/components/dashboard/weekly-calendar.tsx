@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Shift, Workplace } from "@shared/schema";
+import { ShiftWithRelations, Workplace } from "@shared/schema";
 import { 
   format, 
   startOfWeek, 
@@ -29,19 +29,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { CalendarModal } from "@/components/ui/calendar-modal";
 import { WorkplaceFilter } from "@/components/ui/workplace-filter";
 import { motion, AnimatePresence } from "framer-motion";
-
-interface ShiftWithDetails extends Shift {
-  workplace?: {
-    id: number;
-    name: string;
-    type: string;
-  };
-  user?: {
-    id: number;
-    firstName: string;
-    lastName: string;
-  };
-}
 
 // Funkce pro získání stylových tříd pro různé typy směn
 function getDayClass(type: string | undefined) {
@@ -99,7 +86,7 @@ export function WeeklyCalendar() {
   const endDateStr = format(dateInterval.end, "yyyy-MM-dd");
   
   // Fetch shifts based on date interval
-  const { data: shifts = [], isLoading: shiftsLoading } = useQuery<ShiftWithDetails[]>({
+  const { data: shifts = [], isLoading: shiftsLoading } = useQuery<ShiftWithRelations[]>({
     queryKey: ["/api/shifts", { startDate: startDateStr, endDate: endDateStr }],
   });
   
@@ -109,9 +96,15 @@ export function WeeklyCalendar() {
   });
   
   // Filter shifts by selected workplace
-  const filteredShifts = selectedWorkplaceId
+  const filteredShifts: ShiftWithRelations[] = selectedWorkplaceId
     ? shifts.filter(shift => shift.workplace?.id === selectedWorkplaceId)
     : shifts;
+
+  const parseDate = (value?: string | null) => {
+    if (!value) return null;
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
   
   // Generate days for the current view (week or month)
   const days = eachDayOfInterval({
@@ -125,7 +118,10 @@ export function WeeklyCalendar() {
       monthShort: format(date, "LLL", { locale: cs }).substring(0, 3),
       isToday: isToday(date),
       isWeekend: isWeekend(date),
-      shifts: filteredShifts.filter(shift => shift.date && isSameDay(new Date(shift.date), date)) || [],
+      shifts: filteredShifts.filter(shift => {
+        const shiftDate = parseDate(shift.date);
+        return shiftDate ? isSameDay(shiftDate, date) : false;
+      }),
     };
   });
   
@@ -138,25 +134,26 @@ export function WeeklyCalendar() {
   );
   
   // Format time helper
-  const formatTime = (dateString: string | null) => {
-    if (!dateString) return "??:??";
+  const formatTime = (dateString?: string | null) => {
+    const parsed = parseDate(dateString ?? undefined);
+    if (!parsed) return "??:??";
     try {
-      return format(new Date(dateString), "HH:mm");
+      return format(parsed, "HH:mm");
     } catch (e) {
       return "??:??";
     }
   };
 
   // Calculate duration helper
-  const calculateDuration = (startTime: string, endTime: string) => {
-    try {
-      const start = new Date(startTime);
-      const end = new Date(endTime);
-      const durationHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-      return durationHours.toFixed(1) + " h";
-    } catch (e) {
+  const calculateDuration = (startTime?: string | null, endTime?: string | null) => {
+    const start = parseDate(startTime ?? undefined);
+    const end = parseDate(endTime ?? undefined);
+    if (!start || !end) return "? h";
+    const durationHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+    if (!Number.isFinite(durationHours) || durationHours <= 0) {
       return "? h";
     }
+    return durationHours.toFixed(1) + " h";
   };
 
   // Navigation handlers

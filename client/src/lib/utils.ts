@@ -35,12 +35,37 @@ export const getInitials = (firstName: string, lastName: string) => {
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 };
 
-export const formatDateTime = (dateString: string, timeString?: string) => {
-  const date = new Date(dateString);
+const toDate = (value?: string | Date | null) => {
+  if (!value) return null;
+  const parsed = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+export const formatDateTime = (
+  dateInput: string | Date | null | undefined,
+  timeInput?: string | Date | null
+) => {
+  const date = toDate(dateInput);
+  const time = toDate(timeInput) ?? date;
+
+  if (!date) {
+    return { date: "Neznámé datum", time: "??:??", full: "Neznámé datum" };
+  }
+
+  const dateText = date.toLocaleDateString("cs-CZ", {
+    day: "numeric",
+    month: "numeric",
+    year: "numeric",
+  });
+
+  const timeText = time
+    ? time.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" })
+    : "??:??";
+
   return {
-    date: date.toLocaleDateString('cs-CZ', { day: 'numeric', month: 'numeric', year: 'numeric' }),
-    time: timeString ? timeString : date.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' }),
-    full: `${date.toLocaleDateString('cs-CZ', { day: 'numeric', month: 'numeric', year: 'numeric' })} ${timeString || date.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })}`
+    date: dateText,
+    time: timeText,
+    full: `${dateText} ${timeText}`.trim(),
   };
 };
 
@@ -52,16 +77,24 @@ export const formatCurrency = (value: number) => {
   }).format(value);
 };
 
-export const calculateDuration = (startTime: string, endTime: string) => {
-  try {
-    const start = new Date(startTime);
-    const end = new Date(endTime);
-    const diffInMilliseconds = end.getTime() - start.getTime();
-    const diffInHours = diffInMilliseconds / (1000 * 60 * 60);
-    return Math.round(diffInHours * 10) / 10; // Round to 1 decimal place
-  } catch (e) {
+export const calculateDuration = (
+  startTime: string | Date | null | undefined,
+  endTime: string | Date | null | undefined
+) => {
+  const start = toDate(startTime);
+  const end = toDate(endTime);
+
+  if (!start || !end) {
     return 0;
   }
+
+  const diffInMilliseconds = end.getTime() - start.getTime();
+  if (!Number.isFinite(diffInMilliseconds) || diffInMilliseconds <= 0) {
+    return 0;
+  }
+
+  const diffInHours = diffInMilliseconds / (1000 * 60 * 60);
+  return Math.round(diffInHours * 10) / 10;
 };
 
 // Funkce pro výpočet hodin a minut v textovém formátu
@@ -86,8 +119,8 @@ export const calculateMonthlyHours = (
 ) => {
   // Filtrujeme směny podle daného měsíce
   const monthlyShifts = shifts.filter((shift) => {
-    if (!shift.date) return false;
-    const shiftDate = new Date(shift.date);
+    const shiftDate = toDate(shift.date);
+    if (!shiftDate) return false;
     return shiftDate.getFullYear() === year && shiftDate.getMonth() === month;
   });
 

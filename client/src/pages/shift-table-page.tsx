@@ -46,6 +46,22 @@ export default function ShiftTablePage() {
   // Spojení dat pro kompletní informace o směnách
   const [enhancedShifts, setEnhancedShifts] = useState<ShiftWithDetails[]>([]);
 
+  const parseDate = (value?: string | null) => {
+    if (!value) return null;
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+
+  const formatDateLabel = (value?: string | null) => {
+    const parsed = parseDate(value);
+    return parsed ? format(parsed, "EEEE d. MMMM yyyy", { locale: cs }) : "Neznámé datum";
+  };
+
+  const formatTimeLabel = (value?: string | null) => {
+    const parsed = parseDate(value);
+    return parsed ? format(parsed, "HH:mm") : "??:??";
+  };
+
   useEffect(() => {
     // Odstranili jsme podmínku, která mohla způsobovat, že se data nezobrazovala
     const enhanced = shifts.map(shift => {
@@ -73,28 +89,29 @@ export default function ShiftTablePage() {
          shift.user.lastName.toLowerCase().includes(searchTerm.toLowerCase())) ||
        shift.workplace?.name.toLowerCase().includes(searchTerm.toLowerCase()));
     
-    const matchesWorkplace = filterWorkplace === "all" || 
-      shift.workplaceId.toString() === filterWorkplace;
-    
-    const shiftDate = new Date(shift.date);
+    const matchesWorkplace = filterWorkplace === "all" ||
+      (shift.workplaceId !== null && shift.workplaceId !== undefined && shift.workplaceId.toString() === filterWorkplace);
+
+    const shiftDate = parseDate(shift.date);
     const filterStartDate = new Date(startDate);
     const filterEndDate = new Date(endDate);
-    const matchesDate = shiftDate >= filterStartDate && shiftDate <= filterEndDate;
-    
+    const matchesDate = shiftDate ? shiftDate >= filterStartDate && shiftDate <= filterEndDate : false;
+
     return matchesSearch && matchesWorkplace && matchesDate;
   });
 
   // Seřazení směn podle data a času
   const sortedShifts = [...filteredShifts].sort((a, b) => {
-    const dateA = new Date(a.date);
-    const dateB = new Date(b.date);
-    if (dateA.getTime() !== dateB.getTime()) {
-      return dateA.getTime() - dateB.getTime();
+    const dateA = parseDate(a.date);
+    const dateB = parseDate(b.date);
+    const timeDiff = (dateA?.getTime() ?? 0) - (dateB?.getTime() ?? 0);
+    if (timeDiff !== 0) {
+      return timeDiff;
     }
-    
-    const startTimeA = new Date(a.startTime);
-    const startTimeB = new Date(b.startTime);
-    return startTimeA.getTime() - startTimeB.getTime();
+
+    const startTimeA = parseDate(a.startTime);
+    const startTimeB = parseDate(b.startTime);
+    return (startTimeA?.getTime() ?? 0) - (startTimeB?.getTime() ?? 0);
   });
 
   // Export do CSV
@@ -112,10 +129,13 @@ export default function ShiftTablePage() {
     const csvRows = [headers.join(",")];
     
     sortedShifts.forEach(shift => {
+      const shiftDate = parseDate(shift.date);
+      const startTime = parseDate(shift.startTime);
+      const endTime = parseDate(shift.endTime);
       const row = [
-        format(new Date(shift.date), "dd.MM.yyyy"),
-        format(new Date(shift.startTime), "HH:mm"),
-        format(new Date(shift.endTime), "HH:mm"),
+        shiftDate ? format(shiftDate, "dd.MM.yyyy") : "Neznámé datum",
+        startTime ? format(startTime, "HH:mm") : "??:??",
+        endTime ? format(endTime, "HH:mm") : "??:??",
         shift.workplace ? shift.workplace.name : "Neznámé pracoviště",
         shift.user ? `${shift.user.firstName} ${shift.user.lastName}` : "Neobsazeno",
         shift.notes || ""
@@ -272,16 +292,16 @@ export default function ShiftTablePage() {
                 </thead>
                 <tbody>
                   {sortedShifts.map((shift, index) => (
-                    <tr 
-                      key={shift.id} 
-                      className={index % 2 === 0 ? "bg-white" : "bg-muted/20"}
-                    >
-                      <td className="px-4 py-3 border-t text-sm">
-                        {format(new Date(shift.date), "EEEE d. MMMM yyyy", { locale: cs })}
-                      </td>
-                      <td className="px-4 py-3 border-t text-sm">
-                        {format(new Date(shift.startTime), "HH:mm")} - {format(new Date(shift.endTime), "HH:mm")}
-                      </td>
+                      <tr
+                        key={shift.id}
+                        className={index % 2 === 0 ? "bg-white" : "bg-muted/20"}
+                      >
+                        <td className="px-4 py-3 border-t text-sm">
+                          {formatDateLabel(shift.date)}
+                        </td>
+                        <td className="px-4 py-3 border-t text-sm">
+                          {formatTimeLabel(shift.startTime)} - {formatTimeLabel(shift.endTime)}
+                        </td>
                       <td className="px-4 py-3 border-t text-sm">
                         {shift.workplace ? shift.workplace.name : "Neznámé pracoviště"}
                       </td>

@@ -98,9 +98,9 @@ export function sameSiteCookies(req: Request, res: Response, next: NextFunction)
   
   // Typované přepsání funkce cookie
   res.cookie = function(
-    this: Response, 
-    name: string, 
-    val: string,
+    this: Response,
+    name: string,
+    val: string | object,
     options?: CookieOptions
   ) {
     // Výchozí nastavení cookies
@@ -122,7 +122,8 @@ export function sameSiteCookies(req: Request, res: Response, next: NextFunction)
     }
     
     // Voláme původní metodu s vylepšenými možnostmi
-    return originalCookie.call(this, name, val, secureOptions);
+    return (originalCookie as unknown as (name: string, val: string | object, options?: CookieOptions) => Response)
+      .call(this, name, val, secureOptions);
   } as typeof res.cookie;
   
   next();

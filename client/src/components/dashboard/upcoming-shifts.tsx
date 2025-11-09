@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Shift } from "@shared/schema";
+import { ShiftWithRelations } from "@shared/schema";
 import { format } from "date-fns";
 import { cs } from "date-fns/locale";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -8,14 +8,6 @@ import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-
-interface ShiftWithDetails extends Shift {
-  workplace?: {
-    id: number;
-    name: string;
-    type: string;
-  };
-}
 
 function getWorkplaceTypeColor(type: string | undefined) {
   switch (type) {
@@ -30,28 +22,27 @@ function getWorkplaceTypeColor(type: string | undefined) {
   }
 }
 
+const parseDate = (value?: string | null) => {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
 export function UpcomingShifts() {
-  const { data: shifts, isLoading } = useQuery<ShiftWithDetails[]>({
+  const { data: shifts, isLoading } = useQuery<ShiftWithRelations[]>({
     queryKey: ["/api/shifts"],
   });
 
-  const formatDateTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const dayName = format(date, "EEEE", { locale: cs });
-    const dayFormatted = format(date, "d.M.yyyy");
-    const timeFormatted = format(date, "HH:mm");
-    return {
-      dayName: dayName.charAt(0).toUpperCase() + dayName.slice(1),
-      date: dayFormatted,
-      time: timeFormatted,
-    };
-  };
+  const today = new Date();
 
-  // Get only upcoming shifts and sort by date
-  const upcomingShifts = shifts
-    ?.filter(shift => new Date(shift.date) >= new Date())
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .slice(0, 4);
+  const upcomingShifts = (shifts ?? [])
+    .map((shift) => ({ shift, date: parseDate(shift.date) }))
+    .filter((entry): entry is { shift: ShiftWithRelations; date: Date } => {
+      return entry.date !== null && entry.date.getTime() >= today.getTime();
+    })
+    .sort((a, b) => a.date.getTime() - b.date.getTime())
+    .slice(0, 4)
+    .map(entry => entry.shift);
 
   if (isLoading) {
     return (
@@ -79,11 +70,22 @@ export function UpcomingShifts() {
       </CardHeader>
       <CardContent className="pb-2">
         <ul className="divide-y divide-slate-200">
-          {upcomingShifts?.length ? (
+          {upcomingShifts.length ? (
             upcomingShifts.map((shift) => {
-              const startFormatted = formatDateTime(typeof shift.startTime === 'string' ? shift.startTime : shift.startTime.toISOString());
-              const endFormatted = { time: format(new Date(typeof shift.endTime === 'string' ? shift.endTime : shift.endTime.toISOString()), "HH:mm") };
-              
+              const shiftDate = parseDate(shift.date);
+              const startDate = parseDate(shift.startTime) ?? shiftDate;
+              const endDate = parseDate(shift.endTime);
+
+              const dayName = shiftDate
+                ? format(shiftDate, "EEEE", { locale: cs })
+                : "Neznámý den";
+              const displayDay = shiftDate
+                ? format(shiftDate, "d.M.yyyy")
+                : "Neznámé datum";
+
+              const startTime = startDate ? format(startDate, "HH:mm") : "??:??";
+              const endTime = endDate ? format(endDate, "HH:mm") : "??:??";
+
               return (
                 <li key={shift.id} className="p-4 hover:bg-slate-50">
                   <div className="flex items-center justify-between">
@@ -92,7 +94,7 @@ export function UpcomingShifts() {
                       <div>
                         <p className="text-sm font-medium text-slate-900">{shift.workplace?.name || "Neznámý objekt"}</p>
                         <p className="text-xs text-slate-500">
-                          {startFormatted.dayName}, {startFormatted.date} • {startFormatted.time} - {endFormatted.time}
+                          {dayName.charAt(0).toUpperCase() + dayName.slice(1)}, {displayDay} • {startTime} - {endTime}
                         </p>
                       </div>
                     </div>

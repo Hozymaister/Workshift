@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Shift, Workplace, User as UserType } from "@shared/schema";
+import { ShiftWithRelations, Workplace } from "@shared/schema";
 import { ChevronLeft, ChevronRight, X, Download, Clock, UserIcon, MapPin, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { 
@@ -24,16 +24,10 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { formatDuration, calculateDuration } from "@/lib/utils";
 
-// Rozšířené rozhraní pro směny s doplněnými vztahy
-interface ShiftWithDetails extends Shift {
-  workplace?: Workplace;
-  user?: UserType;
-}
-
 interface CalendarModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  shifts: ShiftWithDetails[];
+  shifts: ShiftWithRelations[];
   workplaces: Workplace[];
   selectedDate: Date;
   setSelectedDate: (date: Date) => void;
@@ -101,10 +95,17 @@ export function CalendarModal({
   };
 
   // Formátování času
-  const formatTime = (dateString: string | null) => {
-    if (!dateString) return "??:??";
+  const parseDate = (value?: string | null) => {
+    if (!value) return null;
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+
+  const formatTime = (dateString?: string | null) => {
+    const parsed = parseDate(dateString);
+    if (!parsed) return "??:??";
     try {
-      return format(new Date(dateString), "HH:mm");
+      return format(parsed, "HH:mm");
     } catch (e) {
       return "??:??";
     }
@@ -134,7 +135,10 @@ export function CalendarModal({
       isToday: isToday(date),
       isWeekend: isWeekend(date),
       isCurrentMonth,
-      shifts: shifts.filter(shift => shift.date && isSameDay(new Date(shift.date), date)) || [],
+      shifts: shifts.filter(shift => {
+        const shiftDate = parseDate(shift.date);
+        return shiftDate ? isSameDay(shiftDate, date) : false;
+      }),
     };
   });
 
