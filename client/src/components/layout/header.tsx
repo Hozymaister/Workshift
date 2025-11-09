@@ -62,7 +62,7 @@ export function Header({ title }: { title: string }) {
   const adminNavItems = [
     { path: '/workplaces', label: t('workplaces'), icon: <BarChart3 className="h-4 w-4" /> },
     { path: '/workers', label: t('workers'), icon: <Users className="h-4 w-4" /> },
-    { path: '/invoice', label: t('invoice'), icon: <FileText className="h-4 w-4" /> },
+    { path: '/invoices', label: t('invoice'), icon: <FileText className="h-4 w-4" /> },
   ];
   
   // Kombinujeme položky podle role uživatele

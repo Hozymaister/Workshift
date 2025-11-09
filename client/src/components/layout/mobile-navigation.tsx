@@ -20,7 +20,7 @@ export function MobileNavigation() {
   
   // Položky pro firmy v dolní navigaci
   const companyBottomItems = [
-    { path: "/invoice", label: "Faktura", icon: <Receipt className="h-5 w-5" /> }
+    { path: "/invoices", label: "Faktura", icon: <Receipt className="h-5 w-5" /> }
   ];
   
   // Společná položka "Více" pro všechny - otevře mobilní menu s plným seznamem

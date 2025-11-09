@@ -723,7 +723,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent className="p-1 md:p-3">
               <Link 
-                href="/invoice" 
+                href="/invoices"
                 className="flex flex-col justify-center items-center w-full h-full p-3 md:p-5 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow border border-gray-100 min-h-[80px]"
               >
                 <FileDigit className="h-8 w-8 text-green-500 mb-2" />

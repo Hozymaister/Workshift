@@ -23,48 +23,20 @@ import { ProtectedRoute } from "./lib/protected-route";
 function Router() {
   return (
     <Switch>
-      <Route path="/auth" component={AuthPage} />
-      {/* Cesty pro všechny role */}
+      <Route path="/login" component={AuthPage} />
       <ProtectedRoute path="/shifts" component={ShiftsPage} />
       <ProtectedRoute path="/shift-table" component={ShiftTablePage} />
       <ProtectedRoute path="/exchanges" component={ExchangesPage} />
       <ProtectedRoute path="/profile" component={ProfilePage} />
       <ProtectedRoute path="/settings" component={SettingsPage} />
       <ProtectedRoute path="/reports" component={ReportsPage} />
+      <ProtectedRoute path="/workplaces/:id" component={WorkplaceDetailPage} requiredRoles={["admin", "company"]} />
+      <ProtectedRoute path="/workplaces" component={WorkplacesPage} requiredRoles={["admin", "company"]} />
+      <ProtectedRoute path="/workers" component={WorkersPage} requiredRoles={["admin", "company"]} />
+      <ProtectedRoute path="/invoices" component={InvoicePage} requiredRoles={["admin", "company"]} />
+      <ProtectedRoute path="/customers" component={CustomersPage} requiredRoles={["admin", "company"]} />
+      <ProtectedRoute path="/scan" component={ScanPage} requiredRoles={["admin", "company"]} />
       <ProtectedRoute path="/" component={DashboardPage} />
-      
-      {/* Cesty pouze pro adminy a společnosti */}
-      <ProtectedRoute 
-        path="/workplaces/:id" 
-        component={WorkplaceDetailPage} 
-        requiredRoles={["admin", "company"]} 
-      />
-      <ProtectedRoute 
-        path="/workplaces" 
-        component={WorkplacesPage} 
-        requiredRoles={["admin", "company"]} 
-      />
-      <ProtectedRoute 
-        path="/workers" 
-        component={WorkersPage} 
-        requiredRoles={["admin", "company"]} 
-      />
-      <ProtectedRoute 
-        path="/invoice" 
-        component={InvoicePage} 
-        requiredRoles={["admin", "company"]} 
-      />
-      <ProtectedRoute 
-        path="/customers" 
-        component={CustomersPage} 
-        requiredRoles={["admin", "company"]} 
-      />
-      <ProtectedRoute 
-        path="/scan" 
-        component={ScanPage} 
-        requiredRoles={["admin", "company"]} 
-      />
-      
       <Route component={NotFound} />
     </Switch>
   );
@@ -74,12 +46,12 @@ function App() {
   return (
     <>
       <AuthProvider>
-        <LanguageProvider>
-          <OnboardingProvider>
+        <OnboardingProvider>
+          <LanguageProvider>
             <Router />
             <Toaster />
-          </OnboardingProvider>
-        </LanguageProvider>
+          </LanguageProvider>
+        </OnboardingProvider>
       </AuthProvider>
     </>
   );

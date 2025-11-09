@@ -69,6 +69,7 @@ export async function setupDatabase() {
           "address" TEXT,
           "notes" TEXT,
           "manager_id" INTEGER,
+          "owner_id" INTEGER,
           "company_name" TEXT,
           "company_id" TEXT,
           "company_vat_id" TEXT,

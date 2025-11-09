@@ -32,7 +32,7 @@ export function Sidebar() {
   const companyNavItems = [
     { path: "/workplaces", label: "Pracovní objekty", icon: <Building2 className="mr-3 h-5 w-5" /> },
     { path: "/workers", label: "Pracovníci", icon: <Users className="mr-3 h-5 w-5" /> },
-    { path: "/invoice", label: "Fakturace", icon: <Receipt className="mr-3 h-5 w-5" /> },
+    { path: "/invoices", label: "Fakturace", icon: <Receipt className="mr-3 h-5 w-5" /> },
     { path: "/customers", label: "Adresář zákazníků", icon: <Book className="mr-3 h-5 w-5" /> },
     { path: "/scan", label: "Skenování dokumentů", icon: <ScanLine className="mr-3 h-5 w-5" /> },
   ];

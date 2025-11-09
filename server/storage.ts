@@ -690,7 +690,8 @@ export class PostgreSQLStorage implements IStorage {
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const result = await this.db.select().from(users).where(eq(users.email, email.toLowerCase()));
+    const normalized = email.trim().toLowerCase();
+    const result = await this.db.select().from(users).where(eq(users.email, normalized));
     return result[0];
   }
 
@@ -698,7 +699,7 @@ export class PostgreSQLStorage implements IStorage {
     // Ensure lowercase email for consistency
     const userData = {
       ...insertUser,
-      email: insertUser.email.toLowerCase(),
+      email: insertUser.email.trim().toLowerCase(),
       role: insertUser.role || "worker"
     };
     
@@ -709,7 +710,7 @@ export class PostgreSQLStorage implements IStorage {
   async updateUser(id: number, userData: Partial<InsertUser>): Promise<User | undefined> {
     // If email is provided, ensure it's lowercase
     if (userData.email) {
-      userData.email = userData.email.toLowerCase();
+      userData.email = userData.email.trim().toLowerCase();
     }
     
     const result = await this.db
