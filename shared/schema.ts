@@ -1,4 +1,14 @@
-import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  serial,
+  integer,
+  boolean,
+  timestamp,
+  jsonb,
+  varchar,
+  index,
+} from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -211,3 +221,16 @@ export type Invoice = typeof invoices.$inferSelect;
 
 export type InsertInvoiceItem = z.infer<typeof insertInvoiceItemSchema>;
 export type InvoiceItem = typeof invoiceItems.$inferSelect;
+// Session schema - for connect-pg-simple session store
+export const sessions = pgTable(
+  "sessions",
+  {
+    sid: varchar("sid", { length: 255 }).primaryKey(),
+    sess: jsonb("sess").notNull(),
+    expire: timestamp("expire", { mode: "date" }).notNull(),
+  },
+  (table) => ({
+    expireIdx: index("IDX_sessions_expire").on(table.expire),
+  }),
+);
+
