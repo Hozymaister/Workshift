@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, hashPassword } from "./auth";
+import { hashPassword } from "./auth";
 import { format, parseISO, addHours, differenceInHours } from "date-fns";
 import fetch from "node-fetch";
 import { XMLParser } from "fast-xml-parser";
@@ -12,8 +12,6 @@ import { v4 as uuidv4 } from "uuid";
 import type { User } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Sets up /api/register, /api/login, /api/logout, /api/user
-  setupAuth(app);
 
   // Definice povolených rolí pro konzistentní kontrolu
   const ROLES = {
