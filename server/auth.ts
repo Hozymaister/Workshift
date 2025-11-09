@@ -6,6 +6,7 @@ import { scrypt, randomBytes, timingSafeEqual, ScryptOptions } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
+import { config } from "./config";
 
 declare global {
   namespace Express {
@@ -61,16 +62,7 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 export function setupAuth(app: Express) {
-  // Ověříme, zda je SESSION_SECRET k dispozici v produkčním prostředí
-  if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
-    console.error('VAROVÁNÍ: SESSION_SECRET není nastaven v produkčním prostředí!');
-    console.error('Pro produkční nasazení by měl být nastaven stabilní SESSION_SECRET!');
-    // Použijeme náhodný klíč, pokud není SESSION_SECRET nastaven, ale to způsobí odhlášení uživatelů při restartu
-    process.env.SESSION_SECRET = randomBytes(32).toString('hex');
-  }
-
-  // Bezpečnostní opatření - ujistíme se, že používáme silný SESSION_SECRET
-  const sessionSecret = process.env.SESSION_SECRET || randomBytes(32).toString('hex');
+  const sessionSecret = config.sessionSecret;
 
   const sessionSettings: session.SessionOptions = {
     secret: sessionSecret,
@@ -79,14 +71,16 @@ export function setupAuth(app: Express) {
     store: storage.sessionStore,
     name: 'shift_manager_sid', // Vlastní název cookie pro zvýšení bezpečnosti
     cookie: {
-      secure: process.env.NODE_ENV === "production",
+      secure: config.isProduction,
       httpOnly: true, // Ochrana proti XSS
       sameSite: 'lax', // Ochrana proti CSRF
       maxAge: 7 * 24 * 60 * 60 * 1000, // 1 týden
     }
   };
 
-  app.set("trust proxy", 1);
+  if (config.isProduction) {
+    app.set("trust proxy", 1);
+  }
   app.use(session(sessionSettings));
   app.use(passport.initialize());
   app.use(passport.session());
